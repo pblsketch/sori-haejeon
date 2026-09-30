@@ -249,6 +249,38 @@ if (!window.D) {
   D.duShots = (t) => D.duSt().teams[t].shots.length;
   D.duMsg = (t) => D.msgOf(D.station(t));
 
+  // ── 크기·배치 ──
+  D.desc = (e) => {
+    const c = e.className && e.className.baseVal != null ? e.className.baseVal : e.className;
+    return (e.tagName || '').toLowerCase() + '.' + String(c || '').split(' ').filter(Boolean).slice(0, 2).join('.') + ' "' + (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 16) + '"';
+  };
+  // 보이는 누르는 것(단추·링크·입력)이 모두 min px 이상인지. 돌려줌: 잰 개수
+  D.targets = (min, tag) => {
+    const els = D.$$('button, [role="button"], a[href], input, select').filter((e) => D.visible(e) && !e.closest('[aria-hidden="true"], .app-rotate'));
+    els.forEach((e) => {
+      const b = D.box(e);
+      if (Math.min(b.width, b.height) < min - 0.5) D.bad(tag + ': 터치 목표 ' + Math.round(b.width) + '×' + Math.round(b.height) + ' < ' + min + 'px — ' + D.desc(e));
+    });
+    return els.length;
+  };
+  // 가로 스크롤 없음(+ vertical이면 세로 스크롤도 없음: 판 화면은 한 화면 안)
+  D.noScroll = (tag, vertical) => {
+    const de = D.d().documentElement, b = D.d().body;
+    const sw = Math.max(de.scrollWidth, b.scrollWidth);
+    if (sw > de.clientWidth + 1) D.bad(tag + ': 가로 스크롤 ' + sw + ' > ' + de.clientWidth);
+    if (vertical) {
+      const sh = Math.max(de.scrollHeight, b.scrollHeight);
+      if (sh > de.clientHeight + 1) D.bad(tag + ': 세로 스크롤 ' + sh + ' > ' + de.clientHeight);
+      const pr = D.$('.pr'); if (pr && pr.scrollHeight > pr.clientHeight + 1) D.bad(tag + ': 화면 안 스크롤 ' + pr.scrollHeight + ' > ' + pr.clientHeight);
+    }
+  };
+  D.inView = (n, tag) => {
+    if (!n) { D.bad(tag + ': 없음'); return false; }
+    const b = D.box(n), w = D.w();
+    if (b.top < -0.5 || b.left < -0.5 || b.bottom > w.innerHeight + 0.5 || b.right > w.innerWidth + 0.5) { D.bad(tag + ': 화면 밖 ' + JSON.stringify([b.left, b.top, b.right, b.bottom].map(Math.round))); return false; }
+    return true;
+  };
+
   // ── 화면 문자열 ──
   // 보이는 글(글 노드 + aria-label·title)을 모은다. 숨은 요소·aria-hidden 안은 뺀다
   D.visibleText = () => {
