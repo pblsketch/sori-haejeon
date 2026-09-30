@@ -1,10 +1,11 @@
 // 조작부와 신호 기록장(js/game/controls.js) 점검(aside). 점검용 페이지 tests/pages/controls.html을
 // 크기별 틀(tests/pages/frame.html)에 넣어 가로 1920×1080 · 휴대폰 세로 390×844로 띄운다.
-//  1) 가로: 자음 1~3단계 · 모음 1~2단계의 카드 구성, 모든 조합에서 세기 카드 흐림과 발사 단추가 G.rules.controls와 같은지,
+//  (T19) 고르기는 모두 아래 조작부에서 한다: 자음 ① 자리 카드 ② 방법 ③ 세기, 모음 ① 높이 ② 앞뒤 ③ 입술. 점검도 카드를 눌러 고른다.
+//  1) 가로: 자음 1~3단계 · 모음 1~2단계의 카드 구성(자리 카드 이름: 중3 몸의 부위, 고1 + 한자어), 모든 조합에서 세기 카드 흐림과 발사 단추가 G.rules.controls와 같은지,
 //     비음·유음·목청+마찰에서 세기 카드가 흐려지는지, 없는 조합도 막지 않고 onFire가 불리는지,
 //     '따라 해 보기'가 켜진 단계에서만 · 있는 소리에만 뜨는지, 대결 기본 줄, 문구가 언제나 한 줄인지,
-//     잠금(setEnabled · 발사 뒤), 신호 기록장, 한 줄 배치(가운데 아래), 터치 목표 64px 이상, 페이지 오류 0
-//  2) 세로: 두 줄 배치(방법 / 세기·입술 + 발사), 터치 목표 48px 이상, 가로 넘침 없음,
+//     잠금(setEnabled · 발사 뒤), 신호 기록장, 배치(①②③ 순서, 가운데 아래 — 모든 카드가 화면 아래 35% 안), 터치 목표 64px 이상, 페이지 오류 0
+//  2) 세로: 줄 배치(① / ② / ③ + 발사, 모음은 ① 높이 / ② 앞뒤 + ③ 입술 / 발사), 모든 조작이 화면 아래 45% 안, 터치 목표 48px·발사 56px 이상, 가로 넘침 없음,
 //     '따라 해 보기' 29줄이 모두 한 줄에 말줄임 없이 15px 이상으로 들어가는지(딱지는 숨김), 기록장이 접혀 있다가 단추로 펼쳐지는지, 페이지 오류 0
 //  3) 더 좁은 세로 360×780: '따라 해 보기' 29줄이 15px 이상 한 줄, 긴 문구는 15px 말줄임
 //  캡처: tests/shots/controls-landscape.png, controls-portrait.png, controls-portrait-log.png
@@ -64,7 +65,7 @@ const touchOk = (n, min) => {
 };
 `;
 
-step('가로 1920×1080: 카드 구성·세기 흐림·발사·없는 조합·따라 해 보기·한 줄·기록장·배치', `
+step('가로 1920×1080: 자리·방법·세기 카드 구성·세기 흐림·발사·없는 조합·따라 해 보기·한 줄·기록장·배치', `
 const tl = await openTab(${JSON.stringify(LAND)});
 try {
   await tl.evaluate(() => window.frameReady);
@@ -89,7 +90,10 @@ try {
           const lv = R.level('consonant', n);
           const tag = '자음 ' + n + '단계 ' + grade;
           // 카드 구성
-          const mc = cards('manner'), sc = cards('strength');
+          const mc = cards('manner'), sc = cards('strength'), pc = cards('place');
+          if (pc.length !== 5) bad(tag + ': 자리 카드 ' + pc.length + '장');
+          const pWant = S.places.map((p) => TX.mouthParts[p] + (grade === 'h1' ? G.text.short('h1', 'place', p) : ''));
+          if (!same(pc.map((b) => b.textContent), pWant)) bad(tag + ': 자리 카드 이름 ' + pc.map((b) => b.textContent));
           if (mc.length !== 5) bad(tag + ': 방법 카드 ' + mc.length + '장');
           if (sc.length !== (n === 1 ? 0 : 3)) bad(tag + ': 세기 카드 ' + sc.length + '장');
           if (cards('lips').length) bad(tag + ': 입술 카드가 있음');
@@ -108,7 +112,8 @@ try {
             const strs = n === 1 || strengthless(p, m) ? [null] : S.strengths;
             for (const s of strs) {
               c.reset();
-              c.setPlace(p);
+              card('place', p).click();
+              if (c.getSelection().place !== p || card('place', p).getAttribute('aria-pressed') !== 'true') bad(tag + ' ' + p + ': 자리 카드를 눌러도 안 골라짐');
               if (!fireBtn().disabled) bad(tag + ' ' + p + ': 자리만 골랐는데 발사가 켜짐');
               card('manner', m).click();
               const want = R.controls(lv, { place: p, manner: m });
@@ -147,7 +152,7 @@ try {
               if (!same(got, exp)) bad(tag + ': onFire 값 ' + JSON.stringify(got) + ' ≠ ' + JSON.stringify(exp));
               if (!snd) info.fired[n + ':' + p + '+' + m + '+' + s] = true;
               // 발사 뒤 잠김
-              if (!mc.every((b) => b.disabled)) bad(tag + ': 발사 뒤 카드가 잠기지 않음');
+              if (!mc.every((b) => b.disabled) || !pc.every((b) => b.disabled)) bad(tag + ': 발사 뒤 카드가 잠기지 않음');
               fires++;
             }
           }
@@ -155,12 +160,12 @@ try {
           if (n === 1 && fires !== 25) bad(tag + ': 조합 수 ' + fires);
           // 세기를 고른 뒤 비음으로 바꾸면 세기 흐림 → 발사 켜짐, onFire의 세기는 null
           if (n > 1) {
-            c.reset(); c.setPlace('bilabial'); card('manner', 'stop').click(); card('strength', 'tense').click(); card('manner', 'nasal').click();
+            c.reset(); card('place', 'bilabial').click(); card('manner', 'stop').click(); card('strength', 'tense').click(); card('manner', 'nasal').click();
             if (fireBtn().disabled) bad(tag + ': 비음으로 바꿨는데 발사가 꺼짐');
             if (sc.some((b) => b.getAttribute('aria-pressed') === 'true')) bad(tag + ': 흐린 세기 카드가 골라진 채로 보임');
             fireBtn().click();
             if (fw.__fired[fw.__fired.length - 1].strength !== null) bad(tag + ': 비음 발사에 세기가 따라감');
-            c.reset(); c.setPlace('glottal'); card('manner', 'fricative').click();
+            c.reset(); card('place', 'glottal').click(); card('manner', 'fricative').click();
             if (!sc.every((b) => b.disabled) || fireBtn().disabled) bad(tag + ': 목청+마찰에서 세기 흐림/발사 켜짐이 아님');
           }
         }
@@ -176,17 +181,24 @@ try {
           const c = fw.mount({ sea: 'vowel', level: n, grade });
           const lv = R.level('vowel', n);
           const tag = '모음 ' + n + '단계 ' + grade;
-          const lc = cards('lips');
-          if (cards('manner').length || cards('strength').length) bad(tag + ': 자음 카드가 있음');
+          const lc = cards('lips'), hc = cards('height'), bc = cards('backness');
+          if (cards('manner').length || cards('strength').length || cards('place').length) bad(tag + ': 자음 카드가 있음');
+          if (!same(hc.map((b) => b.textContent), S.heights.map((x) => G.text.short(grade, 'height', x)))) bad(tag + ': 높이 카드 ' + hc.map((b) => b.textContent));
+          if (!same(bc.map((b) => b.textContent), S.backs.map((x) => G.text.short(grade, 'backness', x)))) bad(tag + ': 앞뒤 카드 ' + bc.map((b) => b.textContent));
           if (!same(lc.map((b) => b.textContent), S.lips.map((x) => G.text.short(grade, 'lips', x)))) bad(tag + ': 입술 카드 ' + lc.map((b) => b.textContent));
           if (grade === 'h1' && !same(lc.map((b) => b.textContent), ['평순', '원순'])) bad(tag + ': 고1 입술 카드가 평순/원순이 아님');
           if (grade === 'h1') continue;
-          if (msgText() !== TX.prompt.tongue) bad(tag + ': 처음 문구가 혀 자리 안내가 아님');
+          if (msgText() !== TX.prompt.height) bad(tag + ': 처음 문구가 높이 안내가 아님: ' + msgText());
+          card('height', 'high').click();
+          if (msgText() !== TX.prompt.backness) bad(tag + ': 높이 뒤 문구가 앞뒤 안내가 아님: ' + msgText());
           card('lips', 'rounded').click();
-          if (!fireBtn().disabled) bad(tag + ': 혀 자리 없이 발사가 켜짐');
+          if (!fireBtn().disabled) bad(tag + ': 앞뒤 없이 발사가 켜짐');
+          c.reset();
+          card('lips', 'rounded').click(); card('backness', 'back').click();
+          if (!fireBtn().disabled) bad(tag + ': 높이 없이 발사가 켜짐');
           for (const b of S.backs) for (const h of S.heights) for (const l of S.lips) {
             c.reset();
-            c.setPlace(b + '-' + h);
+            card('height', h).click(); card('backness', b).click();
             if (!fireBtn().disabled) bad(tag + ': 입술 없이 발사가 켜짐');
             card('lips', l).click();
             const want = R.controls(lv, { backness: b, height: h, lips: l });
@@ -201,8 +213,9 @@ try {
             if (!same(fw.__fired[fw.__fired.length - 1], { backness: b, height: h, lips: l })) bad(tag + ': onFire 값 이상');
           }
           if (!fw.__fired.some((x) => x.backness === 'front' && x.height === 'low' && x.lips === 'rounded')) bad(tag + ': 앞·낮은·둥근 입술(없는 소리)이 발사되지 않음');
-          // 순서가 바뀐 혀 자리 id와 객체도 받는다
+          // (풀이 예시·점검용 setPlace) 순서가 바뀐 혀 자리 id와 객체도 받는다
           c.reset(); c.setPlace('high-back'); card('lips', 'rounded').click();
+          if (card('height', 'high').getAttribute('aria-pressed') !== 'true' || card('backness', 'back').getAttribute('aria-pressed') !== 'true') bad(tag + ': setPlace가 높이·앞뒤 카드에 안 비침');
           const sv = c.getSelection();
           if (sv.backness !== 'back' || sv.height !== 'high') bad(tag + ': setPlace("high-back")를 못 읽음');
           c.setPlace({ backness: 'front', height: 'mid' });
@@ -212,14 +225,14 @@ try {
 
       // ── 문구 자리: 신호 줄 · 대결 기본 줄 · 긴 문구 · showFollow ──
       let c = fw.mount({ sea: 'consonant', level: 1 });
-      c.setPlace('velar'); card('manner', 'stop').click();
+      card('place', 'velar').click(); card('manner', 'stop').click();
       if (msgText() !== G.text.follow('ㄱ')) bad('자음 1단계 /ㄱ/ 따라 해 보기 안 뜸');
       fireBtn().click();
       c.setMessage(G.text.signal('miss'));
       c.reset();
       if (msgText() !== G.text.signal('miss')) bad('reset() 뒤 신호 줄이 사라짐');
       if (fireBtn().disabled === false) bad('reset() 뒤 발사가 켜져 있음');
-      c.setPlace('bilabial');
+      card('place', 'bilabial').click();
       if (msgText() === G.text.signal('miss')) bad('다시 고르기 시작했는데 신호 줄이 남음');
       card('manner', 'nasal').click();
       if (msgText() !== G.text.follow('ㅁ')) bad('다시 고른 뒤 따라 해 보기 안 뜸');
@@ -231,24 +244,24 @@ try {
       if (msgKind() === 'follow' && msgText() !== G.text.follow('ㅁ')) bad('showFollow(null) 뒤 기본 줄이 아님');
       // 잠금
       c.reset(); c.setEnabled(false);
-      card('manner', 'stop').click();
-      if (c.getSelection().manner) bad('setEnabled(false)인데 카드가 눌림');
+      card('manner', 'stop').click(); card('place', 'velar').click();
+      if (c.getSelection().manner || c.getSelection().place) bad('setEnabled(false)인데 카드가 눌림');
       if (!$$('.ctl-card, .ctl-fire').every((b) => b.disabled)) bad('setEnabled(false)인데 단추가 켜져 있음');
-      c.setEnabled(true); c.setPlace('alveolar'); card('manner', 'liquid').click();
+      c.setEnabled(true); card('place', 'alveolar').click(); card('manner', 'liquid').click();
       if (fireBtn().disabled) bad('setEnabled(true) 뒤 발사가 안 켜짐');
       // 대결: 기본 줄 = 외치고 발사, 1단계에서는 따라 해 보기도
       c = fw.mount({ sea: 'consonant', level: 2, mode: 'duel' });
       if (msgText() !== TX.duel.shout) bad('대결 기본 줄이 아님: ' + msgText());
-      c.setPlace('velar'); card('manner', 'stop').click();
+      card('place', 'velar').click(); card('manner', 'stop').click();
       if (msgText() !== TX.duel.shout) bad('대결 2단계에서 고르는 중 문구가 바뀜: ' + msgText());
       c = fw.mount({ sea: 'consonant', level: 1, mode: 'duel' });
-      c.setPlace('velar'); card('manner', 'nasal').click();
+      card('place', 'velar').click(); card('manner', 'nasal').click();
       if (msgText() !== G.text.follow('ㅇ')) bad('대결 1단계에서 따라 해 보기가 안 뜸');
-      c.setPlace('glottal'); card('manner', 'stop').click();
+      card('place', 'glottal').click(); card('manner', 'stop').click();
       if (msgText() !== TX.duel.shout) bad('대결 1단계 없는 조합에서 중립 줄이 아님: ' + msgText());
       // 없는 조합에서 '없다'는 암시가 없는지(연습)
       c = fw.mount({ sea: 'consonant', level: 1 });
-      c.setPlace('palatal'); card('manner', 'stop').click();
+      card('place', 'palatal').click(); card('manner', 'stop').click();
       if (/없/.test(msgText())) bad('없는 조합에서 없다는 암시: ' + msgText());
 
       // ── 신호 기록장 ──
@@ -274,46 +287,63 @@ try {
       c = fw.mount({ sea: 'consonant', level: 2, logbox: true });
       if (!fd.getElementById('logbox').contains(c.logEl)) bad('logContainer에 기록장이 안 들어감');
 
-      // ── 가로 배치: 한 줄, 아래 가운데, 64px 이상 ──
-      for (const cfg of [{ sea: 'consonant', level: 1 }, { sea: 'consonant', level: 2 }, { sea: 'vowel', level: 1 }]) {
+      // ── 가로 배치: ① ② ③ + 발사가 모두 화면 아래(35% 안) 가운데, 묶음 순서대로, 64px 이상, 1920에서는 두 줄 이내 ──
+      for (const cfg of [{ sea: 'consonant', level: 1 }, { sea: 'consonant', level: 2 }, { sea: 'consonant', level: 2, grade: 'h1' }, { sea: 'vowel', level: 1 }]) {
         c = fw.mount(cfg);
-        const tag = '가로 ' + cfg.sea + cfg.level;
+        const tag = '가로 ' + cfg.sea + cfg.level + (cfg.grade || '');
         const btns = $$('.ctl-card').concat([fireBtn()]);
         const tops = btns.map((b) => Math.round(box(b).top));
-        if (Math.max(...tops) - Math.min(...tops) > 2) bad(tag + ': 한 줄이 아님 ' + tops);
+        const rows = [];
+        tops.forEach((t) => { if (!rows.some((y) => Math.abs(y - t) < 8)) rows.push(t); });
+        if (rows.length > 2) bad(tag + ': 1920에서 줄이 ' + rows.length + '개 ' + rows);
         const L = Math.min(...btns.map((b) => box(b).left)), Rr = Math.max(...btns.map((b) => box(b).right));
         const mid = (L + Rr) / 2, W = fw.innerWidth, H = fw.innerHeight;
-        if (Math.abs(mid - W / 2) > 12) bad(tag + ': 가운데가 아님(' + mid + ' / ' + W / 2 + ')');
+        if (Math.abs(mid - W / 2) > 40) bad(tag + ': 가운데가 아님(' + mid + ' / ' + W / 2 + ')');
         if (H - Math.max(...btns.map((b) => box(b).bottom)) > 40) bad(tag + ': 화면 아래가 아님');
+        btns.forEach((b) => { if (box(b).top < H * 0.65 - 0.5) bad(tag + ': 조작 단추가 화면 아래 35% 밖: ' + b.textContent + ' top ' + Math.round(box(b).top)); });
         btns.forEach((b) => { if (!touchOk(b, 64)) bad(tag + ': 64px 미만이거나 가려짐: ' + b.textContent + ' ' + JSON.stringify(box(b))); });
-        info.layout[tag] = { tops: tops[0], left: L, right: Rr };
+        // 묶음 순서: ① → ② → ③(읽는 순서: 위에서 아래, 왼쪽에서 오른쪽), 발사는 ③ 뒤
+        const order = $$('.ctl-group').map((gE) => box(gE));
+        for (let i = 1; i < order.length; i++) {
+          const a = order[i - 1], b = order[i];
+          if (!(b.top > a.bottom - 4 || (Math.abs(b.top - a.top) < 8 && b.left >= a.right - 1))) bad(tag + ': 묶음 순서가 ①②③이 아님(' + i + ')');
+        }
+        if (box(fireBtn()).left < Math.max(...cards($('.ctl-group--last .ctl-card').getAttribute('data-group')).map((b) => box(b).right)) - 1) bad(tag + ': 발사가 마지막 묶음 뒤가 아님');
+        info.layout[tag] = { rows, left: L, right: Rr };
       }
       // ── 조합 요약 줄(T17): 발사 단추 바로 위 한 줄, 없는 조합도 그대로(상태 줄), 안 고른 칸은 묶음 이름 ──
       c = fw.mount({ sea: 'consonant', level: 2 });
       const cmb = () => $('.ctl-combo').textContent;
       const sn = (g, id) => G.text.short('m3', g, id);
       const ch = (w) => G.text.fill(TX.ui.play.choose, { what: w });
-      if (cmb() !== [ch(TX.ui.play.step.place), ch(sn('axis', 'manner')), ch(sn('axis', 'strength'))].join(' · ')) bad('빈 요약 줄: ' + cmb());
-      c.setPlace('bilabial'); card('manner', 'stop').click(); card('strength', 'plain').click();
+      if (cmb() !== [ch(sn('axis', 'place')), ch(sn('axis', 'manner')), ch(sn('axis', 'strength'))].join(' · ')) bad('빈 요약 줄: ' + cmb());
+      card('place', 'bilabial').click(); card('manner', 'stop').click(); card('strength', 'plain').click();
       if (cmb() !== TX.mouthParts.bilabial + ' · ' + sn('manner', 'stop') + ' · ' + sn('strength', 'plain')) bad('요약 줄(두 입술·파열·예사): ' + cmb());
       const cb = box($('.ctl-combo')), fbb = box(fireBtn());
       // 요약 줄은 카드 줄 바로 위, 조작부와 같은 중심선(2차 검수)
       const barB = box($('.ctl-bar'));
       if (!(cb.bottom <= fbb.top + 1 && cb.bottom <= barB.top + 1 && barB.top - cb.bottom < 20 && Math.abs((cb.left + cb.right) / 2 - (barB.left + barB.right) / 2) < 3)) bad('요약 줄이 카드 줄 바로 위 가운데가 아님 ' + JSON.stringify([cb.left, cb.right, cb.bottom, barB.left, barB.right, barB.top]));
-      c.reset(); c.setPlace('glottal'); card('manner', 'stop').click(); card('strength', 'tense').click();
+      c.reset(); card('place', 'glottal').click(); card('manner', 'stop').click(); card('strength', 'tense').click();
       if (cmb() !== TX.mouthParts.glottal + ' · ' + sn('manner', 'stop') + ' · ' + sn('strength', 'tense')) bad('없는 조합 요약 줄: ' + cmb());
       if (fireBtn().disabled) bad('없는 조합인데 발사가 막힘');
-      c.reset(); c.setPlace('alveolar'); card('manner', 'nasal').click();
+      c.reset(); card('place', 'alveolar').click(); card('manner', 'nasal').click();
       if (cmb() !== TX.mouthParts.alveolar + ' · ' + sn('manner', 'nasal') + ' · ' + sn('strength', 'none')) bad('비음 요약 줄: ' + cmb());
-      // 자리 이름을 숨기는 단계(자음 3단계)에서는 자리를 이름으로 드러내지 않는다
+      // 자리 이름을 숨기는 단계(자음 3단계)에서도 자리 카드와 요약 줄은 진짜 이름(카드는 입력 — 방법·세기 카드처럼 늘 보임).
+      // 판의 줄 이름·단면도의 자리 이름을 숨기는 것은 G.board·G.mouth 점검이 본다.
       c = fw.mount({ sea: 'consonant', level: 3 });
-      c.setPlace('velar'); card('manner', 'stop').click();
-      if (cmb().indexOf(TX.ui.play.placeChosen) !== 0 || /여린|연구개/.test(cmb())) bad('3단계 요약 줄이 자리를 드러냄: ' + cmb());
-      // 단계 번호: 방법 2 · 세기 3(세기가 없는 1단계에는 3이 없음)
+      if (cards('place').map((b) => b.textContent).join() !== fw.SOUNDS.places.map((p) => TX.mouthParts[p]).join()) bad('3단계 자리 카드 이름: ' + cards('place').map((b) => b.textContent));
+      card('place', 'velar').click(); card('manner', 'stop').click();
+      if (cmb().indexOf(TX.mouthParts.velar) !== 0) bad('3단계 요약 줄: ' + cmb());
+      // 단계 번호: ① 자리 · ② 방법 · ③ 세기(세기가 없는 1단계에는 ③이 없음), 모음 ① 높이 · ② 앞뒤 · ③ 입술
       const steps = () => $$('.ctl-group .ctl-step').map((e) => e.textContent).join(',');
-      if (steps() !== '2,3') bad('단계 번호: ' + steps());
+      const stepNames = () => $$('.ctl-group .ctl-step-name').map((e) => e.textContent).join(',');
+      if (steps() !== '1,2,3' || stepNames() !== [sn('axis', 'place'), sn('axis', 'manner'), sn('axis', 'strength')].join()) bad('단계 번호: ' + steps() + ' ' + stepNames());
+      c = fw.mount({ sea: 'vowel', level: 1 });
+      if (steps() !== '1,2,3' || stepNames() !== [sn('axis', 'height'), sn('axis', 'backness'), sn('axis', 'lips')].join()) bad('모음 단계 번호: ' + steps() + ' ' + stepNames());
+      card('height', 'mid').click(); card('backness', 'front').click(); card('lips', 'rounded').click();
+      if (cmb() !== [sn('height', 'mid'), sn('backness', 'front'), sn('lips', 'rounded')].join(' · ')) bad('모음 요약 줄: ' + cmb());
       c = fw.mount({ sea: 'consonant', level: 1 });
-      if (steps() !== '2') bad('1단계 단계 번호: ' + steps());
+      if (steps() !== '1,2') bad('1단계 단계 번호: ' + steps());
       // 신호 기록장의 기호(명중 과녁 · 같은 줄 방향 · 없는 소리 ∅)
       c.log({ sound: 'ㄱ', kind: 'line', targets: [{ place: 'velar' }] }); c.log({ sound: 'ㅇ', kind: 'hit' }); c.log({ sound: null, input: { place: 'palatal', manner: 'stop' }, kind: 'none' });
       const gl = $$('.ctl-log-item .ctl-log-ico').map((e) => e.getAttribute('data-glyph')).join(',');
@@ -322,7 +352,7 @@ try {
       // 캡처용 상태: 자음 2단계, 기록 몇 줄, 고르는 중
       c = fw.mount({ sea: 'consonant', level: 2 });
       c.log({ sound: 'ㄱ', kind: 'line' }); c.log({ sound: null, input: { place: 'glottal', manner: 'stop', strength: 'plain' }, kind: 'none' }); c.log({ sound: 'ㄲ', kind: 'hit' });
-      c.setPlace('bilabial'); card('manner', 'stop').click(); card('strength', 'aspirated').click();
+      card('place', 'bilabial').click(); card('manner', 'stop').click(); card('strength', 'aspirated').click();
     } catch (e) { bad('예외: ' + (e && e.stack || e)); }
     return { errs, pageErrs: fw.__soriErrors.slice(), info };
   });
@@ -337,7 +367,7 @@ try {
 } finally { await closeTab(tl); }
 `);
 
-step('휴대폰 세로 390×844: 두 줄 배치·48px·따라 해 보기 한 줄·기록장 접기', `
+step('휴대폰 세로 390×844: ①②③ 줄 배치·48px·아래 45%·따라 해 보기 한 줄·기록장 접기', `
 const tp = await openTab(${JSON.stringify(PORT)});
 try {
   await tp.evaluate(() => window.frameReady);
@@ -348,24 +378,36 @@ try {
     try {
       if (fw.ctl.layout() !== 'portrait') bad('390×844에서 자동 배치가 세로가 아님: ' + fw.ctl.layout());
       const W = fw.innerWidth;
+      const H = fw.innerHeight;
       for (const cfg of [{ sea: 'consonant', level: 1 }, { sea: 'consonant', level: 2 }, { sea: 'consonant', level: 3, grade: 'h1' }, { sea: 'vowel', level: 1 }, { sea: 'vowel', level: 2, grade: 'h1' }]) {
         const c = fw.mount(cfg);
-        const tag = '세로 ' + cfg.sea + cfg.level;
+        const tag = '세로 ' + cfg.sea + cfg.level + (cfg.grade || '');
         if (!c.el.classList.contains('ctl--portrait')) bad(tag + ': 세로 배치 표시가 없음');
-        const man = $$('.ctl-card[data-group="manner"]');
-        const second = $$('.ctl-card[data-group="strength"], .ctl-card[data-group="lips"]').concat([fireBtn(), $('.ctl-logtoggle')]);
-        const t1 = man.map((b) => Math.round(box(b).top)), t2 = second.map((b) => Math.round(box(b).top));
-        if (t1.length && Math.max(...t1) - Math.min(...t1) > 2) bad(tag + ': 방법 카드가 한 줄이 아님 ' + t1);
-        if (Math.max(...t2) - Math.min(...t2) > 2) bad(tag + ': 세기·입술 + 발사 줄이 한 줄이 아님 ' + t2);
-        if (t1.length && !(Math.min(...t2) >= Math.max(...man.map((b) => box(b).bottom)) - 1)) bad(tag + ': 둘째 줄이 첫 줄 아래가 아님');
-        man.concat(second).forEach((b) => {
+        const vowel = cfg.sea === 'vowel';
+        // 줄: 자음 [① 자리] / [② 방법] / [③ 세기 + 발사](1단계는 발사만), 모음 [① 높이] / [② 앞뒤 + ③ 입술] / [발사]
+        const rowsWant = vowel ? [cards('height'), cards('backness').concat(cards('lips')), [fireBtn()]]
+          : [cards('place'), cards('manner'), cards('strength').concat([fireBtn()])];
+        const tops = rowsWant.map((r) => r.map((b) => Math.round(box(b).top)));
+        tops.forEach((t, i) => { if (Math.max(...t) - Math.min(...t) > 2) bad(tag + ': ' + (i + 1) + '번째 줄이 한 줄이 아님 ' + t); });
+        for (let i = 1; i < rowsWant.length; i++) {
+          if (!(Math.min(...tops[i]) >= Math.max(...rowsWant[i - 1].map((b) => box(b).bottom)) - 1)) bad(tag + ': ' + (i + 1) + '번째 줄이 앞 줄 아래가 아님');
+        }
+        const all = $$('.ctl-card').concat([fireBtn(), $('.ctl-logtoggle')]);
+        all.forEach((b) => {
           if (!touchOk(b, 48)) bad(tag + ': 48px 미만이거나 가려짐: ' + b.textContent + ' ' + JSON.stringify(box(b)));
           if (box(b).right > W + 0.5 || box(b).left < -0.5) bad(tag + ': 화면 밖: ' + b.textContent);
+          if (box(b).top < H * 0.55 - 0.5) bad(tag + ': 조작 단추가 화면 아래 45% 밖: ' + b.textContent);
         });
+        if (box(fireBtn()).height < 55.5) bad(tag + ': 발사 높이 ' + box(fireBtn()).height);
         if (fd.documentElement.scrollWidth > W) bad(tag + ': 가로 넘침 ' + fd.documentElement.scrollWidth);
         // 카드 이름은 늘 보인다(잘리지 않음)
         $$('.ctl-card').forEach((b) => { if (b.scrollWidth > b.clientWidth + 1) bad(tag + ': 카드 이름이 잘림: ' + b.textContent); });
-        info.rows[tag] = { row1: t1[0], row2: t2[0] };
+        // 요약 줄: 카드 위, 화면 가운데, 기록 단추는 그 오른쪽
+        const cb = box($('.ctl-combo')), tb = box($('.ctl-logtoggle'));
+        if (cb.bottom > Math.min(...rowsWant[0].map((b) => box(b).top)) + 1) bad(tag + ': 요약 줄이 카드 위가 아님');
+        if (Math.abs((cb.left + cb.right) / 2 - W / 2) > 6) bad(tag + ': 요약 줄이 가운데가 아님');
+        if (tb.left < cb.right - 1) bad(tag + ': 기록 단추가 요약 줄 오른쪽이 아님');
+        info.rows[tag] = tops.map((t) => t[0]);
       }
       let c = fw.mount({ sea: 'consonant', level: 1 });
       followFits(c, '세로 390');
@@ -394,7 +436,7 @@ try {
   await tp.evaluate(() => {
     const fw = frameWin(), c = fw.mount({ sea: 'consonant', level: 1 });
     c.log({ sound: 'ㅅ', kind: 'line' });
-    c.setPlace('velar'); fw.document.querySelector('.ctl-card[data-id="stop"]').click();
+    fw.document.querySelector('.ctl-card[data-id="velar"]').click(); fw.document.querySelector('.ctl-card[data-id="stop"]').click();
   });
   await sleep(400);
   await fs.writeFile('./artifacts/controls-portrait.png', await tp.screenshot());
