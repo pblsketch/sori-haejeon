@@ -19,19 +19,20 @@
 //     → 자음 1단계를 이 기기에서 처음 시작하면(G.save.seenExample() 거짓) 풀이 예시를 한 번 자동으로 보여 준 뒤 일반 판
 //       ('예시 보기' 단추는 언제든 다시 보여 주고 준비 화면으로 돌아온다). 예시는 저장하지 않고 기록에도 더하지 않는다.
 //     → 새 판: G.rules.newGame(무작위 적 함대) + state.id = G.save.newGameId(), 곧바로 저장(옛 진행 판은 덮여 사라짐)
-//     → 한 발: 단면도(자리) + 조작부(카드) → 발사 → 조작부 잠금 → 공기 흐름(mouth.play) → G.rules.fire
+//     → 한 발: 조작부 카드(① 자리 ② 방법 ③ 세기 / 모음 ① 높이 ② 앞뒤 ③ 입술 — 모두 아래에서) → 단면도가 고른 모양을 보여 줌
+//              → 발사 → 조작부 잠금 → 조음 동작 + 공기 흐름(mouth.play) → G.rules.fire
 //              → 판 표시(board.update) · 효과음 · 한 줄 문구 · 신호 기록장 · 저장(G.save.saveGame)
 //              턴을 쓰지 않는 결과(이번 바다에 없는 칸 · 이미 쏜 소리)는 그 한 줄만 보이고 턴을 쓰지 않는다
 //     → 끝: 배를 모두 찾음(성공) / 턴 소진(남은 배 공개) → 잠깐 뒤 G.app.finishGame(판 상태)
 //   '처음으로' → G.app.go('title') (진행 판은 저장된 채 남는다).
 //
 // ── 배치 ─────────────────────────────────────────────────────────────────
-//   가로: 윗줄(처음으로 · 바다와 단계 · 남은 배 · 남은 턴) / 가운데 [적 바다 | 입안 단면도('1 위치')] /
-//         아래 가운데 조작부(최근 세 발 기록 띠 · 한 줄 문구 · 요약 줄 · 카드 + 발사) — 큰 옆 기록장 대신 띠(디자인 검수)
-//   세로(휴대폰, spec 6.2 새 배치): 윗줄(처음으로 · 단계 이름 · 남은 배 · 남은 턴) → 적 바다(크게) → 하단 고정 조작부
-//         (한 줄 문구 · [1 위치 단추 · 요약 줄] · 방법 카드 · 세기/입술 카드 + 발사 + 기록). '위치'를 누르면 아래에서 입안 단면도
-//         패널(.pr-sheet)이 올라오고, 자리를 고르면 닫힌다. 발사하면 공기 흐름을 보여 주려고 패널이 잠깐 떠서 재생한 뒤 닫힌다.
-//         기록장은 접어 두고 '기록 N' 단추로 편다. 고정 조작부는 바다의 마지막 줄을 가리지 않는다(바다는 남은 높이 안에 맞춘다).
+//   가로: 윗줄(처음으로 · 바다와 단계 · 남은 배 · 남은 턴) / 가운데 [적 바다 | 입안 단면도(보여 주기)] /
+//         아래 가운데 조작부(최근 세 발 기록 띠 · 한 줄 문구 · 요약 줄 · ① ② ③ 카드 + 발사) — 큰 옆 기록장 대신 띠(디자인 검수)
+//   세로(휴대폰, spec 6.2 선생님 결정): 윗줄(처음으로 · 단계 이름 · 남은 턴 / 남은 배) → 입안 단면도와 적 바다를 위아래 반반
+//         (늘 둘 다 보임) → 한 줄 문구 → 하단 고정 조작부([요약 줄 · 기록 N] · ① 카드 · ② 카드 · ③ 카드 + 발사).
+//         위치·방법·세기와 발사가 모두 아래쪽에 있어 한 손으로 조작한다('위치' 아래 패널은 없앴다).
+//         기록장은 접어 두고 '기록 N' 단추로 편다. 한 화면 안에서 스크롤 없이 한 발을 쏜다.
 //   기준은 조작부와 같은 (max-width: 760px), (orientation: portrait). 방향이 바뀌면 판만 다시 그린다(상태는 그대로).
 //   높이가 너무 낮은 가로 화면은 '세로로 돌려 주세요'를 덮어 보인다(css/practice.css).
 window.G = window.G || {};
@@ -196,34 +197,25 @@ G.practice = (function () {
       const seaBox = el('div', { class: 'pr-sea' });
       const seaCol = el('div', { class: 'pr-seacol' }, [seaBox]);
       const mouthBox = el('div', { class: 'pr-mouth' });
-      const stepCap = () => el('div', { class: 'pr-stepcap' }, [el('span', { class: 'ctl-step', 'aria-hidden': 'true' }, '1'),
-        el('span', null, state.sea === 'vowel' ? TX.ui.play.step.tongue : TX.ui.play.step.place)]);
-      // 가로: 단면도 패널(흰 패널 + '1 위치'), 세로: 아래에서 올라오는 패널(.pr-sheet)
-      const mouthCard = el('div', { class: 'pr-mouthcard' }, [stepCap(), mouthBox]);
-      const sheet = el('div', { class: 'pr-sheet', role: 'dialog', 'aria-modal': 'false', 'aria-label': TX.ui.play.placeBtn, 'aria-hidden': 'true' }, [
-        el('div', { class: 'pr-sheet-head' }, [stepCap(), el('button', { type: 'button', class: 'pr-sheet-close', onclick: () => closeSheet() }, TX.ui.play.sheetClose)]),
-        el('div', { class: 'pr-sheet-body' }),
-      ]);
+      // 단면도 패널(보여 주기 전용 — 고르기는 아래 카드에서). 가로 = [바다 | 단면도], 세로 = 단면도 위 · 바다 아래 반반
+      const mouthCard = el('div', { class: 'pr-mouthcard' }, [mouthBox]);
       const main = el('div', { class: 'pr-main' }, [seaCol, mouthCard]);
       const dock = el('div', { class: 'pr-dock' });
       const dockWrap = el('div', { class: 'pr-dockwrap' }, dock);
-      body.appendChild(el('div', { class: 'pr-play' + (o.example ? ' is-example' : '') }, [top, exBar, main, dockWrap, el('div', { class: 'pr-sheetwrap' }, sheet)]));
+      body.appendChild(el('div', { class: 'pr-play' + (o.example ? ' is-example' : '') }, [top, exBar, main, dockWrap]));
 
-      const g = { state, lv, top, shipsTop, seaBox, mouthBox, mouthCard, sheet, dockWrap, turnsN, example: !!o.example, reveal: false };
+      const g = { state, lv, top, shipsTop, seaBox, mouthBox, mouthCard, dockWrap, turnsN, example: !!o.example, reveal: false };
       game = g;
-      // 조작부 → 판 → 단면도 순서로 만든다: 단면도는 남은 자리의 크기로 누르는 곳(터치 목표)을 처음부터 맞춘다
+      // 조작부 → 판 → 단면도 순서로 만든다(단면도·판은 조작부가 남긴 높이 안에 맞춘다)
       g.ctl = G.controls.create(dock, {
         levelConfig: lv, sea: state.sea, grade, mode: 'practice',
         onFire: (input) => { onFire(input); },
         onChange: () => syncMouth(),
-        onPlaceRequest: () => openSheet('pick'),
         layout: forced || 'auto',
       });
-      placeMouth();
       makeBoard();
       g.mouth = G.mouth.create(mouthBox, {
         sea: state.sea, grade, showNames: !!(lv.show && lv.show.placeNames),
-        onPick: (id) => onPick(id),
       });
       g.ctl.setLog(state.teams.player.shots);
       updateStatus();
@@ -243,32 +235,6 @@ G.practice = (function () {
       if (g.reveal) g.board.revealFleet(g.state.teams.enemy.fleet);
       if (g.ctl) g.board.setSelection(g.ctl.getSelection());
     }
-    // 단면도 자리: 가로 = 가운데 흰 패널, 세로 = 아래에서 올라오는 패널 안
-    function placeMouth() {
-      const g = game;
-      const host = layout === 'portrait' ? g.sheet.querySelector('.pr-sheet-body') : g.mouthCard;
-      if (g.mouthBox.parentNode !== host) host.appendChild(g.mouthBox);
-      if (layout !== 'portrait') closeSheet();
-    }
-    // 세로의 아래 패널: 'pick'(자리 고르기, 누를 수 있음) · 'play'(공기 흐름만 보여 줌, 누를 수 없음)
-    function openSheet(why) {
-      const g = game;
-      if (!g || layout !== 'portrait') return;
-      if (why === 'pick' && (view !== 'play' || busy)) return;
-      g.sheet.classList.add('is-open');
-      g.sheet.classList.toggle('is-play', why === 'play');
-      g.sheet.setAttribute('aria-hidden', 'false');
-      g.dockWrap.classList.add('is-under-sheet');
-    }
-    function closeSheet() {
-      const g = game;
-      if (!g) return;
-      g.sheet.classList.remove('is-open', 'is-play');
-      g.sheet.setAttribute('aria-hidden', 'true');
-      g.dockWrap.classList.remove('is-under-sheet');
-    }
-    const sheetOpen = () => !!(game && game.sheet.classList.contains('is-open'));
-
     function updateStatus() {
       if (!game) return;
       const s = G.rules.sideSummary(game.state, 'player');
@@ -291,14 +257,6 @@ G.practice = (function () {
       }
       if (g.board) g.board.setSelection(s); // 고른 자리·방법의 줄·열 머리를 '현재 선택'으로
     }
-    // 단면도에서 자리를 누름 → 조작부에 넘긴다(쏘는 중·예시 중에는 받지 않고 되돌린다)
-    function onPick(id) {
-      if (!game) return;
-      if (view !== 'play' || busy) { syncMouth(); return; }
-      game.ctl.setPlace(id);
-      if (sheetOpen() && !game.sheet.classList.contains('is-play')) closeSheet(); // 자리를 고르면 닫혀 바다가 다시 드러난다
-    }
-
     function startPlay(state, o) {
       o = o || {};
       buildPlay(state, {});
@@ -314,10 +272,8 @@ G.practice = (function () {
       const my = token;
       g.ctl.setEnabled(false);
       sfx('fire');
-      openSheet('play'); // 세로: 공기 흐름을 보여 주려고 패널이 잠깐 뜬다
       try { await g.mouth.play(input); } catch (e) { /* 그림이 없어도 판정은 한다 */ }
       if (!alive(my) || game !== g) return;
-      closeSheet();
       const r = G.rules.fire(g.state, input);
       const o = r.outcome;
       g.ctl.reset();
@@ -386,10 +342,8 @@ G.practice = (function () {
         await sleep(config.exampleLead);
         if (!alive(my)) return;
         sfx('fire');
-        openSheet('play');
         try { await g.mouth.play(input); } catch (e) { /* 그림이 없어도 이어 간다 */ }
         if (!alive(my)) return;
-        closeSheet();
         const r = G.rules.fire(st, input);
         st = r.state; g.state = st;
         const o = r.outcome;
@@ -413,7 +367,7 @@ G.practice = (function () {
       if (next === layout || destroyed) return;
       layout = next;
       applyLayoutClass();
-      if (game) { placeMouth(); makeBoard(); }
+      if (game) makeBoard();
     }
     const onMq = () => relayout();
     if (mq && !forced) (mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq));
@@ -431,7 +385,7 @@ G.practice = (function () {
     const handle = {
       destroy,
       debug: () => ({
-        view, busy, layout, example: view === 'example', sheet: sheetOpen(),
+        view, busy, layout, example: view === 'example',
         state: game ? clone(game.state) : null,
       }),
     };

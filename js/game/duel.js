@@ -21,7 +21,8 @@
 //         '다 놓았어요'나 30초가 지나면 남은 배는 G.rules.finishPlacing이 채운다.
 //         배치 도중 새로고침하면 G.save가 배치를 버리고 청팀 배치부터 다시 하는 판으로 저장해 두었으므로 처음부터.
 //   대결(실시간 — 차례·라운드·'준비' 없음, spec 6.3): 화면 왼쪽 절반 = 청팀 자리, 오른쪽 절반 = 홍팀 자리.
-//         두 자리의 안쪽 배치는 똑같다(디자인 검수): 위 4px 팀색 띠 · [쏘는 바다 | '1 위치' 단면도] · 아래 조작부 두 줄.
+//         두 자리의 안쪽 배치는 똑같다(디자인 검수): 위 4px 팀색 띠 · [쏘는 바다 | 단면도(보여 주기)] ·
+//         아래 조작부(① 자리 · ② 방법 · ③ 세기 + 발사 — 폭에 따라 두세 줄, 카드 64px 이상). 고르기는 모두 아래 카드에서 한다.
 //         자리마다 쏘는 바다(상대 팀 바다, 판 위 이름표 TEXT.duel.target) · 단면도 · 조작부(발사 단추 포함) · 한 줄 문구가 따로 있다.
 //         각 팀은 준비되는 대로 쏘고 또 쏜다: 소리 빚기 → 발사 → 그 팀 단면도의 공기 흐름(그동안 그 팀 조작부만 잠김) →
 //         G.rules.fireTeam(그 순간의 판) → 그 팀이 쏘는 바다·신호 줄·효과음 → 저장. 한 팀의 발은 다른 팀을 막거나
@@ -311,11 +312,8 @@ G.duel = (function () {
         const nameEl = el('div', { class: 'duel-sea-name name-' + t }, T.duel.target[t]);
         const sea = el('section', { class: 'duel-sea' }, [boardEl]);
         const mouthEl = el('div', { class: 'duel-mouth' });
-        // 두 팀 자리의 안쪽 배치는 똑같다(디자인 검수): [쏘는 바다 | '1 위치' 단면도]
-        const mouthCol = el('div', { class: 'duel-mouthcol' }, [
-          el('div', { class: 'duel-stepcap' }, [el('span', { class: 'ctl-step', 'aria-hidden': 'true' }, '1'), el('span', null, vowel ? T.ui.play.step.tongue : T.ui.play.step.place)]),
-          mouthEl,
-        ]);
+        // 두 팀 자리의 안쪽 배치는 똑같다(디자인 검수): [쏘는 바다 | 단면도(보여 주기 — 고르기는 아래 카드에서)]
+        const mouthCol = el('div', { class: 'duel-mouthcol' }, [mouthEl]);
         const body = el('div', { class: 'duel-st-body' }, [sea, mouthCol]);
         const dock = el('div', { class: 'duel-st-dock' });
         const node = el('section', { class: 'duel-station station-' + t, 'data-team': t, 'aria-label': T.teams[t] }, [body, dock]);
@@ -324,10 +322,6 @@ G.duel = (function () {
         s.board.el.appendChild(nameEl); // 이름표는 판 바로 위에 붙인다(판이 가운데로 가도 따라감)
         s.mouth = G.mouth.create(mouthEl, {
           sea: state.sea, grade: state.grade, showNames: !!(lv.show && lv.show.placeNames),
-          onPick: (id) => {
-            if (!canCompose(s)) { syncMouth(s); return; }
-            s.ctl.setPlace(id);
-          },
         });
         s.ctl = G.controls.create(dock, {
           levelConfig: lv, grade: state.grade, mode: 'duel', layout: 'landscape',

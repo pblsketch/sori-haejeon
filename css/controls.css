@@ -1,6 +1,7 @@
 /* 조작부와 신호 기록장(js/game/controls.js). 색·크기 값은 css/base.css의 토큰을 쓴다.
- * 가로: 아래 가운데 한 줄 [2 방법][3 세기 또는 2 입술][발사], 그 위 가운데(조작부와 같은 중심선)에 지금 고른 조합 요약 한 줄.
- * 세로(휴대폰): [1 위치 단추 · 요약] / 방법 카드 / 세기·입술 카드 + 발사 + '기록 N' — 모두 화면 아래(한 손 조작), 48px 이상.
+ * 고르기는 모두 여기서 한다(단면도는 보여 주기): 자음 ① 자리 ② 방법 ③ 세기 + 발사 / 모음 ① 높이 ② 앞뒤 ③ 입술 + 발사.
+ * 가로: 아래 가운데 [① 이름표·카드][② 이름표·카드][③ 이름표·카드 + 발사] — 폭이 모자라면 묶음 단위로 다음 줄. 그 위 가운데에 조합 요약 한 줄.
+ * 세로(휴대폰): [요약 · '기록 N'] / ① 카드 / ② 카드 / ③ 카드 + 발사 — 모두 화면 아래(한 손 조작), 48px 이상, 발사 56px.
  * 선택 카드 = 흰 바탕 + 2px 조작 경계선(반경 12), 고르면 청록 경계 3px + 체크. 발사 = 주 단추(청록 채움, 흰 글씨).
  * 신호는 색만이 아니라 기호(벡터)와 글씨로도 구분한다. 흐린 카드(쓸 수 없는 세기)는 흐림 + 점선 테두리(모양으로도 구분).
  * 크기 변수(화면이 정함): --ctl-card-fs 카드 글씨, --ctl-msg-fs 한 줄 문구, --ctl-label-fs 묶음 이름, --ctl-combo-fs 요약 줄 */
@@ -46,9 +47,10 @@
 .ctl-msg[data-kind="message"] .ctl-msg-text { font-weight: 700; }
 .ctl-msg[data-kind="shout"] .ctl-msg-text { font-weight: 700; }
 
-/* ── 요약 줄 + 카드 줄을 한 덩어리로(요약 줄의 오른쪽 끝 = 발사 단추의 오른쪽 끝) ── */
-.ctl-deck { display: flex; flex-direction: column; align-items: stretch; gap: var(--s3); max-width: 100%; }
-.ctl-comborow { display: flex; align-items: center; justify-content: center; gap: var(--s2); min-width: 0; }
+/* ── 요약 줄 + 카드 줄을 한 덩어리로 ── */
+.ctl-deck { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: 100%; width: 100%; }
+.ctl-comborow { display: flex; align-items: center; justify-content: center; gap: var(--s2); min-width: 0; max-width: 100%; }
+.ctl-comborow-pad { display: none; }
 .ctl-combo {
   min-width: 0; max-width: 100%;
   padding: 4px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--divider);
@@ -57,23 +59,24 @@
 }
 .ctl-combo-part:not(.is-set) { color: var(--ink-2); font-weight: 500; }
 .ctl-combo-dot { color: var(--ink-2); }
-.ctl-placebtn { display: none; }
 
-/* ── 카드 줄 ── */
+/* ── 카드 줄: 묶음 = [번호·이름표 | 카드들](+ 마지막 묶음에 발사). 폭이 모자라면 묶음 단위로 다음 줄 ── */
 .ctl-bar {
   display: flex;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: var(--s5);
+  gap: var(--s2) var(--s5);
   max-width: 100%;
 }
-.ctl-group { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-.ctl-group-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--ctl-label-fs, 16px); font-weight: 600; color: var(--ink-2); line-height: 1.2; }
+.ctl-group { display: flex; flex-direction: row; align-items: center; gap: var(--s2); min-width: 0; }
+.ctl-group-label { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--ctl-label-fs, 16px); font-weight: 600; color: var(--ink-2); line-height: 1.15; white-space: nowrap; }
 .ctl-step {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
   width: 1.35em; height: 1.35em; border-radius: 50%;
   background: var(--ink); color: #fff; font-size: 0.78em; font-weight: 700; line-height: 1;
 }
+.ctl-group--last .ctl-fire { margin-left: var(--s3); }
 .ctl-cards { display: flex; gap: var(--s2); }
 .ctl-card {
   position: relative;
@@ -103,6 +106,10 @@
   content: ''; position: absolute; top: 4px; right: 4px; width: 14px; height: 14px; border-radius: 50%;
   background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M24 52l17 17 36-38' fill='none' stroke='%23fff' stroke-width='14' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
 }
+/* 자리 카드(고1): 몸의 부위 이름 + 한자어 한 줄 */
+.ctl-card--two { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding-top: 2px; padding-bottom: 2px; }
+.ctl-card-sub { font-size: 0.68em; font-weight: 500; color: var(--ink-2); line-height: 1.1; }
+.ctl-card.is-on .ctl-card-sub { color: var(--accent-2); }
 .ctl-card.is-dim { opacity: 0.4; border-style: dashed; background: var(--cell-off); cursor: not-allowed; }
 .ctl-card:disabled:not(.is-dim) { cursor: default; }
 .ctl.is-disabled .ctl-card:not(.is-on), .ctl-card:disabled:not(.is-dim):not(.is-on) { color: var(--ink-2); }
@@ -168,38 +175,36 @@
 .ctl-log--strip .ctl-log-item:nth-last-child(n+4) { display: none; }
 .ctl-log--strip .ctl-log-list:empty::before { content: '—'; color: var(--ink-2); }
 
-/* ── 세로(휴대폰): [1 위치 · 요약] / 방법 카드 / 세기·입술 카드 + 발사 + 기록 ── */
-.ctl--portrait { gap: 6px; padding: 6px var(--s4) calc(8px + env(safe-area-inset-bottom, 0px)); --ctl-card-fs: 18px; --ctl-combo-fs: 16px; }
-.ctl--portrait .ctl-msg { font-size: 18px; }
-.ctl--portrait .ctl-deck { width: 100%; gap: 6px; }
-/* 세로: [위치 단추 | 요약(화면 가운데) | 빈 칸] — 요약 줄이 안내·카드와 같은 중심선에 오게(2차 검수) */
-.ctl--portrait .ctl-comborow { display: grid; grid-template-columns: 1fr auto 1fr; justify-content: stretch; }
-.ctl--portrait .ctl-placebtn { justify-self: start; }
-.ctl--portrait .ctl-combo { justify-self: center; grid-column: 2; }
-.ctl--portrait.ctl--placebtn .ctl-placebtn {
-  display: inline-flex; align-items: center; gap: 6px; flex: none;
-  min-height: var(--touch); padding: 0 14px 0 10px;
-  border: 2px solid var(--control-line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink);
-  font-size: 18px; font-weight: 700; cursor: pointer; touch-action: manipulation;
-}
-.ctl-placebtn:disabled { color: var(--ink-2); cursor: default; }
-.ctl-placebtn-ico { width: 16px; height: 16px; color: var(--ink-2); }
-.ctl--portrait .ctl-combo { padding: 4px 10px; }
-.ctl--portrait .ctl-bar { flex-wrap: wrap; width: 100%; gap: 6px; align-items: stretch; }
+/* ── 세로(휴대폰): [요약 · 기록] / ① 카드 / ② 카드 / ③ 카드 + 발사 ── */
+.ctl--portrait { gap: 4px; padding: 4px var(--s3) calc(6px + env(safe-area-inset-bottom, 0px)); --ctl-card-fs: 16px; --ctl-combo-fs: 15px; }
+.ctl--portrait .ctl-msg { font-size: 17px; }
+.ctl--portrait .ctl-deck { gap: 6px; }
+/* 세로: [빈 칸 | 요약(화면 가운데) | 기록 단추] — 요약 줄이 안내·카드와 같은 중심선에 오게 */
+.ctl--portrait .ctl-comborow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(max-content, 1fr); justify-content: stretch; width: 100%; }
+.ctl--portrait .ctl-comborow-pad { display: block; }
+.ctl--portrait .ctl-combo { justify-self: center; padding: 3px 10px; }
+.ctl--portrait .ctl-bar { flex-direction: column; flex-wrap: nowrap; width: 100%; gap: 6px; align-items: stretch; }
 .ctl--portrait .ctl-group-label { display: none; }
-.ctl--portrait .ctl-group { align-items: stretch; }
-.ctl--portrait .ctl-group--manner { flex: 1 1 100%; }
-.ctl--portrait .ctl-group--strength, .ctl--portrait .ctl-group--lips { flex: 1 1 0; }
-.ctl--portrait .ctl-cards { gap: 6px; flex: 1 1 auto; }
-.ctl--portrait .ctl-card { flex: 1 1 0; min-width: var(--touch); padding: 2px 4px; }
-.ctl--portrait .ctl-card.is-on::after { width: 12px; height: 12px; top: 3px; right: 3px; }
-.ctl--portrait .ctl-fire { flex: 0 0 auto; min-width: calc(var(--touch) * 1.75); min-height: 56px; padding: 2px 12px; font-size: 20px; }
-.ctl--portrait:not(.ctl--strength):not(.ctl--vowel) .ctl-fire { flex: 1 1 auto; } /* 자음 1단계: 둘째 줄은 발사뿐 */
+.ctl--portrait .ctl-group { width: 100%; gap: 6px; align-items: stretch; } /* ③ 줄: 세기 카드도 발사와 같은 높이 */
+.ctl--portrait .ctl-cards { gap: 5px; flex: 1 1 auto; min-width: 0; }
+.ctl--portrait .ctl-card { flex: 1 1 auto; min-width: var(--touch); padding: 2px 3px; }
+.ctl--portrait .ctl-card--place { font-size: 15px; }
+.ctl--portrait .ctl-card.is-on::after { width: 11px; height: 11px; top: 2px; right: 2px; }
+.ctl--portrait .ctl-group--last .ctl-fire { margin-left: 0; flex: 0 0 auto; min-width: calc(var(--touch) * 1.75); min-height: 56px; padding: 2px 12px; font-size: 20px; }
+.ctl--portrait:not(.ctl--strength):not(.ctl--vowel) .ctl-group--last { flex-wrap: wrap; }
+.ctl--portrait:not(.ctl--strength):not(.ctl--vowel) .ctl-group--last .ctl-fire { flex: 1 1 100%; } /* 자음 1단계: 발사가 한 줄을 다 쓴다 */
+.ctl--portrait.ctl--vowel .ctl-group--last { flex-wrap: wrap; }
+.ctl--portrait.ctl--vowel .ctl-group--last .ctl-fire { flex: 1 1 100%; } /* 모음: ③ 입술 줄 아래 발사 한 줄 */
+.ctl--portrait.ctl--vowel .ctl-bar { display: grid; grid-template-columns: 1fr 1fr; }
+.ctl--portrait.ctl--vowel .ctl-group--height { grid-column: 1 / -1; }
+.ctl--portrait.ctl--vowel .ctl-group--last { display: contents; }
+.ctl--portrait.ctl--vowel .ctl-group--last .ctl-cards { grid-column: 2; }
+.ctl--portrait.ctl--vowel .ctl-group--last .ctl-fire { grid-column: 1 / -1; }
 .ctl--portrait .ctl-logtoggle {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto;
-  min-width: var(--touch); min-height: var(--touch); padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto; justify-self: end;
+  min-width: var(--touch); min-height: var(--touch); padding: 0 10px; white-space: nowrap;
   border: 2px solid var(--control-line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink);
-  font-size: 16px; font-weight: 600; line-height: 1.1; cursor: pointer; touch-action: manipulation;
+  font-size: 15px; font-weight: 600; line-height: 1.1; cursor: pointer; touch-action: manipulation;
 }
 .ctl-logtoggle-count { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ctl--portrait .ctl-logtoggle[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }

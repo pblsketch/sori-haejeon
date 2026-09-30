@@ -80,7 +80,7 @@ window.TEXT = {
   shortTerms: {
     m3: {
       axis: { place: '자리', manner: '방법', strength: '세기', height: '높이', backness: '앞뒤', lips: '입술' },
-      place: { bilabial: '입술', alveolar: '잇몸', palatal: '센입천장', velar: '여린입천장', glottal: '목청' },
+      place: { bilabial: '두 입술', alveolar: '잇몸', palatal: '센입천장', velar: '여린입천장', glottal: '목청' },
       manner: { stop: '파열', affricate: '파찰', fricative: '마찰', nasal: '비음', liquid: '유음' },
       strength: { plain: '예사', tense: '된', aspirated: '거센', none: '세기 없음' },
       height: { high: '높은', mid: '중간', low: '낮은' },
@@ -119,14 +119,18 @@ window.TEXT = {
   mouthParts: {
     bilabial: '두 입술', alveolar: '잇몸', palatal: '센입천장', velar: '여린입천장', glottal: '목청',
     nose: '콧길', tongue: '혀', lips: '입술',
+    tongueFront: '혀 앞', tongueBack: '혀 뒤', // 모음 단면도의 앞뒤 이름(중3)
+    lipsFront: '앞에서 본 입술',               // 모음 단면도의 입술 작은 그림 이름
+    glottisTop: '위에서 본 성대',              // 단면도의 성대(목청) 작은 그림 이름
   },
 
-  // ── 소리를 빚는 동안 한 줄 안내(아직 고르지 않았을 때) ─────
+  // ── 소리를 빚는 동안 한 줄 안내(아직 고르지 않았을 때). 고르기는 모두 아래 카드에서 한다(단면도는 보여 주기) ─────
   prompt: {
-    place: '단면도에서 막을 자리를 골라 보세요',
+    place: '막을 자리 카드를 골라 보세요',
     manner: '소리 내는 방법 카드를 골라 보세요',
     strength: '세기 카드를 골라 보세요',
-    tongue: '단면도에서 혀의 가장 높은 자리를 골라 보세요',
+    height: '혀의 높이 카드를 골라 보세요',
+    backness: '혀의 앞뒤 카드를 골라 보세요',
     lips: '입술 모양 카드를 골라 보세요',
     ready: '준비됐으면 발사!',
   },
@@ -349,12 +353,8 @@ window.TEXT = {
     play: {
       fire: '발사', log: '신호 기록장', logOpen: '신호 기록장 펼치기', logClose: '접기',
       logShort: '기록',          // 휴대폰 기록장 단추('기록 2')
-      // 단계 이름표(조작 순서: 1 위치 → 2 방법 → 3 세기 → 발사)와 지금 고른 조합 요약 한 줄
-      step: { place: '위치', tongue: '혀 자리' },
-      placeBtn: '위치',          // 휴대폰: 누르면 아래에서 입안 단면도 패널이 올라온다
-      placeChosen: '고른 자리',   // 자리 이름을 숨기는 단계에서 요약 줄에 쓰는 말
+      // 조작 순서(① 자리 → ② 방법 → ③ 세기 → 발사)의 묶음 이름은 shortTerms.axis를 쓴다. 지금 고른 조합 요약 한 줄:
       choose: '{what} 선택',      // 요약 줄에서 아직 안 고른 칸('세기 선택')
-      sheetClose: '닫기',
       shipsLeft: '남은 배', turnsLeft: '남은 턴', turnsN: '{n}턴',
       allFound: '배를 모두 찾았어요',
       outOfTurns: '턴을 다 썼어요. 남은 배를 보여 줄게요',

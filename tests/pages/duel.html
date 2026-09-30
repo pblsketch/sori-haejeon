@@ -114,6 +114,7 @@
       const fit = () => { b.style.transform = 'scale(' + Math.min(1, innerWidth / w, innerHeight / h) + ')'; };
       fit(); addEventListener('resize', fit);
     }
+    G.board.setImageBase('../../assets/img/'); // 배 그림(점검 페이지는 tests/pages/ 아래라 주소를 맞춤)
     if (q.get('manual') !== '1') G.duel.open({ resume: q.get('resume') === '1' });
   })();
 </script>
