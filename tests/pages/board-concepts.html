@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>판 시안 비교</title>
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/board-concepts.css">
+</head><body>
+<!-- T20 1단계 — 판(바다) 다시 그리기 시안 A·B·C. 제품 코드는 바꾸지 않는 보기 전용 쪽이다.
+     ?c=a|b|c&view=wide|phone|hidden   (크기별 틀 tests/pages/frame.html 안에서 1920×1080 / 390×844로 본다)
+     view가 없으면 아홉 장면을 모아 보는 목차.
+     판 상태는 진짜 규칙 엔진(G.rules)으로 쏘아서 만든다 — 신호·격침은 엔진이 돌려준 그대로 그린다. -->
+<div id="root"></div>
+<script src="../../js/core/util.js"></script>
+<script src="../../js/data/sounds.js"></script>
+<script src="../../js/data/fleets.js"></script>
+<script src="../../js/data/levels.js"></script>
+<script src="../../js/data/text.js"></script>
+<script src="../../js/core/rules.js"></script>
+<script>
+(function () {
+  const Q = new URLSearchParams(location.search);
+  const CON = (Q.get('c') || 'a').toLowerCase(), VIEW = Q.get('view') || '';
+  const S = window.SOUNDS, U = G.util, R = G.rules;
+  const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+  const short = (g, x) => G.text.short('m3', g, x);
+  const slash = (id) => '/' + id + '/';
+
+  // ── 장면(진짜 규칙 엔진으로 쏜다) ─────────────────────────
+  function play(level, fleet, shots) {
+    let st = R.newGame({ mode: 'practice', grade: 'm3', sea: 'consonant', level, fleet, rng: R.makeRng(7) });
+    for (const s of shots) st = R.fire(st, typeof s === 'string' ? R.inputOf(s) : s).state;
+    return { level, lv: R.level('consonant', level), shots: st.teams.player.shots, fleet: st.teams.enemy.fleet };
+  }
+  // 1단계(보임): 두 칸 배 /ㄱ/·/ㅇ/(다른 줄) 격침, 한 칸 배 /ㄹ/ 격침, 남은 배 /ㅁ/ — 같은 줄(세로)·빗나감·빈칸 불발
+  const L1 = play(1, [{ size: 2, sounds: ['ㄱ', 'ㅇ'] }, { size: 1, sounds: ['ㅁ'] }, { size: 1, sounds: ['ㄹ'] }],
+    ['ㅅ', 'ㄱ', { place: 'palatal', manner: 'stop', strength: null }, 'ㅈ', 'ㅇ', 'ㄹ']);
+  // 2단계(숨김): 세 칸 배 /ㅂ/·/ㅃ/·/ㅍ/(한 칸 안) 격침, 두 칸 배 /ㄷ/·/ㄴ/ 중 /ㄴ/만 명중(아직 안 가라앉음)
+  const L2 = play(2, [{ size: 3, sounds: ['ㅂ', 'ㅃ', 'ㅍ'] }, { size: 2, sounds: ['ㄷ', 'ㄴ'] }, { size: 1, sounds: ['ㅎ'] }],
+    ['ㅂ', 'ㄱ', 'ㅃ', { place: 'palatal', manner: 'stop', strength: 'tense' }, 'ㅍ', 'ㅁ', 'ㄴ']);
+
+  // ── 모양 조각 ───────────────────────────────────────────
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function glyphSvg(name) { const s = U.glyph(name); s.removeAttribute('class'); return s; }
+  function badge(kind, name) { const b = el('span', 'bc-badge k-' + kind); b.appendChild(glyphSvg(name)); return b; }
+  const sndOf = (id) => S.consonants.find((x) => x.id === id);
+  const ORD = { plain: 0, tense: 1, aspirated: 2, none: 0 };
+
+  // 선체 조각(위에서 본 모양, 뱃머리 오른쪽). 갑판 = 명중 황금(소리 표기가 갑판 위에 찍힌다), 테두리 = 선체 색.
+  //   가라앉기 전 명중은 어느 배든 같은 '가운데 조각'(배 종류·크기를 알려 주지 않음, spec 5.4).
+  //   가라앉으면 제 모양(한 칸 배 = 온 배, 두 칸 배 = 뱃머리·배꼬리)으로 바뀌고 검게 탄다.
+  const SEG = { // 200 × 100
+    bow: 'M0 10H112C160 10 188 32 196 50C188 68 160 90 112 90H0Z',
+    mid: 'M0 10H200V90H0Z',
+    stern: 'M200 10H36C18 10 8 22 8 38V62C8 78 18 90 36 90H200Z',
+    full: 'M28 10H118C162 10 188 32 196 50C188 68 162 90 118 90H28C16 90 8 82 8 70V30C8 18 16 10 28 10Z',
+  };
+  const SOOT = '<circle class="h-soot" cx="30" cy="16" r="10"/><circle class="h-soot" cx="170" cy="84" r="8"/><circle class="h-soot" cx="120" cy="12" r="6"/>';
+  function hull(part, sunk) {
+    const s = document.createElementNS(SVGNS, 'svg');
+    s.setAttribute('viewBox', '-6 -6 212 112'); s.setAttribute('preserveAspectRatio', 'none');
+    s.setAttribute('class', 'bc-hull' + (sunk ? ' is-sunk' : ''));
+    s.innerHTML = '<path class="h-body" d="' + SEG[part] + '"/>' + (sunk ? SOOT : '') +
+      (part === 'mid' ? '<path class="h-cut" d="M2 10V90M198 10V90"/>' : '');
+    return s;
+  }
+  // 한 칸 안의 세 칸 배(숨긴 단계 격침): 뱃머리 위로 세운 한 척 + 세기 자리 이음매
+  function hullTall(n) {
+    const L = 100 * n;
+    const s = document.createElementNS(SVGNS, 'svg');
+    s.setAttribute('viewBox', '-6 -6 112 ' + (L + 12)); s.setAttribute('preserveAspectRatio', 'none');
+    s.setAttribute('class', 'bc-hull bc-hull-tall is-sunk');
+    const d = 'M50 2C78 16 94 40 94 70V' + (L - 22) + 'C94 ' + (L - 8) + ' 84 ' + (L - 2) + ' 70 ' + (L - 2) + 'H30C16 ' + (L - 2) + ' 6 ' + (L - 8) + ' 6 ' + (L - 22) + 'V70C6 40 22 16 50 2Z';
+    let seams = '';
+    for (let i = 1; i < n; i++) seams += '<path class="h-seam" d="M8 ' + (i * 100) + 'H92"/>';
+    s.innerHTML = '<path class="h-body" d="' + d + '"/>' + seams + '<circle class="h-soot" cx="20" cy="' + (L * .45) + '" r="9"/><circle class="h-soot" cx="82" cy="' + (L * .8) + '" r="7"/>';
+    return s;
+  }
+  // 물보라 고리(빗나감)
+  function splash() {
+    const s = document.createElementNS(SVGNS, 'svg');
+    s.setAttribute('viewBox', '0 0 200 140'); s.setAttribute('class', 'bc-splash'); s.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    s.innerHTML = '<ellipse class="s1" cx="100" cy="72" rx="86" ry="52"/><ellipse class="s2" cx="100" cy="72" rx="64" ry="38"/>' +
+      '<ellipse class="s2" cx="100" cy="72" rx="96" ry="61" opacity=".45"/>' +
+      '<circle class="dr" cx="20" cy="30" r="4"/><circle class="dr" cx="182" cy="36" r="5"/><circle class="dr" cx="170" cy="118" r="3.5"/><circle class="dr" cx="30" cy="112" r="3"/>';
+    return s;
+  }
+  // 암초(C: 없는 소리 칸) — 모래섬 + 바위 + 물거품 고리
+  function reef() {
+    const s = document.createElementNS(SVGNS, 'svg');
+    s.setAttribute('viewBox', '0 0 200 140'); s.setAttribute('class', 'bc-reef');
+    s.innerHTML =
+      '<ellipse cx="100" cy="78" rx="80" ry="46" fill="none" stroke="#FFFFFF" stroke-width="5" opacity=".9"/>' +
+      '<ellipse cx="100" cy="78" rx="66" ry="36" fill="#E7D3A2" stroke="#C9AE72" stroke-width="3"/>' +
+      '<path d="M58 84 L74 50 L92 62 L104 38 L122 58 L140 52 L146 84 Z" fill="#8A7E72" stroke="#5E554C" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M74 50 L84 70 M104 38 L108 66 M122 58 L128 76" stroke="#5E554C" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="36" cy="44" r="7" fill="#8A7E72" stroke="#5E554C" stroke-width="2.5"/><circle cx="166" cy="104" r="6" fill="#8A7E72" stroke="#5E554C" stroke-width="2.5"/>';
+    return s;
+  }
+
+  // ── 판 ─────────────────────────────────────────────────
+  const SIZES = {
+    wide: { hw: 120, cw: 170, hh: 56, ch: 124, gap: 6, fs: 54, hf: 28, rf: 28, badge: 30 },
+    phone: { hw: 50, cw: 58, hh: 44, ch: 56, gap: 3, fs: 24, hf: 14.5, rf: 15, badge: 17 },
+    mini: { hw: 70, cw: 76, hh: 34, ch: 50, gap: 4, fs: 20, hf: 16, rf: 16, badge: 16 },
+  };
+  function colName(p, sz) {
+    const n = short('place', p);
+    if (sz === 'phone' && n.length >= 4) { const j = n.indexOf('입천장'); return n.slice(0, j) + '<br>' + n.slice(j); }
+    return n;
+  }
+
+  function board(host, scene, sz, opt) {
+    opt = opt || {};
+    const Z = SIZES[sz], lv = scene.lv, show = lv.show.cellSounds;
+    const shots = opt.noShots ? [] : scene.shots, fleet = scene.fleet;
+    const root = el('div', 'bc-board');
+    root.style.setProperty('--fs', Z.fs + 'px'); root.style.setProperty('--hf', Z.hf + 'px'); root.style.setProperty('--rf', Z.rf + 'px');
+    root.style.setProperty('--badge', Z.badge + 'px'); root.style.setProperty('--bsz', Z.badge + 'px'); root.style.setProperty('--rim', (sz === 'wide' ? 11 : 5) + 'px');
+    const cols = Z.hw + 'px repeat(5, ' + Z.cw + 'px)', rows = Z.hh + 'px repeat(5, ' + Z.ch + 'px)';
+    root.style.gridTemplateColumns = cols; root.style.gridTemplateRows = rows; root.style.gap = Z.gap + 'px';
+    root.appendChild(el('div'));
+    S.places.forEach((p) => root.appendChild(el('div', 'bc-ch', colName(p, sz))));
+    const sunkSet = new Set(shots.filter((s) => s.sunkShip != null).map((s) => s.sunkShip));
+    const shipOf = (id) => fleet.findIndex((f) => f.sounds.indexOf(id) >= 0);
+    const latest = shots[shots.length - 1];
+    const cellEls = {};
+    S.manners.forEach((m, r) => {
+      root.appendChild(el('div', 'bc-rh', short('manner', m)));
+      S.places.forEach((p, c) => {
+        const cell = el('div', 'bc-cell');
+        cell.dataset.r = r; cell.dataset.c = c;
+        cellEls[p + '|' + m] = cell;
+        const all = S.consonants.filter((x) => x.place === p && x.manner === m);
+        const open = all.filter((x) => lv.open.indexOf(x.id) >= 0);
+        const here = shots.filter((s) => s.cell && s.cell.place === p && s.cell.manner === m && (s.kind !== 'none' || s.emptyCell));
+        if (show && all.length && !open.length) { // 이번 단계에서 뺀 칸(/ㅎ/)
+          cell.classList.add('is-closed'); const lk = el('span', 'bc-lock'); lk.appendChild(glyphSvg('lock')); cell.appendChild(lk);
+        } else if (show) {
+          // 보이는 단계(1단계: 칸마다 소리 하나)
+          if (open.length) {
+            const snd = open[0].id, s = here.find((x) => x.sound === snd);
+            cell.appendChild(item(snd, s, 1));
+          } else if (here.length) {
+            cell.appendChild(dudItem(here[0]));
+          }
+        } else {
+          // 숨긴 단계: 쏜 것만 칸 안에 차례로. 한 배가 이 칸 안에서 모두 가라앉았으면 한 척으로 그린다
+          const hits = here.filter((s) => s.kind === 'hit');
+          const whole = hits.length > 1 && (function () {
+            const i = shipOf(hits[0].sound);
+            return sunkSet.has(i) && fleet[i].sounds.every((id) => { const x = sndOf(id); return x.place === p && x.manner === m; }) ? i : false;
+          })();
+          if (whole !== false) {
+            const it = el('div', 'bc-item k-hit');
+            const ids = fleet[whole].sounds.slice().sort((a, b) => ORD[sndOf(a).strength] - ORD[sndOf(b).strength]);
+            it.appendChild(hullTall(ids.length));
+            const stack = el('div'); stack.style.cssText = 'position:relative;z-index:2;display:flex;flex-direction:column;gap:3px;align-items:center';
+            const cfs = Math.min(Z.fs, Math.floor((Z.ch - 16) / ids.length * 0.66));
+            ids.forEach((id) => { const cp = el('span', 'bc-chip', slash(id)); cp.style.setProperty('--cfs', cfs + 'px'); stack.appendChild(cp); });
+            it.appendChild(stack);
+            it.appendChild(badge('hit', 'hit'));
+            if (hits.indexOf(latest) >= 0) it.classList.add('is-latest');
+            cell.appendChild(it); cell.classList.add('has-hit');
+            here.filter((s) => s.kind !== 'hit').forEach((s) => cell.appendChild(s.kind === 'none' ? dudItem(s) : item(s.sound, s, here.length)));
+          } else {
+            here.forEach((s) => cell.appendChild(s.kind === 'none' ? dudItem(s) : item(s.sound, s, here.length)));
+          }
+        }
+        if (cell.querySelector('.k-hit')) cell.classList.add('has-hit');
+        root.appendChild(cell);
+      });
+    });
+    // 한 칸 안 표시 하나(소리 + 신호)
+    function item(snd, s, n) {
+      const it = el('div', 'bc-item' + (s ? ' k-' + s.kind : ''));
+      if (s && s.kind === 'hit') {
+        const i = shipOf(snd), sunk = sunkSet.has(i);
+        let part = 'mid'; // 가라앉기 전: 어느 배의 어느 조각인지 알 수 없는 같은 조각
+        if (sunk) {
+          const ids = fleet[i].sounds;
+          if (ids.length === 1) part = 'full';
+          else { const sorted = ids.slice().sort((a, b) => S.manners.indexOf(sndOf(a).manner) - S.manners.indexOf(sndOf(b).manner)); part = sorted[0] === snd ? 'bow' : 'stern'; }
+        }
+        it.appendChild(hull(part, sunk));
+        it.dataset.ship = sunk ? i : '';
+        it.dataset.part = part;
+      } else if (s && s.kind === 'miss') it.appendChild(splash());
+      const cp = el('span', 'bc-chip', slash(snd));
+      if (n > 1) cp.style.setProperty('--cfs', Math.min(Z.fs, Math.floor((Z.ch - 8) / n * (s && s.kind === 'hit' ? 0.9 : 0.6))) + 'px');
+      it.appendChild(cp);
+      if (s) {
+        const name = s.kind === 'hit' ? 'hit' : s.kind === 'miss' ? 'miss' : U.lineDir(s.targets);
+        it.appendChild(badge(s.kind, name));
+        if (s === latest) it.classList.add('is-latest');
+      }
+      return it;
+    }
+    function dudItem(s) {
+      const it = el('div', 'bc-item k-none');
+      if (CON === 'c') { it.appendChild(reef()); it.appendChild(badge('dud', 'dud')); }
+      else { it.appendChild(el('span', 'bc-puff')); const d = el('span', 'bc-dud'); d.appendChild(glyphSvg('dud')); it.appendChild(d); }
+      const st = s.input && s.input.strength;
+      if (st && scene.level > 1) it.appendChild(el('span', 'bc-dudlab', short('strength', st)));
+      if (s === latest) it.classList.add('is-latest');
+      return it;
+    }
+    // 같은 줄 범위(겹친 격자)
+    const over = el('div', 'bc-over');
+    over.style.gridTemplateColumns = cols; over.style.gridTemplateRows = rows; over.style.gap = Z.gap + 'px';
+    shots.forEach((s) => {
+      if (s.kind !== 'line') return;
+      (s.targets || []).forEach((t) => {
+        const tr = el('div', 'bc-trace' + (s === latest ? ' is-latest' : ''));
+        let dir;
+        if (t.place) { const c = S.places.indexOf(t.place) + 2; tr.style.gridColumn = c; tr.style.gridRow = '2 / 7'; tr.classList.add('o-col'); dir = 'v'; }
+        else if (t.manner) { const r = S.manners.indexOf(t.manner) + 2; tr.style.gridRow = r; tr.style.gridColumn = '2 / 7'; tr.classList.add('o-row'); dir = 'h'; }
+        else { const c = t.cell; tr.style.gridColumn = S.places.indexOf(c.place) + 2; tr.style.gridRow = S.manners.indexOf(c.manner) + 2; dir = 'cell'; }
+        const d = el('span', 'bc-dir'); d.appendChild(glyphSvg(dir)); tr.appendChild(d);
+        if (sz === 'phone') { d.style.width = d.style.height = '20px'; d.style.padding = '2px'; d.style.borderWidth = '1.5px'; }
+        over.appendChild(tr);
+      });
+    });
+    root.appendChild(over);
+    host.appendChild(root);
+    // 끌줄: 격침된 배의 조각이 다른 칸에 있으면 점선으로 잇고 가운데에 배 배지
+    requestAnimationFrame(() => {
+      const rb = root.getBoundingClientRect();
+      const svg = document.createElementNS(SVGNS, 'svg');
+      svg.setAttribute('class', 'bc-lines'); svg.setAttribute('width', rb.width); svg.setAttribute('height', rb.height);
+      let html = '';
+      sunkSet.forEach((i) => {
+        const pieces = Array.from(root.querySelectorAll('.bc-item[data-ship="' + i + '"]'));
+        if (pieces.length < 2) return;
+        const hb = pieces.map((p) => p.querySelector('.bc-hull').getBoundingClientRect()).sort((a, b) => a.top - b.top);
+        const x = hb[0].left + hb[0].width / 2 - rb.left, y1 = hb[0].bottom - rb.top - 2, y2 = hb[hb.length - 1].top - rb.top + 2;
+        html += '<path class="bc-tow" d="M' + x + ' ' + y1 + 'V' + y2 + '"/>';
+        const n = fleet[i].size, bw = sz === 'phone' ? 40 : 96, bh = sz === 'phone' ? 20 : 40, my = (y1 + y2) / 2;
+        const fs = fleetSvg(n, false, 24);
+        html += '<g class="bc-towbadge" transform="translate(' + (x - bw / 2) + ',' + (my - bh / 2) + ')"><rect width="' + bw + '" height="' + bh + '" rx="' + (bh / 2) + '"/>' +
+          '<svg class="bc-ship is-sunk" x="' + (bw * .12) + '" y="' + (bh * .2) + '" width="' + (bw * .76) + '" height="' + (bh * .6) + '" viewBox="-8 -4 ' + (fs.W + 16) + ' 108" preserveAspectRatio="none">' + fs.body + '</svg></g>';
+      });
+      svg.innerHTML = html;
+      root.appendChild(svg);
+    });
+    return root;
+  }
+
+  // ── 남은 배(조각 = 칸) ─────────────────────────────────────
+  // 한 척 = 칸 수만큼의 조각(배꼬리 … 뱃머리). 가라앉으면 판 위 조각과 같은 모양(황금 갑판 + 탄 선체)이 된다.
+  function fleetSvg(n, sunk, gap) {
+    const W = n * 200 + (n - 1) * gap;
+    let body = '';
+    for (let j = 0; j < n; j++) {
+      const p = n === 1 ? 'full' : j === 0 ? 'stern' : j === n - 1 ? 'bow' : 'mid';
+      body += '<g transform="translate(' + (j * (200 + gap)) + ',0)"><path class="f-edge" d="' + SEG[p] + '"/><path class="f-seg" d="' + SEG[p] + '"/></g>';
+    }
+    if (sunk) body += '<path class="f-smoke" d="M' + (W * .42) + ' 14c-16-14 4-26-6-44 20 8 24 26 12 42z"/><path class="f-smoke" d="M' + (W * .7) + ' 18c-12-10 2-20-4-32 14 6 18 18 8 30z"/>';
+    return { W, body };
+  }
+  function fleetPanel(host, scene, compact) {
+    const sunkSet = new Set(scene.shots.filter((s) => s.sunkShip != null).map((s) => s.sunkShip));
+    const box = el('div', 'bc-fleet');
+    const left = scene.fleet.length - sunkSet.size;
+    box.appendChild(el('div', 'bc-fleet-title', '<span>남은 배</span><span><b>' + left + '</b>척 / ' + scene.fleet.length + '척</span>'));
+    const row = el('div', 'bc-fleet-row');
+    if (compact) row.appendChild(el('span', 'bc-plabel', '남은 배 ' + left));
+    scene.fleet.forEach((f, i) => {
+      const sunk = sunkSet.has(i), n = f.size;
+      const sh = el('div', 'bc-ship' + (sunk ? ' is-sunk' : ''));
+      const fs = fleetSvg(n, sunk, 18);
+      const s = document.createElementNS(SVGNS, 'svg');
+      s.setAttribute('viewBox', '-8 -34 ' + (fs.W + 16) + ' 142');
+      s.innerHTML = fs.body;
+      s.style.height = compact ? '22px' : '60px';
+      sh.appendChild(s);
+      if (!compact) {
+        sh.appendChild(el('div', 'bc-ship-name', G.text.shipName(n)));
+        sh.appendChild(el('div', 'bc-ship-sub', sunk ? f.sounds.map(slash).join('·') + ' <span class="ok">찾음</span>' : '&nbsp;'));
+      }
+      row.appendChild(sh);
+    });
+    box.appendChild(row);
+    host.appendChild(box);
+    return box;
+  }
+
+  // ── 신호 기록장 한 줄 ────────────────────────────────────
+  function logStrip(host, scene) {
+    const box = el('div', 'bc-log');
+    box.appendChild(el('span', 'n', '신호 기록장'));
+    scene.shots.forEach((s, i) => {
+      const name = s.kind === 'hit' ? 'hit' : s.kind === 'miss' ? 'miss' : s.kind === 'none' ? 'dud' : U.lineDir(s.targets);
+      const label = s.kind === 'hit' ? '명중' : s.kind === 'line' ? '같은 줄' : s.kind === 'miss' ? '빗나감' : '없는 소리';
+      const what = s.sound ? slash(s.sound) : short('place', s.input.place) + '+' + short('manner', s.input.manner) + (s.input.strength ? '+' + short('strength', s.input.strength) : '');
+      const sp = el('span', 'k-' + s.kind);
+      sp.innerHTML = '<span class="n">' + (i + 1) + '</span> ';
+      const g = glyphSvg(name); g.setAttribute('class', 'g'); sp.appendChild(g);
+      sp.appendChild(document.createTextNode(' ' + what + ' ' + label + (s.sunk ? ' · ' + G.text.shipName(s.sunk) + ' 찾음' : '')));
+      box.appendChild(sp);
+    });
+    host.appendChild(box);
+  }
+
+  const NAMES = { a: 'A 맑은 바다 해도', b: 'B 깊은 바다', c: 'C 섬과 암초 지도' };
+
+  // ── 장면 쪽 ─────────────────────────────────────────────
+  function wide(scene, hidden) {
+    const scr = el('div', 'bc concept-' + CON + ' bc-screen bc-wide');
+    const top = el('div', 'bc-top');
+    top.innerHTML = '<span class="bc-btn">처음으로</span><span class="bc-title">자음 바다 · ' + scene.level + '단계</span><span class="bc-tag">시안 ' + NAMES[CON] + '</span>' +
+      '<span class="bc-turns">남은 턴 <b>' + (scene.lv.turns - scene.shots.length) + '</b></span>';
+    scr.appendChild(top);
+    const panel = el('div', 'bc-panel');
+    board(panel, scene, 'wide');
+    scr.appendChild(panel);
+    const right = el('div', 'bc-right');
+    fleetPanel(right, scene, false);
+    if (hidden) {
+      const bf = el('div', 'bc-before');
+      bf.innerHTML = '<h3>쏘기 전의 2단계 판</h3><p>25칸이 모두 같은 바다 — 소리·빈칸·세기 자리가 보이지 않는다</p>';
+      const p2 = el('div', 'bc-panel');
+      board(p2, scene, 'mini', { noShots: true });
+      bf.appendChild(p2);
+      right.appendChild(bf);
+    } else {
+      const m = el('div', 'bc-mouth'); m.appendChild(el('span', 'bc-note', '입안 단면도·조작부는 지금 그대로(참고 그림)'));
+      right.appendChild(m);
+    }
+    scr.appendChild(right);
+    const bottom = el('div', 'bc-bottom');
+    logStrip(bottom, scene);
+    bottom.appendChild(el('div', 'bc-ctl' + (hidden ? ' no-help' : '')));
+    scr.appendChild(bottom);
+    return scr;
+  }
+  function phone(scene) {
+    const scr = el('div', 'bc concept-' + CON + ' bc-screen bc-phone');
+    const top = el('div', 'bc-ptop');
+    top.innerHTML = '<span class="bc-btn">처음으로</span><span class="bc-title">자음 바다 · ' + scene.level + '단계</span><span class="bc-turns">남은 턴 <b>' + (scene.lv.turns - scene.shots.length) + '</b></span>';
+    scr.appendChild(top);
+    fleetPanel(scr, scene, true);
+    const m = el('div', 'bc-mouth'); m.appendChild(el('span', 'bc-note', '단면도 자리'));
+    scr.appendChild(m);
+    const panel = el('div', 'bc-panel');
+    board(panel, scene, 'phone');
+    scr.appendChild(panel);
+    scr.appendChild(el('div', 'bc-pline', '/ㄹ/ 명중! 한 칸 배를 찾았어요'));
+    scr.appendChild(el('div', 'bc-pctl'));
+    return scr;
+  }
+
+  const rootEl = document.getElementById('root');
+  if (VIEW === 'wide') rootEl.appendChild(wide(L1, false));
+  else if (VIEW === 'hidden') rootEl.appendChild(wide(L2, true));
+  else if (VIEW === 'phone') rootEl.appendChild(phone(L1));
+  else {
+    // 목차: 세 시안 × 세 장면
+    const ix = el('div', 'bc-index');
+    ix.innerHTML = '<h1>판 다시 그리기 — 시안 세 가지</h1><p>그림을 누르면 크게 봅니다(가로 1920×1080 · 휴대폰 390×844 · 숨긴 2단계).</p>';
+    ['a', 'b', 'c'].forEach((c) => {
+      ix.appendChild(el('h2', '', NAMES[c]));
+      const row = el('div', 'row');
+      [['wide', 1920, 1080, 0.3], ['hidden', 1920, 1080, 0.3], ['phone', 390, 844, 0.384]].forEach(([v, w, h, k]) => {
+        const src = 'board-concepts.html?c=' + c + '&view=' + v;
+        const a = el('a', 'th'); a.href = 'frame.html?w=' + w + '&h=' + h + '&src=' + encodeURIComponent('tests/pages/' + src);
+        const clip = el('div', 'clip'); clip.style.width = w * k + 'px'; clip.style.height = h * k + 'px';
+        const f = el('iframe'); f.src = src; f.width = w; f.height = h; f.style.transform = 'scale(' + k + ')';
+        clip.appendChild(f); a.appendChild(clip); a.appendChild(el('div', '', v));
+        row.appendChild(a);
+      });
+      ix.appendChild(row);
+    });
+    rootEl.appendChild(ix);
+  }
+  window.__bcReady = true;
+})();
+</script>
+</body></html>
