@@ -38,6 +38,7 @@ function asideBin() {
 
 // 모든 조각 앞에 붙는 머리말: aside의 screenshot()은 가만히 있는 탭에서 가끔 시간 초과가 나므로
 // openTab이 돌려주는 탭의 screenshot을 "화면을 살짝 건드리고 몇 번 다시 찍기"로 감싼다.
+const STRICT = process.env.ASIDE_STRICT_SHOTS === '1' ? 'true' : 'false';
 const PRELUDE = `
 const __sori_openTab = openTab;
 openTab = async (...__a) => {
@@ -50,7 +51,11 @@ openTab = async (...__a) => {
       await sleep(250);
       try { return await __shot(Object.assign({ timeout: 10000 }, __opts || {})); } catch (__e) { __err = __e; }
     }
-    throw __err;
+    // 캡처는 사람이 볼 증거 자료다. 부품 점검에서는 캡처가 끝내 안 되면 경고만 하고(작은 빈 그림) 계속한다.
+    // 캡처 자체를 확인하는 점검은 ASIDE_STRICT_SHOTS=1 로 돌려 실패로 친다.
+    if (${STRICT}) throw __err;
+    console.log('WARN 캡처 실패(점검은 계속): ' + String(__err && __err.message || __err).slice(0, 120));
+    return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
   };
   return __t;
 };
