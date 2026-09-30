@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>연습 모드 점검</title>
+<!-- 점검 전용: 연습 모드 화면(G.practice)을 index.html과 같은 스크립트로 띄운다. G.app은 흉내(stub).
+     ?clear=1   시작 전에 이 게임의 저장 값을 모두 지운다(G.save가 읽기 전에)
+     ?seen=1    풀이 예시를 본 적 있는 것으로 둔다
+     ?resume=1  G.practice.open({ resume: true })
+     ?manual=1  저절로 열지 않는다(점검 스크립트가 window.openPractice(o)로 연다)
+     ?layout=portrait|landscape   배치를 강제로(점검 전용 값 — 게임 화면에는 드러나지 않는다)
+     ?w=390&h=844   그 크기의 고정 상자 안에 띄운다(캡처용. aside는 frame.html 안을 캡처하지 못해서 따로 둠)
+     ?reduce=1  움직임 줄이기
+     G.app.go(name) → window.__went, G.app.finishGame(state) → window.__finished(판 상태) · window.__finishedRecord -->
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/mouth.css">
+<link rel="stylesheet" href="../../css/board.css">
+<link rel="stylesheet" href="../../css/controls.css">
+<link rel="stylesheet" href="../../css/practice.css">
+<style>
+  /* 캡처용 고정 크기 상자(휴대폰 세로 배치 흉내) */
+  body.fixed-page { background: #999; }
+  #box.fixed { --touch: 48px; position: relative; overflow: hidden; outline: 1px solid var(--ink-3); background: var(--paper); }
+  #box.fixed .pr { height: 100%; }
+</style>
+<script>
+  (function () {
+    const q = new URLSearchParams(location.search);
+    try {
+      if (q.get('clear')) Object.keys(localStorage).filter((k) => k.indexOf('sori-haejeon:') === 0).forEach((k) => localStorage.removeItem(k));
+      if (q.get('seen')) localStorage.setItem('sori-haejeon:seenExample', JSON.stringify({ s: 1, seen: true }));
+    } catch (e) { /* 저장소가 막혀도 점검 페이지는 연다 */ }
+    if (q.get('reduce')) document.documentElement.classList.add('reduce-motion');
+  })();
+</script>
+</head><body>
+<div id="app"></div>
+<script src="../../js/core/util.js"></script>
+<script src="../../js/data/sounds.js"></script>
+<script src="../../js/data/fleets.js"></script>
+<script src="../../js/data/levels.js"></script>
+<script src="../../js/data/text.js"></script>
+<script src="../../js/data/mouth.js"></script>
+<script src="../../js/core/rules.js"></script>
+<script src="../../js/core/audio.js"></script>
+<script src="../../js/core/save.js"></script>
+<script src="../../js/game/mouth.js"></script>
+<script src="../../js/game/board.js"></script>
+<script src="../../js/game/controls.js"></script>
+<script src="../../js/game/practice.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  window.__went = [];
+  window.__finished = null;
+  window.__finishedRecord = null;
+  // T12가 만들 G.app 흉내(screens-contract): go · finishGame
+  G.app = {
+    go(name, params) { window.__went.push(name); },
+    finishGame(state) {
+      window.__finished = JSON.parse(JSON.stringify(state));
+      window.__finishedRecord = G.rules.makeRecord(state);
+    },
+  };
+  const app = document.getElementById('app');
+  if (q.get('w')) {
+    document.body.classList.add('fixed-page');
+    app.id = 'box'; app.classList.add('fixed');
+    app.style.width = q.get('w') + 'px'; app.style.height = (q.get('h') || 740) + 'px';
+  }
+  window.openPractice = function (o) {
+    if (window.handle && window.handle.destroy) window.handle.destroy();
+    window.handle = G.practice.open(Object.assign({ container: app, layout: q.get('layout') || undefined }, o || {}));
+    return true;
+  };
+  if (!q.get('manual')) window.openPractice({ resume: !!q.get('resume') });
+</script>
+</body></html>
