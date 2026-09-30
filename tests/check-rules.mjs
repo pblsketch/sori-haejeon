@@ -1,6 +1,6 @@
 // 규칙 점검(브라우저 없이) — spec 10-1의 모든 항목.
 //   node tests/check-rules.mjs
-// 음운 표(3절), 채점 결과(5.3), 신호(5.4), 조작부 상태(5.1), 함대 배치(3.3, 6.3), 턴, 격침, 연습 끝, 대결 승패(6.3), 알아 두기(6.5).
+// 음운 표(3절), 채점 결과(5.3), 신호(5.4), 조작부 상태(5.1), 함대 배치(3.3, 6.3), 턴, 격침, 연습 끝, 대결 동시 발사 라운드·승패(6.3), 알아 두기(6.5).
 import { loadScripts, check, done } from './lib/load.mjs';
 
 let ctx;
@@ -379,68 +379,116 @@ check(validFleet(c2, R.randomFleet(c2)) === '', '기본 난수로도 배치');
   check(g.phase === 'over' && g.result.success === true, '8번째 발로 다 찾으면 성공');
 }
 
-// ───────────────────────── 10. 대결 승패(spec 6.3) ─────────────────────────
-// 순수 판정
-const DO = (o) => R.duelOutcome(Object.assign({ turnLimit: 8, blueDone: false, redDone: false, blueTurns: 0, redTurns: 0, blueHits: 0, redHits: 0 }, o));
-check(DO({ blueDone: true, blueTurns: 4, redTurns: 3 }) === null, '선공이 먼저 끝냄 → 후공 마지막 한 발 전엔 안 끝남');
-eq(DO({ blueDone: true, redDone: true, blueTurns: 4, redTurns: 4 }), { winner: null, reason: 'last-shot-draw' }, '후공 마지막 한 발 성공 → 무승부');
-eq(DO({ blueDone: true, blueTurns: 4, redTurns: 4 }), { winner: 'blue', reason: 'blue-first' }, '후공 마지막 한 발 실패 → 선공 승');
-eq(DO({ redDone: true, blueTurns: 4, redTurns: 4 }), { winner: 'red', reason: 'red-first' }, '후공이 먼저 끝냄 → 후공 승');
-eq(DO({ blueTurns: 8, redTurns: 8, blueHits: 3, redHits: 2 }), { winner: 'blue', reason: 'more-hits' }, '턴 소진 → 맞힌 칸 많은 선공 승');
-eq(DO({ blueTurns: 8, redTurns: 8, blueHits: 1, redHits: 2 }), { winner: 'red', reason: 'more-hits' }, '턴 소진 → 맞힌 칸 많은 후공 승');
-eq(DO({ blueTurns: 8, redTurns: 8, blueHits: 2, redHits: 2 }), { winner: null, reason: 'hits-tie' }, '턴 소진 → 동점 무승부');
-check(DO({ blueTurns: 8, redTurns: 7 }) === null, '선공 턴 소진, 후공 한 발 남음 → 안 끝남');
-eq(DO({ blueDone: true, blueTurns: 8, redTurns: 8 }), { winner: 'blue', reason: 'blue-first' }, '선공이 마지막 턴에 끝냄 → 후공 마지막 한 발 실패 → 선공 승');
-eq(DO({ redDone: true, blueTurns: 8, redTurns: 8, blueHits: 3 }), { winner: 'red', reason: 'red-first' }, '후공이 마지막 턴에 끝냄 → 후공 승(맞힌 칸 비교보다 먼저)');
+// ───────────────────────── 10. 대결: 동시 발사 라운드(spec 6.3) ─────────────────────────
+// 순수 판정: 라운드가 끝났을 때 두 팀의 현황만으로
+const DO = (o) => R.duelOutcome(Object.assign({ turnLimit: 8, rounds: 0, blueDone: false, redDone: false, blueHits: 0, redHits: 0 }, o));
+check(DO({ rounds: 3, blueHits: 2 }) === null, '아무도 다 찾지 못했고 라운드가 남음 → 안 끝남');
+eq(DO({ rounds: 4, blueDone: true }), { winner: 'blue', reason: 'found-all' }, '청팀만 다 찾음 → 청팀 승');
+eq(DO({ rounds: 4, redDone: true }), { winner: 'red', reason: 'found-all' }, '홍팀만 다 찾음 → 홍팀 승');
+eq(DO({ rounds: 4, blueDone: true, redDone: true }), { winner: null, reason: 'both-found' }, '같은 라운드에 둘 다 찾음 → 무승부');
+eq(DO({ rounds: 8, blueHits: 3, redHits: 2 }), { winner: 'blue', reason: 'more-hits' }, '라운드 소진 → 맞힌 칸 많은 청팀 승');
+eq(DO({ rounds: 8, blueHits: 1, redHits: 2 }), { winner: 'red', reason: 'more-hits' }, '라운드 소진 → 맞힌 칸 많은 홍팀 승');
+eq(DO({ rounds: 8, blueHits: 2, redHits: 2 }), { winner: null, reason: 'hits-tie' }, '라운드 소진 → 동점 무승부');
+eq(DO({ rounds: 8, redDone: true, blueHits: 3, redHits: 3 }), { winner: 'red', reason: 'found-all' }, '마지막 라운드에 다 찾음이 맞힌 칸 비교보다 먼저');
+eq(DO({ rounds: 8, blueDone: true, redDone: true }), { winner: null, reason: 'both-found' }, '마지막 라운드에 둘 다 찾음 → 무승부');
+check(DO({ rounds: 7, blueHits: 5 }) === null, '라운드가 하나 남음 → 안 끝남');
 
 // 판 흐름으로
 const BLUE = [ship('ㄱ', 'ㅇ'), ship('ㄹ'), ship('ㄴ')]; // 청팀이 숨긴 배(홍팀이 쏨)
 const RED = [ship('ㅂ', 'ㅁ'), ship('ㄹ'), ship('ㄴ')];  // 홍팀이 숨긴 배(청팀이 쏨)
 const duel = () => R.newGame({ mode: 'duel', grade: 'h1', sea: 'consonant', level: 1, hideTime: false, fleets: { blue: BLUE, red: RED } });
-const play = (g, pairs) => { for (const id of pairs) { const r = shoot(g, id); g = r.state; } return g; };
+const inp = (x) => (typeof x === 'string' ? R.inputOf(x) : x);
+const round = (g, b, r) => R.fireRound(g, { blue: inp(b), red: inp(r) });
+const rounds = (g, bs, rs) => { for (let i = 0; i < bs.length; i++) g = round(g, bs[i], rs[i]).state; return g; };
+const DUD = { place: 'palatal', manner: 'stop' }; // 없는 소리(턴 씀)
 {
   let g = duel();
-  check(g.phase === 'playing' && R.whoseTurn(g) === 'blue', '대결: 청팀부터');
-  let r = shoot(g, 'ㅂ'); g = r.state; check(R.whoseTurn(g) === 'red', '한 발 쏘면 차례가 넘어감(명중해도 추가 발사 없음)');
-  r = R.fire(g, { place: 'glottal', manner: 'fricative' });
-  check(r.outcome.kind === 'notInSea' && R.whoseTurn(r.state) === 'red', '이번 바다에 없는 칸 → 차례 유지');
-  r = shoot(g, 'ㄱ'); g = r.state;
-  r = shoot(g, 'ㅂ'); check(r.outcome.kind === 'already' && R.whoseTurn(r.state) === 'blue', '이미 쏜 소리 → 차례 유지');
-  r = shoot(g, 'ㄱ'); check(r.outcome.kind === 'miss' || r.outcome.kind === 'line', '팀마다 쏜 기록은 따로(청팀의 /ㄱ/은 처음)');
+  check(g.phase === 'playing' && g.rounds === 0, '대결: 0라운드에서 시작');
+  eq(R.roundInfo(g), { played: 0, limit: 8, left: 8, number: 1 }, '라운드 정보(첫 라운드)');
+  check(R.whoseTurn === undefined && R.isLastShot === undefined, '번갈아 쏘기(차례·마지막 한 발)는 없음');
+  check(throws(() => R.fire(g, R.inputOf('ㅂ'))), '대결은 한 팀씩 쏘는 fire를 쓰지 않음(fireRound)');
+  // 준비 확인(checkShot): 이번 바다에 없는 칸·이미 쏜 소리는 준비 거부
+  const ok0 = R.checkShot(g, 'blue', R.inputOf('ㅂ'));
+  check(ok0.ok === true && ok0.kind === null, '처음 쏘는 소리 → 준비됨');
+  const ns = R.checkShot(g, 'blue', { place: 'glottal', manner: 'fricative' });
+  check(ns.ok === false && ns.kind === 'notInSea', '자음 1단계 /ㅎ/ → 준비 거부(이번 바다에 없는 칸)');
+  check(R.checkShot(g, 'red', DUD).ok === true, '국어에 없는 소리는 준비됨(턴을 씀)');
+  check(throws(() => R.checkShot(g, 'green', R.inputOf('ㅂ'))), '모르는 팀');
+  // 첫 라운드: 두 팀 동시에
+  const before = J(g);
+  let r = round(g, 'ㅂ', 'ㄱ');
+  check(J(g) === before, 'fireRound는 입력 상태를 바꾸지 않음');
+  check(r.outcomes.blue.kind === 'hit' && r.outcomes.red.kind === 'hit', '두 팀 모두 명중(한 라운드에 각 한 발)');
+  check(r.outcomes.blue.shooter === 'blue' && r.outcomes.red.shooter === 'red', '결과마다 쏜 팀');
+  check(r.state.rounds === 1 && r.state.teams.blue.shots.length === 1 && r.state.teams.red.shots.length === 1, '한 라운드 = 두 팀 각 한 턴');
+  check(!r.over && !r.outcomes.blue.over && r.state.phase === 'playing', '아직 안 끝남');
+  eq(R.roundInfo(r.state), { played: 1, limit: 8, left: 7, number: 2 }, '라운드 정보(둘째 라운드)');
+  check(R.sideSummary(r.state, 'blue').turnsLeft === 7 && R.sideSummary(r.state, 'red').turnsLeft === 7, '두 팀 남은 턴 같음');
+  g = r.state;
+  // 이미 쏜 소리: 팀마다 따로
+  const al = R.checkShot(g, 'blue', R.inputOf('ㅂ'));
+  check(al.ok === false && al.kind === 'already', '청팀이 쏜 /ㅂ/ 다시 → 준비 거부(이미 쏜 소리)');
+  check(R.checkShot(g, 'red', R.inputOf('ㅂ')).ok, '팀마다 쏜 기록은 따로(홍팀의 /ㅂ/은 처음)');
+  // 라운드 발사는 두 팀 입력이 모두 준비된 것이어야 한다
+  check(throws(() => round(g, 'ㅂ', 'ㄴ')), '한 팀이라도 이미 쏜 소리면 라운드 발사 안 됨');
+  check(throws(() => round(g, 'ㄴ', { place: 'glottal', manner: 'fricative' })), '이번 바다에 없는 칸이면 라운드 발사 안 됨');
+  check(throws(() => R.fireRound(g, { blue: R.inputOf('ㅁ') })), '두 팀 입력이 모두 있어야 발사');
+  check(throws(() => R.fireRound(g, { red: R.inputOf('ㅁ') })), '두 팀 입력이 모두 있어야 발사(청 없음)');
+  check(throws(() => R.fireRound(g, null)), '입력 없음 → 발사 안 됨');
+  // 동시 판정: 두 발 모두 라운드 전 상태로 판단(입력 순서와 무관)
+  const lv = R.level('consonant', 1);
+  const preB = R.resolveShot(lv, R.inputOf('ㅁ'), { fleet: g.teams.red.fleet, shots: g.teams.blue.shots });
+  const preR = R.resolveShot(lv, R.inputOf('ㅇ'), { fleet: g.teams.blue.fleet, shots: g.teams.red.shots });
+  const r2 = R.fireRound(g, { red: R.inputOf('ㅇ'), blue: R.inputOf('ㅁ') });
+  check(r2.outcomes.blue.kind === preB.kind && r2.outcomes.blue.sunk === preB.sunk && r2.outcomes.red.kind === preR.kind && r2.outcomes.red.sunk === preR.sunk,
+    '두 발이 라운드 전 상태로 판단됨 ' + J([r2.outcomes.blue.kind, r2.outcomes.red.kind]));
+  check(r2.outcomes.blue.sunk === 2 && r2.outcomes.red.sunk === 2, '같은 라운드에 두 팀 모두 격침');
+  eq(r2.state, round(g, 'ㅁ', 'ㅇ').state, '입력 순서와 상관없이 같은 결과');
+  // 없는 소리도 한 턴, 같은 없는 조합 다시 → 준비 거부
+  const r3 = round(r2.state, DUD, 'ㅈ');
+  check(r3.outcomes.blue.kind === 'none' && r3.outcomes.blue.usesTurn && r3.state.teams.blue.shots.length === 3, '없는 소리 → 턴 씀');
+  check(R.checkShot(r3.state, 'blue', DUD).kind === 'already', '똑같은 없는 조합 다시 → 준비 거부(이미 쏜 소리)');
+  check(R.checkShot(r3.state, 'blue', { place: 'palatal', manner: 'stop', strength: 'tense' }).kind === 'already', '자음 1단계: 세기는 예사소리로 정해짐 → 같은 조합');
 }
-{ // 선공 먼저 → 후공 마지막 한 발 성공 → 무승부
-  let g = play(duel(), ['ㅂ', 'ㄱ', 'ㅁ', 'ㅇ', 'ㄹ', 'ㄹ', 'ㄴ']);
-  check(g.phase === 'playing' && R.isLastShot(g) && R.whoseTurn(g) === 'red', '선공이 다 찾음 → 후공 마지막 한 발');
-  const r0 = shoot(g, 'ㄱ'); check(r0.outcome.kind === 'already' && R.isLastShot(r0.state) && r0.state.phase === 'playing', '마지막 한 발에서 이미 쏜 소리 → 다시 쏨');
-  g = shoot(g, 'ㄴ').state;
-  check(g.phase === 'over' && g.result.winner === null && g.result.reason === 'last-shot-draw', '후공도 다 찾음 → 무승부');
+{ // 한 팀만 다 찾음 → 그 팀 승(남은 라운드를 기다리지 않음)
+  const g = rounds(duel(), ['ㅂ', 'ㅁ', 'ㄹ', 'ㄴ'], ['ㄷ', 'ㅈ', 'ㅅ', 'ㅂ']);
+  check(g.phase === 'over' && g.result.winner === 'blue' && g.result.reason === 'found-all', '청팀만 다 찾음 → 청팀 승 ' + J(g.result));
+  check(g.rounds === 4, '4라운드에 끝');
+  check(throws(() => round(g, 'ㄷ', 'ㄱ')), '끝난 판은 더 쏠 수 없음');
+  check(throws(() => R.checkShot(g, 'blue', R.inputOf('ㄷ'))), '끝난 판은 준비할 수 없음');
+  const last = R.fireRound(rounds(duel(), ['ㅂ', 'ㅁ', 'ㄹ'], ['ㄷ', 'ㅈ', 'ㅅ']), { blue: R.inputOf('ㄴ'), red: R.inputOf('ㅂ') });
+  check(last.over === true && last.outcomes.blue.over && last.outcomes.red.over, '끝난 라운드의 결과에 over 표시');
   const rec = R.makeRecord(g);
-  check(rec.result.winner === null && rec.teams.blue.turnsUsed === 4 && rec.teams.red.turnsUsed === 4, '대결 기록');
+  check(rec.result.winner === 'blue' && rec.teams.blue.turnsUsed === 4 && rec.teams.red.turnsUsed === 4, '대결 기록: 두 팀 같은 턴');
   eq(sortS(rec.teams.blue.hitSounds), sortS(['ㅂ', 'ㅁ', 'ㄹ', 'ㄴ']), '청팀 맞힌 소리');
+  const h = rounds(duel(), ['ㅂ', 'ㅁ', 'ㄹ', 'ㄷ'], ['ㄱ', 'ㅇ', 'ㄹ', 'ㄴ']);
+  check(h.phase === 'over' && h.result.winner === 'red' && h.result.reason === 'found-all', '홍팀만 다 찾음 → 홍팀 승 ' + J(h.result));
 }
-{ // 선공 먼저 → 후공 실패 → 선공 승
-  let g = play(duel(), ['ㅂ', 'ㄱ', 'ㅁ', 'ㅇ', 'ㄹ', 'ㄹ', 'ㄴ', 'ㅈ']);
-  check(g.phase === 'over' && g.result.winner === 'blue', '후공 마지막 한 발 실패 → 선공 승');
+{ // 같은 라운드에 두 팀 모두 다 찾음 → 무승부
+  const g = rounds(duel(), ['ㅂ', 'ㅁ', 'ㄹ', 'ㄴ'], ['ㄱ', 'ㅇ', 'ㄹ', 'ㄴ']);
+  check(g.phase === 'over' && g.result.winner === null && g.result.reason === 'both-found', '같은 라운드에 둘 다 → 무승부 ' + J(g.result));
+  // 모음 바다에서도
+  const VB = [ship('ㅣ', 'ㅔ', 'ㅐ'), ship('ㅡ', 'ㅜ'), ship('ㅗ')], VR = [ship('ㅡ', 'ㅓ', 'ㅏ'), ship('ㅣ', 'ㅟ'), ship('ㅚ')];
+  let v = R.newGame({ mode: 'duel', grade: 'm3', sea: 'vowel', level: 1, fleets: { blue: VB, red: VR } });
+  v = rounds(v, ['ㅡ', 'ㅓ', 'ㅏ', 'ㅣ', 'ㅟ', 'ㅚ'], ['ㅣ', 'ㅔ', 'ㅐ', 'ㅡ', 'ㅜ', 'ㅗ']);
+  check(v.phase === 'over' && v.result.winner === null && v.result.reason === 'both-found' && v.rounds === 6, '모음 바다: 같은 라운드에 둘 다 → 무승부');
 }
-{ // 후공 먼저 → 후공 승
-  let g = play(duel(), ['ㅂ', 'ㄱ', 'ㅁ', 'ㅇ', 'ㄹ', 'ㄹ', 'ㅈ', 'ㄴ']);
-  check(g.phase === 'over' && g.result.winner === 'red' && g.result.reason === 'red-first', '후공이 먼저 다 찾음 → 후공 승');
-}
-{ // 턴 소진 → 맞힌 칸 비교 (두 팀 쏜 순서를 번갈아 끼움)
-  const DUD = { place: 'palatal', manner: 'stop' };
-  const duelPlay = (blue, red) => { let g = duel(); for (let i = 0; i < Math.max(blue.length, red.length); i++) { if (blue[i]) g = step(g, blue[i]); if (red[i]) g = step(g, red[i]); } return g; };
-  const step = (g, x) => (typeof x === 'string' ? shoot(g, x) : R.fire(g, x)).state;
+{ // 라운드 소진 → 맞힌 칸 비교
   const B3 = ['ㅂ', 'ㅁ', 'ㄷ', 'ㅈ', 'ㅅ', 'ㄱ', 'ㅇ', 'ㄹ']; // 청팀 8발, 3칸 맞힘
-  let g = duelPlay(B3, ['ㄷ', 'ㅈ', 'ㅅ', 'ㅂ', 'ㄱ', 'ㅇ', 'ㄹ']);
-  check(g.phase === 'playing' && R.whoseTurn(g) === 'red', '청팀 턴 소진, 홍팀 한 발 남음');
-  g = shoot(g, 'ㄴ').state;
-  check(g.phase === 'over' && g.result.winner === 'red' && g.result.reason === 'red-first', '후공이 제한 턴 마지막 발로 다 찾으면 후공 승');
-  const h = duelPlay(B3, ['ㄷ', 'ㅈ', 'ㅅ', 'ㅂ', 'ㄱ', 'ㅁ', 'ㄹ', DUD]);
-  check(h.phase === 'over' && h.result.reason === 'more-hits' && h.result.winner === 'blue', `턴 소진 → 맞힌 칸 많은 팀 승 (${J(h.result)})`);
-  const k = duelPlay(['ㅂ', 'ㅁ', 'ㄷ', 'ㅈ', 'ㅅ', 'ㄱ', 'ㅇ', DUD], ['ㄷ', 'ㅈ', 'ㅅ', 'ㅂ', 'ㄱ', 'ㅁ', 'ㄹ', DUD]);
-  check(k.phase === 'over' && k.result.winner === null && k.result.reason === 'hits-tie', `턴 소진 동점 → 무승부 (${J(k.result)})`);
+  const R2 = ['ㄷ', 'ㅈ', 'ㅅ', 'ㅂ', 'ㄱ', 'ㅁ', 'ㄹ', DUD]; // 홍팀 8발, 2칸 맞힘, 없는 소리 1
+  const g7 = rounds(duel(), B3.slice(0, 7), R2.slice(0, 7));
+  check(g7.phase === 'playing' && R.roundInfo(g7).left === 1 && R.roundInfo(g7).number === 8, '7라운드 뒤 1라운드 남음');
+  const g = rounds(g7, B3.slice(7), R2.slice(7));
+  check(g.phase === 'over' && g.result.winner === 'blue' && g.result.reason === 'more-hits', '라운드 소진 → 맞힌 칸 많은 팀 승 ' + J(g.result));
+  eq(R.roundInfo(g), { played: 8, limit: 8, left: 0, number: 8 }, '끝난 판 라운드 정보');
+  const k = rounds(duel(), ['ㅂ', 'ㅁ', 'ㄷ', 'ㅈ', 'ㅅ', 'ㄱ', 'ㅇ', DUD], R2);
+  check(k.phase === 'over' && k.result.winner === null && k.result.reason === 'hits-tie', '라운드 소진 동점 → 무승부 ' + J(k.result));
   const rk = R.makeRecord(k);
-  check(rk.teams.blue.dudCount === 1 && rk.teams.red.dudCount === 1 && rk.teams.blue.turnsUsed === 8, '대결 기록: 팀별 턴·없는 소리');
+  check(rk.teams.blue.dudCount === 1 && rk.teams.red.dudCount === 1 && rk.teams.blue.turnsUsed === 8 && rk.teams.red.turnsUsed === 8, '대결 기록: 팀별 턴·없는 소리');
+  const m = rounds(duel(), ['ㄷ', 'ㅈ', 'ㅅ', 'ㄱ', 'ㅇ', DUD, { place: 'glottal', manner: 'stop' }, 'ㅂ'], R2);
+  check(m.result.winner === 'red' && m.result.reason === 'more-hits', '라운드 소진 → 홍팀이 더 많이 맞힘 ' + J(m.result));
+  const f = rounds(duel(), ['ㄷ', 'ㅈ', 'ㅅ', 'ㄱ', 'ㅇ', DUD, 'ㅂ', 'ㅁ'], ['ㄷ', 'ㅈ', 'ㅅ', 'ㅂ', 'ㄹ', 'ㄱ', 'ㅇ', 'ㄴ']);
+  check(f.phase === 'over' && f.result.winner === 'red' && f.result.reason === 'found-all', '마지막 라운드에 홍팀만 다 찾음 → 홍팀 승 ' + J(f.result));
 }
 { // 숨기기 시간: 청팀 → 홍팀 직접 배치, 시간 지나면 남은 배 무작위
   let g = R.newGame({ mode: 'duel', grade: 'm3', sea: 'vowel', level: 1, hideTime: true, rng: R.makeRng(5) });
@@ -452,7 +500,7 @@ const play = (g, pairs) => { for (const id of pairs) { const r = shoot(g, id); g
   check(validFleet(v1, g.teams.blue.fleet) === '' && g.teams.blue.fleet[0].sounds.join('') === 'ㅣㅔㅐ', '시간 지남 → 청팀 남은 배 채움(놓은 배 유지)');
   check(g.phase === 'placing' && g.placingTeam === 'red', '다음은 홍팀');
   g = R.finishPlacing(g, R.makeRng(10));
-  check(validFleet(v1, g.teams.red.fleet) === '' && g.phase === 'playing' && g.placingTeam === null && R.whoseTurn(g) === 'blue', '홍팀 배치 끝 → 대결 시작');
+  check(validFleet(v1, g.teams.red.fleet) === '' && g.phase === 'playing' && g.placingTeam === null && g.rounds === 0 && R.roundInfo(g).number === 1, '홍팀 배치 끝 → 대결 첫 라운드');
   let p = R.newGame({ mode: 'duel', grade: 'm3', sea: 'consonant', level: 2, hideTime: true });
   p = R.placeShip(p, ['ㅈ', 'ㅉ', 'ㅊ']); p = R.placeShip(p, ['ㅅ', 'ㅆ']); p = R.placeShip(p, ['ㅎ']);
   check(p.placingTeam === 'blue' && R.nextShipSize(c2, p.teams.blue.fleet) === null, '다 놓아도 "다 놓았어요" 전까진 그 팀 차례');
@@ -461,7 +509,7 @@ const play = (g, pairs) => { for (const id of pairs) { const r = shoot(g, id); g
   p = R.placeShip(p, ['ㄱ', 'ㄲ', 'ㅋ']);
   const q = R.restartPlacing(p);
   check(q.placingTeam === 'blue' && q.teams.blue.fleet.length === 0 && q.teams.red.fleet.length === 0, '배치 도중 새로고침 → 청팀부터 다시');
-  check(throws(() => R.fire(p, R.inputOf('ㄱ'))), '배치 중에는 쏠 수 없음');
+  check(throws(() => R.fireRound(p, { blue: R.inputOf('ㄱ'), red: R.inputOf('ㄴ') })) && throws(() => R.checkShot(p, 'blue', R.inputOf('ㄱ'))), '배치 중에는 쏠 수 없음');
   const rnd = R.newGame({ mode: 'duel', grade: 'm3', sea: 'vowel', level: 2, hideTime: false, rng: R.makeRng(3) });
   check(rnd.phase === 'playing' && !validFleet(v2, rnd.teams.blue.fleet) && !validFleet(v2, rnd.teams.red.fleet), '숨기기 시간 끔 → 두 팀 무작위 배치');
 }
@@ -484,11 +532,11 @@ eq(ids(R.notesFor('vowel', ['ㅣ', 'ㅏ'])), [], '모음: 해당 없음');
   check(rec.teams.player.dudCount === 1 && rec.teams.player.turnsUsed === 4 && rec.teams.player.hitSounds.length === 0, '연습 기록: 턴·없는 소리 횟수');
 }
 { // 대결: 두 팀 합침
-  let g = play(duel(), ['ㄱ', 'ㅇ']);
+  let g = round(duel(), 'ㄱ', 'ㅇ').state;
   const rec = R.makeRecord(g);
   eq(ids(rec.notes), ['pair-ㄱㅇ', 'ng'], '대결: 청팀 /ㄱ/ + 홍팀 /ㅇ/ → 두 팀을 합쳐 짝');
   eq(sortS(rec.hitSoundsAll), ['ㅇ'], '대결: 맞힌 소리는 두 팀 합침(홍팀 /ㅇ/ 명중)');
-  const h = play(duel(), ['ㄹ', 'ㄹ', 'ㅂ', 'ㄷ']);
+  const h = rounds(duel(), ['ㄹ', 'ㅂ'], ['ㄹ', 'ㄷ']);
   eq(sortS(R.makeRecord(h).hitSoundsAll), sortS(['ㄹ', 'ㅂ']), '대결: 두 팀 맞힌 소리 합집합(중복 없음)');
 }
 
@@ -505,6 +553,10 @@ eq(ids(R.notesFor('vowel', ['ㅣ', 'ㅏ'])), [], '모음: 해당 없음');
     (Array.isArray(x) && x.every(plain)) || (typeof x === 'object' && !Array.isArray(x) && Object.values(x).every((v) => v !== undefined && plain(v)));
   check(plain(rec), '판 기록은 JSON으로 옮길 수 있는 평범한 값');
   check(plain(r.state), '판 상태는 JSON으로 옮길 수 있는 평범한 값');
+  const dr = round(duel(), 'ㅂ', DUD);
+  check(plain(dr.state) && plain(R.makeRecord(dr.state)), '대결 판 상태·기록도 평범한 값');
+  eq(round(JSON.parse(J(dr.state)), 'ㅁ', 'ㄱ'), round(dr.state, 'ㅁ', 'ㄱ'), '대결: 저장→복원한 상태로 쏜 라운드 결과가 같음');
+  check(dr.state.v === 1 && dr.state.rounds === 1, '대결 판 상태 머리값(v 1, rounds)');
   check(g.v === 1 && g.mode === 'practice' && g.grade === 'm3' && g.sea === 'vowel' && g.level === 1, '판 상태 머리값');
   check(['mode', 'grade', 'sea', 'level', 'teams', 'result', 'notes', 'hitSoundsAll', 'turnLimit'].every((k) => k in rec), '판 기록 필드');
   check(throws(() => R.newGame({ mode: 'practice', grade: 'm3', sea: 'consonant', level: 1, fleet: [ship('ㅅ', 'ㅆ'), ship('ㄹ'), ship('ㄴ')] })), '규칙에 어긋난 함대는 거절');
