@@ -424,7 +424,7 @@ G.mouth = (function () {
           if (s > route.len) return null;
           t = t || 0;
           const p = pointAt(route, s), j = Math.sin(t * 20 + i) * 1.5;
-          return { x: p.x + p.nx * j, y: p.y + p.ny * j };
+          return { x: p.x + p.nx * j, y: p.y + p.ny * j, s, nose: false };
         } };
       }
       const rule = M.manners[st.manner], sr = M.strengths[st.strength] || M.strengths.plain;
@@ -435,18 +435,23 @@ G.mouth = (function () {
       const { route, sC } = consonantRoute(st.place);
       const nose = makeRoute(M.route.nose);
       const cap = (i) => Math.max(4, sC - 7 - i * (sr.force === 'firm' ? 2.2 : 3.2));
-      const pile = (i, t, ts) => Math.min((t - ts) * 520, cap(i));
-      const place = (r, s, off) => { const p = pointAt(r, s); return { x: p.x + p.nx * off, y: p.y + p.ny * off }; };
+      // 막는 동안(hold): 목청 쪽에 흩어져 있던 공기가 막는 곳 바로 뒤로 모여 차곡차곡 쌓인다(터지기 0.1초 전에 다 모임)
+      const hold = (i, t) => {
+        const s0 = Math.max(0, cap(i) - 60 - i * 7);
+        const k = U.clamp((t - t0) / Math.max(0.1, tr - 0.1 - t0), 0, 1), e = 1 - Math.pow(1 - k, 2);
+        return s0 + (cap(i) - s0) * e;
+      };
+      // s: 공기 길 위의 거리(목청 아래 = 0). 막기 전(hold)에는 모든 입자가 막는 곳(sC)보다 목청 쪽(s < sC)에 쌓인다.
+      const place = (r, s, off) => { const p = pointAt(r, s); return { x: p.x + p.nx * off, y: p.y + p.ny * off, s, nose: r !== route }; };
       const side = (i) => (rnd(i) - 0.5) * spread;
       const flow = rule.flow;
       let tr = t0 + 0.6, key = null; // key: 멈춘 그림에 쓸 시각(null이면 입자를 길 전체에 고르게 늘어놓음)
-      const plan = { n, dur, flow, tr: null };
+      const plan = { n, dur, flow, tr: null, sC };
       if (flow === 'burst') {
         key = tr + 0.12; plan.tr = tr;
         plan.at = (i, t) => {
-          const ts = t0 + (i / n) * 0.4;
-          if (t < ts) return null;
-          const s = t < tr ? pile(i, t, ts) : cap(i) + (t - tr) * 520 * force * (1 + rnd(i + 7) * 0.3);
+          if (t < t0) return null;
+          const s = t < tr ? hold(i, t) : cap(i) + (t - tr) * 520 * force * (1 + rnd(i + 7) * 0.3);
           if (s > route.len) return null;
           const off = t < tr ? ((i % 3) - 1) * 3.5 : side(i) * Math.min(1, (t - tr) * 6);
           return place(route, s, off);
@@ -454,9 +459,8 @@ G.mouth = (function () {
       } else if (flow === 'leak') {
         tr = t0 + 0.5; key = tr + 0.35; plan.tr = tr;
         plan.at = (i, t) => {
-          const ts = t0 + (i / n) * 0.35;
-          if (t < ts) return null;
-          const s = t < tr ? pile(i, t, ts) : cap(i) + Math.max(0, t - tr - i * 0.012) * 200 * force;
+          if (t < t0) return null;
+          const s = t < tr ? hold(i, t) : cap(i) + Math.max(0, t - tr - i * 0.012) * 200 * force;
           if (s > route.len) return null;
           const shake = t < tr ? ((i % 3) - 1) * 3 : Math.sin(t * 45 + i * 1.3) * (1.5 + 3 * bump(s - sC, 40));
           return place(route, s, shake);
@@ -504,8 +508,14 @@ G.mouth = (function () {
         if (!p) { c.style.display = 'none'; continue; }
         c.style.display = '';
         c.setAttribute('cx', p.x.toFixed(1)); c.setAttribute('cy', p.y.toFixed(1));
+        c.setAttribute('data-s', p.s.toFixed(1));            // 점검용: 공기 길 위의 거리
+        c.setAttribute('data-route', p.nose ? 'nose' : 'oral');
         c.classList.toggle('is-far', !!p.far);
       }
+      // 점검용: 막는 곳의 거리와 단계(hold 막고 쌓임 · release 터짐/샘 · flow 계속 흐름)
+      const phase = plan.tr == null || t == null ? (plan.tr == null ? 'flow' : 'release') : t < plan.tr ? 'hold' : 'release';
+      if (svg.getAttribute('data-phase') !== phase) svg.setAttribute('data-phase', phase);
+      svg.setAttribute('data-sc', plan.sC != null ? plan.sC.toFixed(1) : '');
       // 파찰음: 쌓인 뒤 막대가 틈으로 바뀐다
       if (st.closure === 'full-to-gap') {
         const shape = plan.tr != null && t >= plan.tr ? 'gap' : 'full';

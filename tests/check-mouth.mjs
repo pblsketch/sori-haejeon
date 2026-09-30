@@ -1,7 +1,9 @@
 // 입안 단면도(G.mouth) 점검(aside). 점검용 페이지 tests/pages/mouth.html에서 단면도만 띄운다.
 //  1~3) 자음 5자리 × 5방법 × 쓸 수 있는 세기(+ 목청·마찰·세기 없음), 모음 6자리 × 입술 2가지를 모두 재생:
 //       페이지 오류 없음, 1.5초 안에 끝남, 입자가 실제로 그려짐,
-//       막음 표시(규칙·그려진 모양)·콧길 문·목청 조임·입자 수가 spec 5.2 표와 같음
+//       막음 표시(규칙·그려진 모양)·콧길 문·목청 조임·입자 수가 spec 5.2 표와 같음,
+//       파열·파찰은 막는 동안(hold) 모든 입자가 막는 곳보다 목청 쪽(공기 길 위 거리 s < 막는 곳)에 쌓이고, 터진 뒤 지나감,
+//       비음은 입 쪽 입자가 막는 곳을 넘지 않음
 //  3b) 혀 모양: 자리·방법·모음 칸마다 data-tongue/data-contact와, 실제 혀 윤곽의 가장 높은 곳이 기대한 곳으로 옮겨 갔는지
 //      (잇몸=혀끝, 센입천장=혓몸 앞, 여린입천장=혓몸 뒤가 막음 막대에 닿음, 마찰은 틈만큼 떨어짐, 모음은 앞뒤×높이),
 //      혀가 짧게 움직여 바뀌는지(움직임 줄이기면 바로), 입술 모양(두 입술 닫힘, 원순 내밂)
@@ -40,7 +42,9 @@ const PLAY_ALL = `async (combos) => {
       bars: cg.querySelectorAll('rect.mouth-bar:not(.mouth-bar-pending)').length, dotted: cg.querySelectorAll('line.mouth-bar-dotted').length,
       door: door.dataset.state, doorT: door.getAttribute('transform') || '',
       tight: getComputedStyle(svg.querySelector('.mouth-tight')).display !== 'none',
-      vis: [...svg.querySelectorAll('.mouth-particle')].filter((c) => c.style.display !== 'none').length };
+      vis: [...svg.querySelectorAll('.mouth-particle')].filter((c) => c.style.display !== 'none').length,
+      phase: svg.dataset.phase, sc: +svg.dataset.sc,
+      ps: [...svg.querySelectorAll('.mouth-particle')].filter((c) => c.style.display !== 'none').map((c) => ({ s: +c.dataset.s, r: c.dataset.route })) };
   };
   const shapeOk = (s, shape) => shape === 'full' ? s.shape === 'full' && s.bars === 1 && s.dotted === 0
     : shape === 'gap' ? s.shape === 'gap' && s.bars === 2 && s.dotted === 0
@@ -53,8 +57,35 @@ const PLAY_ALL = `async (combos) => {
     let pr;
     try { pr = mouth.play(c); } catch (e) { bad('예외 ' + e.message); continue; }
     await wait(80); const early = snap();
-    await wait(420); const mid = snap();
+    // 파열·파찰: 터지기 직전(막고 쌓인 상태)까지 지켜보고, 터지고 조금 뒤에 다시 본다
+    let mid, late, pre = null;
+    if (manner === 'stop' || manner === 'affricate') {
+      while (svg.dataset.phase !== 'release' && performance.now() - t0 < 1100) { pre = snap(); await wait(15); }
+      if (!pre || pre.phase !== 'hold') bad('터지기 전 쌓인 상태를 못 봄');
+      else if (!pre.ps.length || Math.max(...pre.ps.map((q) => q.s)) < pre.sc - 25) bad('터지기 전 공기가 막는 곳 바로 뒤에 쌓이지 않음 ' + JSON.stringify(pre.ps.map((q) => q.s)) + ' sc=' + pre.sc);
+      else if (pre.ps.some((q) => q.s >= pre.sc)) bad('터지기 전 입자가 막는 곳 앞(입술 쪽)에 있음 sc=' + pre.sc);
+      await wait(150); // 터지고 조금 지난 뒤
+      late = snap();
+      mid = pre || late;
+    } else {
+      await wait(420); mid = snap(); late = mid;
+    }
     await pr; const ms = performance.now() - t0; const end = snap();
+    // 공기가 막는 곳의 어느 쪽에 있는가(s: 목청 아래에서 잰 거리, sc: 막는 곳)
+    if (manner === 'stop' || manner === 'affricate') {
+      if (early.phase !== 'hold') bad('처음이 막고 쌓이는 단계가 아님: ' + early.phase);
+      for (const [k, s] of [['early', early], ['mid', mid], ['late', late]]) {
+        if (s.phase === 'hold' && s.ps.some((q) => q.s >= s.sc)) bad(k + ' 막는 동안 입자가 막는 곳 앞(입술 쪽)에 있음 ' + JSON.stringify(s.ps.map((q) => q.s)) + ' sc=' + s.sc);
+      }
+      if (late.phase !== 'release') bad('끝 무렵에도 터지지 않음: ' + late.phase);
+      else if (!late.ps.some((q) => q.s > late.sc) && !(late.ps.length < mid.ps.length)) bad('터진 뒤에도 입자가 막는 곳을 지나지 않음 ' + JSON.stringify(late.ps.map((q) => q.s)) + ' sc=' + late.sc);
+    }
+    if (manner === 'nasal') {
+      for (const [k, s] of [['early', early], ['mid', mid], ['late', late]]) {
+        if (s.ps.some((q) => q.r === 'oral' && q.s >= s.sc)) bad(k + ' 비음인데 입 쪽 공기가 막는 곳을 넘음');
+      }
+      if (!mid.ps.some((q) => q.r === 'nose')) bad('비음인데 콧길로 가는 입자가 없음');
+    }
     if (ms > 1500) bad('재생 ' + Math.round(ms) + 'ms > 1500');
     if (early.playing !== '1' || end.playing !== '0') bad('playing 표시 이상');
     if (!(mid.vis > 0)) bad('재생 중 입자가 안 보임');
