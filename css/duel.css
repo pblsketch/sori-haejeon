@@ -1,0 +1,226 @@
+/* 대결 모드 화면(js/game/duel.js) — 16:9 전자칠판 기준. 색·크기 값은 css/base.css의 변수를 쓴다.
+ * 화면은 창(또는 transform이 걸린 상자)을 가득 채운다: .duel { position: fixed; inset: 0 }.
+ * 팀 색은 판 테두리(board.css의 .sb-team-*)와 같은 값. 팀은 색만이 아니라 이름 글씨로도 구분한다. */
+.duel {
+  --blue: #2a5db0;
+  --blue-2: #e3ebf7;
+  --red: #b23a3a;
+  --red-2: #f6e3e1;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  container: duel / size; /* 아래 크기 조건은 창이 아니라 이 화면의 크기로 판단(점검 상자에서도 같게) */
+}
+.duel-stage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+/* 공통 단추 */
+.duel-btn {
+  min-width: calc(var(--touch) * 2);
+  min-height: var(--touch);
+  padding: 6px 28px;
+  border: 3px solid var(--ui);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ui);
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.duel-btn--main { background: var(--ui); color: #fff; }
+.duel-btn:disabled { opacity: 0.45; cursor: default; }
+.duel-btn:focus-visible, .duel-opt:focus-visible, .duel-home:focus-visible { outline: 3px solid var(--sea); outline-offset: 3px; }
+.duel-home {
+  min-height: var(--touch);
+  padding: 4px 18px;
+  border: 2px solid var(--ink-3);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink-2);
+  font-size: 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+/* ── 세로 화면 · 낮은 가로 화면: 대결 안내 한 줄 ── */
+.duel-phone {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px 16px;
+  background: var(--paper);
+  text-align: center;
+}
+.duel.is-phone .duel-phone { display: flex; }
+.duel.is-phone .duel-stage { visibility: hidden; }
+.duel-phone-text { margin: 0; max-width: 32em; font-size: 20px; line-height: 1.5; word-break: keep-all; }
+.duel-phone .duel-btn { font-size: 20px; }
+
+/* ── 준비 화면 ── */
+.duel-setup {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 24px 32px;
+  max-width: 100%;
+}
+.duel-h { margin: 0; font-family: var(--font-title); font-size: 44px; font-weight: 700; color: var(--sea); }
+.duel-h-game { color: var(--ink); }
+.duel-setup-groups { display: grid; grid-template-columns: auto auto; align-items: center; gap: 18px 24px; }
+.duel-seg { display: contents; }
+.duel-seg-label { justify-self: end; font-family: var(--font-title); font-size: 24px; font-weight: 700; color: var(--ink-2); }
+.duel-seg-opts { display: flex; flex-wrap: wrap; gap: 10px; }
+.duel-opt {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--touch) * 1.8);
+  min-height: var(--touch);
+  padding: 4px 18px;
+  border: 3px solid var(--ui);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ui);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.duel-opt-sub { font-size: 14px; font-weight: 400; color: var(--ink-2); }
+.duel-opt.is-on { background: var(--ui); color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25); }
+.duel-opt.is-on .duel-opt-sub { color: #e6f3ef; }
+.duel-actions { display: flex; gap: 20px; }
+
+/* ── 가림 화면 ── */
+.duel-stage.is-gate { background: var(--sea); color: #fff; }
+.duel-stage.gate-blue { background: var(--blue); }
+.duel-stage.gate-red { background: var(--red); }
+.duel-gate { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 24px; text-align: center; }
+.duel-gate-text { margin: 0; font-family: var(--font-title); font-size: 48px; font-weight: 700; line-height: 1.35; word-break: keep-all; }
+.duel-gate .duel-btn { border-color: #fff; background: #fff; color: var(--ink); font-size: 30px; padding: 10px 40px; }
+.duel-corner { position: absolute; right: 16px; top: 12px; }
+
+/* ── 숨기기 시간: 한 팀의 배치 ── */
+.duel-placing { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 24px 16px; }
+.duel-place-head { display: flex; align-items: center; justify-content: center; gap: 28px; }
+.duel-place-title { margin: 0; font-family: var(--font-title); font-size: 38px; font-weight: 700; }
+.team-blue .duel-place-title { color: var(--blue); }
+.team-red .duel-place-title { color: var(--red); }
+.duel-timer {
+  min-width: 8em;
+  padding: 4px 18px;
+  border: 3px solid var(--ink-2);
+  border-radius: 999px;
+  font-family: var(--font-title);
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.duel-timer.is-low { border-color: var(--hit); color: var(--hit); }
+.duel-place-head .duel-home { margin-left: auto; }
+.duel-place-head .duel-place-title { margin-left: auto; }
+.duel-place-sea { flex: 1 1 auto; min-height: 0; width: 100%; max-width: 1200px; margin: 0 auto; padding: 8px; }
+.duel-place-foot { display: flex; align-items: center; justify-content: center; gap: 28px; }
+.duel-line { margin: 0; min-height: 1.5em; font-size: 26px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── 대결 화면(16:9) ── */
+.duel-play { flex: 1 1 auto; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.duel-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px 6px;
+  border-bottom: 2px solid var(--sea-2);
+}
+.duel-side {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  padding: 6px 16px;
+  border: 3px solid transparent;
+  border-radius: var(--radius);
+}
+.side-red { flex-direction: row-reverse; }
+.duel-side-head { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+.side-red .duel-side-head { align-items: flex-end; }
+.duel-team { font-family: var(--font-title); font-size: 34px; font-weight: 700; }
+.side-blue .duel-team { color: var(--blue); }
+.side-red .duel-team { color: var(--red); }
+.duel-turns { font-size: 20px; color: var(--ink-2); white-space: nowrap; }
+.duel-side.is-turn.side-blue { border-color: var(--blue); background: var(--blue-2); }
+.duel-side.is-turn.side-red { border-color: var(--red); background: var(--red-2); }
+.duel-ships { min-width: 0; }
+.duel-ships .sb-ships { flex-wrap: nowrap; }
+.duel-ships .sb-ships-title { display: none; } /* 머리글은 팀 이름이 대신한다 */
+.duel-ships .sb-pic { height: 38px; }
+.duel-ships .sb-ship-name { font-size: 16px; }
+.side-red .duel-ships .sb-ships { flex-direction: row-reverse; }
+
+.duel-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.duel-titlerow { display: flex; align-items: center; gap: 14px; }
+.duel-title { margin: 0; font-family: var(--font-title); font-size: 34px; font-weight: 700; color: var(--sea); line-height: 1.2; }
+.duel-titlerow .duel-home { font-size: 16px; padding: 2px 14px; } /* 글씨는 작게(눈에 덜 띄게), 누르는 크기는 64px 그대로 */
+.duel-turn { font-family: var(--font-title); font-size: 30px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+.duel-turn[data-team="blue"] { color: var(--blue); }
+.duel-turn[data-team="red"] { color: var(--red); }
+.duel-turn[data-team="draw"] { color: var(--sea); }
+.duel-turn.is-last { padding: 0 14px; border-radius: 999px; background: var(--red-2); }
+
+.duel-mid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); /* 단면도가 가장 크게 */
+  gap: 18px;
+  min-height: 0;
+  padding: 8px 20px 4px;
+}
+.duel-sea { display: flex; flex-direction: column; gap: 4px; min-height: 0; min-width: 0; }
+.duel-sea-name {
+  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 10px; /* 판(.sb) 바로 위 */
+  font-family: var(--font-title); font-size: 22px; font-weight: 700; text-align: center; line-height: 1.2; white-space: nowrap;
+}
+.duel-sea-name.name-blue { color: var(--blue); }
+.duel-sea-name.name-red { color: var(--red); }
+.duel-board { flex: 1 1 auto; min-height: 0; padding: 44px 8px 8px; display: flex; align-items: center; justify-content: center; }
+.duel-board > .sb.sb-fit { height: auto; } /* 테두리가 표만 감싸게(높이 맞추기는 board.js가 이 상자 높이로 한다) */
+.duel-mouthcol { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; }
+.duel-mouth { flex: 1 1 auto; min-height: 0; padding-right: 10%; } /* 목 뒤 살이 viewBox 오른쪽으로 약 11% 나가므로 그만큼 비워 옆 바다와 겹치지 않게 */
+.duel-legend { flex: 0 0 auto; display: flex; justify-content: center; }
+.duel-legend .sb-legend { font-size: 16px; }
+
+.duel-dock { min-width: 0; }
+.duel-dock .ctl { padding-top: 4px; }
+.duel-dock .ctl-msg { font-size: 28px; }
+.duel-dock .ctl-log--strip { font-size: 17px; }
+
+/* 1366×768·1280×800처럼 낮은 가로 화면: 위 띠와 글씨를 조금 줄인다 */
+@container duel (max-height: 860px) {
+  .duel-team { font-size: 28px; }
+  .duel-title { font-size: 28px; }
+  .duel-turn { font-size: 24px; }
+  .duel-ships .sb-pic { height: 30px; }
+  .duel-sea-name { font-size: 18px; }
+  .duel-legend { display: none; } /* 판·단면도에 자리를 준다 */
+  .duel-dock .ctl-msg { font-size: 22px; }
+  .duel-gate-text { font-size: 38px; }
+}
