@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>대결 화면 점검</title>
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/mouth.css">
+<link rel="stylesheet" href="../../css/board.css">
+<link rel="stylesheet" href="../../css/controls.css">
+<link rel="stylesheet" href="../../css/duel.css">
+<style>
+  /* 점검 전용: ?box=1920x1080 이면 정해진 크기의 상자 안에 화면을 그리고 창에 맞게 줄여 보여 준다
+     (aside는 창 크기를 못 바꾼다). 상자에 transform이 있어서 .duel(position: fixed)이 상자를 가득 채운다. */
+  html.is-box, html.is-box body { background: #555; overflow: hidden; }
+  html.is-box #box { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: var(--paper); overflow: hidden; }
+</style>
+</head><body>
+<!-- 점검 전용 페이지: 대결 화면(js/game/duel.js)을 진짜 스크립트로 띄운다. G.app은 흉내(stub).
+     ?manual=1  저절로 열지 않음(점검 스크립트가 G.duel.open을 부름)
+     ?resume=1  저장된 판에서 이어서 열기
+     ?rm=1      움직임 줄이기(애니메이션을 건너뛰어 점검을 빠르게)
+     ?box=1920x1080  정해진 크기의 상자(캡처용)
+     G.app.go(이름) → window.__went 에 쌓임, G.app.finishGame(판) → window.__finished(복사본) -->
+<div id="box"><div id="app"></div></div>
+<script src="../../js/core/util.js"></script>
+<script src="../../js/data/sounds.js"></script>
+<script src="../../js/data/fleets.js"></script>
+<script src="../../js/data/levels.js"></script>
+<script src="../../js/data/text.js"></script>
+<script src="../../js/data/mouth.js"></script>
+<script src="../../js/core/rules.js"></script>
+<script src="../../js/core/audio.js"></script>
+<script src="../../js/core/save.js"></script>
+<script src="../../js/game/mouth.js"></script>
+<script src="../../js/game/board.js"></script>
+<script src="../../js/game/controls.js"></script>
+<script src="../../js/game/duel.js"></script>
+<script>
+  window.__went = [];
+  window.__finished = null;
+  window.__finishedCount = 0;
+  G.app = {
+    go(name, params) { window.__went.push(name); },
+    finishGame(state) { window.__finished = JSON.parse(JSON.stringify(state)); window.__finishedCount++; },
+  };
+  // 점검 도우미(점검 스크립트가 씀)
+  window.DT = {
+    wait: (ms) => new Promise((r) => setTimeout(r, ms)),
+    async until(fn, ms) {
+      const t0 = Date.now();
+      while (Date.now() - t0 < (ms || 8000)) {
+        try { const v = fn(); if (v) return v; } catch (e) { /* 아직 */ }
+        await DT.wait(40);
+      }
+      return null;
+    },
+    h: () => G.duel.current,
+    st: () => G.duel.current.debug.state(),
+    screen: () => (G.duel.current ? G.duel.current.debug.screen() : ''),
+    // 소리 id('ㄱ') 또는 조합 → 조작부로 고르고 발사. 그 발이 끝나면 풀림
+    fire: (x) => G.duel.current.debug.fire(typeof x === 'string' ? G.rules.inputOf(x) : x),
+    opt: (group, value) => document.querySelector('.duel-opt[data-group="' + group + '"][data-value="' + value + '"]'),
+    // 준비 화면에서 단추를 눌러 고르고 시작
+    setup(sel) {
+      ['grade', 'sea', 'level', 'hideTime'].forEach((k) => { if (k in sel) DT.opt(k, String(sel[k])).click(); });
+      document.querySelector('.duel-start').click();
+    },
+    msg: () => document.querySelector('.duel-dock .ctl-msg-text').textContent,
+    msgKind: () => document.querySelector('.duel-dock .ctl-msg').getAttribute('data-kind'),
+    turnText: () => document.querySelector('.duel-turn').textContent,
+    active: () => ['blue', 'red'].filter((t) => G.duel.current.debug.boards[t].el.classList.contains('is-active')).join(','),
+    fleetIds: (team) => DT.st().teams[team].fleet.reduce((a, s) => a.concat(s.sounds), []),
+    logCount: () => document.querySelectorAll('.duel-dock .ctl-log-item').length,
+    visible: (e) => !!e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length > 0,
+  };
+  (function () {
+    const q = new URLSearchParams(location.search);
+    if (q.get('rm') === '1') document.documentElement.classList.add('reduce-motion');
+    const box = /^(\d+)x(\d+)$/.exec(q.get('box') || '');
+    if (box) {
+      const w = +box[1], h = +box[2], b = document.getElementById('box');
+      document.documentElement.classList.add('is-box');
+      b.style.width = w + 'px'; b.style.height = h + 'px';
+      const fit = () => { b.style.transform = 'scale(' + Math.min(1, innerWidth / w, innerHeight / h) + ')'; };
+      fit(); addEventListener('resize', fit);
+    }
+    if (q.get('manual') !== '1') G.duel.open({ resume: q.get('resume') === '1' });
+  })();
+</script>
+</body></html>
