@@ -32,7 +32,7 @@
 //   '따라 해 보기': levelConfig.help.followAlong이 켜진 단계에서, 쏠 수 있게 고른 뒤(자음 자리 + 방법, 모음 혀 자리 + 입술)
 //                  그 조합이 국어에 있는 소리일 때만. 없는 조합이면 중립 안내("준비됐으면 발사!")만 — 없다는 암시를 주지 않는다.
 //   기본 줄: 연습 = 다음에 고를 것 안내(TEXT.prompt) / 대결 = "소리 내어 외치고 발사!"
-//   넘치면 글씨를 줄이고(최소 12px) 그래도 넘치면 말줄임 — 줄바꿈은 하지 않는다.
+//   넘치면 글씨를 줄이고(최소 15px) 그래도 넘치면 말줄임 — 줄바꿈은 하지 않는다. 세로 배치에서는 '따라 해 보기' 딱지를 빼고 문장만 둔다.
 //
 // ── 배치 ────────────────────────────────────────────────────────────────
 //   가로: 아래 가운데 한 줄 [방법 카드 5][세기 카드 3 또는 입술 카드 2][발사], 터치 목표 64px 이상.
@@ -42,7 +42,7 @@ G.controls = (function () {
   const el = (...a) => G.util.el(...a);
   const T = () => window.TEXT;
   const PORTRAIT_MQ = '(max-width: 760px), (orientation: portrait)'; // css/base.css의 --touch 48px 기준과 같다
-  const MIN_FONT = 12;
+  const MIN_FONT = 15; // 학생이 휴대폰에서 읽을 수 있는 가장 작은 글씨
 
   function create(container, opts) {
     opts = opts || {};

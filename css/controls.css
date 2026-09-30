@@ -37,6 +37,7 @@
   font-weight: 700;
 }
 .ctl-msg--follow .ctl-msg-label { display: inline; }
+.ctl--portrait .ctl-msg--follow .ctl-msg-label { display: none; } /* 세로: 좁아서 딱지는 빼고 문장만(글씨 15px 이상 유지) */
 .ctl-msg[data-kind="message"] .ctl-msg-text { font-weight: 700; }
 .ctl-msg[data-kind="shout"] .ctl-msg-text { font-family: var(--font-title); font-weight: 700; color: var(--hit); }
 

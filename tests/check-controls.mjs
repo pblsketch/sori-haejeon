@@ -5,7 +5,8 @@
 //     '따라 해 보기'가 켜진 단계에서만 · 있는 소리에만 뜨는지, 대결 기본 줄, 문구가 언제나 한 줄인지,
 //     잠금(setEnabled · 발사 뒤), 신호 기록장, 한 줄 배치(가운데 아래), 터치 목표 64px 이상, 페이지 오류 0
 //  2) 세로: 두 줄 배치(방법 / 세기·입술 + 발사), 터치 목표 48px 이상, 가로 넘침 없음,
-//     '따라 해 보기' 29줄이 모두 한 줄에 말줄임 없이 들어가는지, 기록장이 접혀 있다가 단추로 펼쳐지는지, 페이지 오류 0
+//     '따라 해 보기' 29줄이 모두 한 줄에 말줄임 없이 15px 이상으로 들어가는지(딱지는 숨김), 기록장이 접혀 있다가 단추로 펼쳐지는지, 페이지 오류 0
+//  3) 더 좁은 세로 360×780: '따라 해 보기' 29줄이 15px 이상 한 줄, 긴 문구는 15px 말줄임
 //  캡처: tests/shots/controls-landscape.png, controls-portrait.png, controls-portrait-log.png
 import { step, frame } from './aside.mjs';
 
@@ -38,6 +39,23 @@ const msgLines = () => {
 };
 const overflowing = () => { const m = msgEl(); return m.scrollWidth > m.clientWidth + 1; };
 const box = (n) => n.getBoundingClientRect();
+// '따라 해 보기' 29줄: 세로에서 한 줄, 말줄임 없이, 글씨 15px 이상, '따라 해 보기' 딱지는 숨김
+const FOLLOW_IDS = ['ㅂ','ㅃ','ㅍ','ㄷ','ㄸ','ㅌ','ㄱ','ㄲ','ㅋ','ㅈ','ㅉ','ㅊ','ㅅ','ㅆ','ㅎ','ㅁ','ㄴ','ㅇ','ㄹ','ㅣ','ㅟ','ㅡ','ㅜ','ㅔ','ㅚ','ㅓ','ㅗ','ㅐ','ㅏ'];
+const followFits = (c, tag) => {
+  const sizes = {};
+  for (const id of FOLLOW_IDS) {
+    c.showFollow(id);
+    const fs0 = parseFloat(fw.getComputedStyle(msgEl()).fontSize);
+    sizes[id] = fs0;
+    if (msgKind() !== 'follow') bad(tag + ' 따라 해 보기 안 뜸 /' + id + '/');
+    if (msgLines() !== 1) bad(tag + ' 따라 해 보기가 한 줄이 아님 /' + id + '/');
+    if (overflowing()) bad(tag + ' 따라 해 보기가 잘림 /' + id + '/ (' + fs0 + 'px)');
+    if (fs0 < 15) bad(tag + ' 따라 해 보기 글씨가 15px 미만 /' + id + '/ (' + fs0 + 'px)');
+    if (fw.getComputedStyle($('.ctl-msg-label')).display !== 'none') bad(tag + ' 세로인데 따라 해 보기 딱지가 보임');
+  }
+  c.showFollow(null);
+  return sizes;
+};
 // 터치 목표: 크기와, 가운데 점을 눌렀을 때 그 단추가 맞는지
 const touchOk = (n, min) => {
   const b = box(n);
@@ -295,7 +313,7 @@ try {
   await sleep(500);
   const r2 = await tp.evaluate(() => {
     ${HELP}
-    const info = { rows: {}, shrink: {} };
+    const info = { rows: {} };
     try {
       if (fw.ctl.layout() !== 'portrait') bad('390×844에서 자동 배치가 세로가 아님: ' + fw.ctl.layout());
       const W = fw.innerWidth;
@@ -318,16 +336,8 @@ try {
         $$('.ctl-card').forEach((b) => { if (b.scrollWidth > b.clientWidth + 1) bad(tag + ': 카드 이름이 잘림: ' + b.textContent); });
         info.rows[tag] = { row1: t1[0], row2: t2[0] };
       }
-      // '따라 해 보기' 29줄: 세로에서도 한 줄, 말줄임 없이
-      const ids = ['ㅂ','ㅃ','ㅍ','ㄷ','ㄸ','ㅌ','ㄱ','ㄲ','ㅋ','ㅈ','ㅉ','ㅊ','ㅅ','ㅆ','ㅎ','ㅁ','ㄴ','ㅇ','ㄹ','ㅣ','ㅟ','ㅡ','ㅜ','ㅔ','ㅚ','ㅓ','ㅗ','ㅐ','ㅏ'];
       let c = fw.mount({ sea: 'consonant', level: 1 });
-      for (const id of ids) {
-        c.showFollow(id);
-        if (msgKind() !== 'follow') bad('세로 따라 해 보기 안 뜸 /' + id + '/');
-        if (msgLines() !== 1) bad('세로 따라 해 보기가 한 줄이 아님 /' + id + '/');
-        if (overflowing()) bad('세로 따라 해 보기가 잘림 /' + id + '/ (' + fw.getComputedStyle(msgEl()).fontSize + ')');
-        info.shrink[id] = fw.getComputedStyle(msgEl()).fontSize;
-      }
+      followFits(c, '세로 390');
       c.showFollow(null);
       // 기록장: 접혀 있다가 단추로 펼치고 접기
       c = fw.mount({ sea: 'consonant', level: 2 });
@@ -363,4 +373,28 @@ try {
   if (r2.errs.length) console.log('FAIL ' + r2.errs.slice(0, 30).join('\\nFAIL '));
   else if (!r2.pageErrs.length) console.log('PASS');
 } finally { await closeTab(tp); }
+`);
+
+step('휴대폰 세로 360×780: 따라 해 보기 29줄이 15px 이상 한 줄', `
+const t36 = await openTab(${JSON.stringify(frame(360, 780, PAGE))});
+try {
+  await t36.evaluate(() => window.frameReady);
+  await sleep(500);
+  const r3 = await t36.evaluate(() => {
+    ${HELP}
+    let sizes = null;
+    try {
+      if (fw.ctl.layout() !== 'portrait') bad('360×780에서 자동 배치가 세로가 아님');
+      sizes = followFits(fw.mount({ sea: 'consonant', level: 1 }), '세로 360');
+      // 긴 문구는 15px에서 말줄임(한 줄)
+      fw.ctl.setMessage('아주 긴 문구 '.repeat(20));
+      if (msgLines() !== 1 || parseFloat(fw.getComputedStyle(msgEl()).fontSize) < 15) bad('긴 문구가 한 줄 15px 이상이 아님');
+    } catch (e) { bad('예외: ' + (e && e.stack || e)); }
+    return { errs, pageErrs: fw.__soriErrors.slice(), sizes };
+  });
+  console.log(JSON.stringify(r3.sizes));
+  if (r3.pageErrs.length) console.log('FAIL 페이지 오류: ' + r3.pageErrs.join(' | '));
+  if (r3.errs.length) console.log('FAIL ' + r3.errs.slice(0, 30).join('\\nFAIL '));
+  else if (!r3.pageErrs.length) console.log('PASS');
+} finally { await closeTab(t36); }
 `);
