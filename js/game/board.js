@@ -19,7 +19,8 @@
 //   b.el                                     판의 뿌리 요소(.sb)
 //   b.render(보기)      조용히 다시 그린다(되살리기·새로고침). 보기 = { shots: Shot[], fleet: 쏘는 바다의 배(선택), reveal: bool }
 //                       또는 Shot[] 또는 판 상태(GameState, opts.shooter 기준). Shot은 G.rules의 기록 그대로.
-//   b.update(보기)      render와 같고, 지난번보다 늘어난 발만 연출한다(같은 줄 물결 한 번, 명중 도장, 격침 배 흔들림).
+//   b.update(보기)      render와 같고, 지난번보다 늘어난 발만 연출한다(같은 줄 물결 한 번, 명중 도장 + 큰 불꽃·소리 표기
+//                       1.4초(아무 데나 누르면 건너뜀), 빗나감 물보라 한 번, 격침 배 흔들림). 움직임 줄이기면 연출 없이 그린다.
 //   b.highlight(강조)   G.rules의 targets를 받아 물결을 한 번 퍼뜨린다 → Promise(끝나면). 흔적은 shots에서 그린다.
 //   b.revealFleet(배?)  끝날 때 남은 배 공개: 아직 안 맞힌 칸에 소리를 찍고 배마다 점선으로 잇는다.
 //   b.markSunk(번호)    그 배를 격침으로 표시(선 잇기 + 목록 불탄 그림 + 흔들림). 보통은 shots의 sunkShip으로 저절로 된다.
@@ -37,6 +38,7 @@
 //   G.board.soundMap(요소, { sea, grade, hitSounds })  → 판 객체(map 모드)  결과 화면·누적 소리 지도
 //   G.board.viewOf(판상태, 쏘는팀)                      → { shots, fleet, reveal:false }
 //   G.board.setImageBase('assets/img/')                 배 그림 폴더(ship3.webp, ship3_burnt.webp …). 그림이 없으면 코드로 그린 모양.
+//   · 바다 질감(sea_tile.webp)·물보라(splash.webp)는 css/board.css가 CSS 파일 기준 주소로 불러온다(그림이 없어도 색으로 보임).
 //
 // ── 숨김(단계, spec 4) ─────────────────────────────────────────────────
 //   칸 안 소리를 숨기는 단계에서는 25칸(12칸)을 모두 같은 모양으로 그린다: 빈칸·세기 자리·소리가 DOM 속성·글·aria
@@ -64,9 +66,11 @@ G.board = (function () {
   const reduced = () => U.reducedMotion();
 
   // ── 그림 조각(SVG, 코드로 그림) ─────────────────────────────
+  const FLAME = 'M50 6c6 16 22 24 22 44a22 22 0 0 1-44 0c0-9 4-15 9-20 0 8 3 13 8 15-2-14 1-27 5-39z';
+  const BURST_MS = 1400; // 명중 연출 길이(2초 이내, css/board.css의 sb-burst와 같이)
   const ICON = {
     // 명중: 불꽃
-    hit: '<path d="M50 6c6 16 22 24 22 44a22 22 0 0 1-44 0c0-9 4-15 9-20 0 8 3 13 8 15-2-14 1-27 5-39z" fill="currentColor"/>',
+    hit: '<path d="' + FLAME + '" fill="currentColor"/>',
     // 같은 줄: 번지는 물결 고리
     line: '<circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="50" cy="50" r="26" fill="none" stroke="currentColor" stroke-width="5" opacity=".7"/>',
     // 빗나감: 물보라
@@ -76,6 +80,8 @@ G.board = (function () {
     reveal: '',
   };
   function icon(kind) {
+    // 빗나감: 물보라 그림(assets/img/splash.webp, 8칸 스프라이트 — css/board.css). 방금 쏜 발만 한 번 튀고 마지막 칸에 멈춘다
+    if (kind === 'miss') return U.el('span', { class: 'sb-splash', 'aria-hidden': 'true' });
     if (!ICON[kind]) return null;
     const s = U.svg('svg', { class: 'sb-ico', viewBox: '0 0 100 100', 'aria-hidden': 'true', focusable: 'false', preserveAspectRatio: 'xMidYMid meet' });
     s.innerHTML = ICON[kind];
@@ -202,7 +208,10 @@ G.board = (function () {
       role: 'group', 'aria-label': TEXT.seaNames[sea],
     });
     const over = U.el('div', { class: 'sb-over', 'aria-hidden': 'true' });
+    // 칸 밑에 까는 바다 질감(assets/img/sea_tile.webp): 판과 같은 격자에서 칸 자리 전체를 덮는다(쏘는 바다만)
+    const under = U.el('div', { class: 'sb-under', 'aria-hidden': 'true' }, mode === 'play' ? U.el('div', { class: 'sb-seabed', style: 'grid-row:2 / span ' + R + ';grid-column:2 / span ' + C }) : null);
     const lines = U.svg('svg', { class: 'sb-lines', 'aria-hidden': 'true', focusable: 'false' });
+    root.appendChild(under);
     root.appendChild(U.el('div', { class: 'sb-corner' }));
     g.cols.forEach((k) => root.appendChild(U.el('div', { class: 'sb-ch' }, disp.names ? G.text.short(grade, g.cg, k) : '')));
     const cellEls = [];
@@ -279,7 +288,7 @@ G.board = (function () {
       const rf = U.clamp(Math.min(ch * 0.3, (hw - 6) / rLen), 10, 22);
       const cols = hw + 'px repeat(' + C + ', ' + cw + 'px)';
       const rows = hh + 'px ' + rowsH.map((h) => h + 'px').join(' ');
-      for (const e of [root, over]) {
+      for (const e of [root, over, under]) {
         e.style.gridTemplateColumns = cols; e.style.gridTemplateRows = rows; e.style.gap = gap + 'px';
       }
       root.style.setProperty('--sb-cw', cw + 'px');
@@ -480,6 +489,38 @@ G.board = (function () {
       e.classList.add('sb-fresh');
       timers.push(setTimeout(() => e.classList.remove('sb-fresh'), 700));
     }
+    // 물보라: 방금 빗나간 칸의 스프라이트를 한 번(0.7초) 튀게 한다. 움직임 줄이기면 마지막 칸 그대로
+    function splashNow(e) {
+      const sp = e && e.querySelector('.sb-splash');
+      if (!sp || reduced()) return;
+      sp.classList.remove('is-fresh'); void sp.offsetWidth; sp.classList.add('is-fresh');
+    }
+    // 명중 연출(spec 8.1): 그 칸 위에 큰 불꽃 + 소리 표기가 떴다가 1.4초 안에 사라진다. 아무 데나 누르면 곧바로 건너뛴다.
+    // 누름은 막지 않는다(pointer-events 없음) — 누른 단추·카드는 그대로 눌린다. 움직임 줄이기면 띄우지 않는다(칸의 도장만).
+    let burst = null, burstTimer = 0;
+    function endBurst() {
+      clearTimeout(burstTimer);
+      document.removeEventListener('pointerdown', endBurst, true);
+      document.removeEventListener('keydown', endBurst, true);
+      if (burst) { burst.remove(); burst = null; }
+    }
+    function burstAt(e, id) {
+      endBurst();
+      if (!e || destroyed || reduced()) return;
+      const rq = root.getBoundingClientRect(), q = e.getBoundingClientRect();
+      if (!q.width) return;
+      const d = Math.round(Math.max(q.width, q.height, 56) * 1.9);
+      const fl = U.svg('svg', { class: 'sb-burst-fire', viewBox: '0 0 100 100', 'aria-hidden': 'true', focusable: 'false' });
+      fl.innerHTML = '<path class="f-out" d="' + FLAME + '"/><path class="f-in" d="' + FLAME + '" transform="translate(50 62) scale(.58) translate(-50 -62)"/>';
+      burst = U.el('div', {
+        class: 'sb-burst', 'aria-hidden': 'true',
+        style: 'left:' + (q.left - rq.left + q.width / 2 - d / 2).toFixed(1) + 'px;top:' + (q.top - rq.top + q.height / 2 - d / 2).toFixed(1) + 'px;width:' + d + 'px;height:' + d + 'px;--bd:' + d + 'px',
+      }, [fl, U.el('span', { class: 'sb-burst-snd' }, slash(id))]);
+      root.appendChild(burst);
+      document.addEventListener('pointerdown', endBurst, true);
+      document.addEventListener('keydown', endBurst, true);
+      burstTimer = setTimeout(endBurst, BURST_MS);
+    }
 
     // ── 배치(place) ──
     function groupsFor(r, c) {
@@ -536,7 +577,8 @@ G.board = (function () {
         if (view.shots.length > before) {
           view.shots.slice(before).forEach((sh) => {
             if (sh.kind === 'line') highlight(sh.targets);
-            if (sh.sound && (sh.kind === 'hit')) freshen(anchors.get(sh.sound));
+            if (sh.sound && (sh.kind === 'hit')) { freshen(anchors.get(sh.sound)); burstAt(anchors.get(sh.sound), sh.sound); }
+            if (sh.sound && (sh.kind === 'miss')) splashNow(anchors.get(sh.sound));
           });
           const nowSunk = sunkList().filter((i) => prevSunk.indexOf(i) < 0);
           if (shipList && nowSunk.length) shipList.set(sunkList(), nowSunk[nowSunk.length - 1]);
@@ -568,6 +610,7 @@ G.board = (function () {
         destroyed = true;
         if (ro) ro.disconnect(); else window.removeEventListener('resize', layout);
         document.removeEventListener('pointerdown', onDocDown);
+        endBurst();
         timers.forEach(clearTimeout);
         if (shipList) shipList.destroy();
         root.remove();
