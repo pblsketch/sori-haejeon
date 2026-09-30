@@ -1,18 +1,17 @@
 /* 이 파일은 tools/build_fonts.py가 만든다. 손으로 고치지 말고 스크립트를 다시 돌리세요.
- * 글꼴: Hahmlet → SoriTitle(제목·표제 400/700)·SoriSound(판 위 소리 표기, 가장 굵게),
- *       Gowun Batang → SoriBody(본문·안내 400/700). 모두 OFL 1.1, 이름은 OFL 규칙대로 바꿈.
+ * 글꼴: Hahmlet → SoriTitle(로고·대제목 800), Pretendard → SoriUI(그 밖의 모든 UI·표·기록·안내와
+ *       판 위 소리 표기 500/600/700). 모두 OFL 1.1, 이름은 OFL 규칙대로 바꿈(예약 글꼴 이름을 쓰지 않음).
  * 쓰는 법: index.html에서 css/base.css 다음에 이 파일을 불러온다.
- *   base.css의 :root가 --font-title/--font-body/--font-sound를 원래 글꼴 이름으로 먼저 정하고,
+ *   base.css의 :root가 --font-title/--font-body/--font-sound를 대체 글꼴로 먼저 정하고,
  *   아래 :root가 같은 변수를 덮어써 부분 글꼴로 바꾼다(뒤에 불러온 쪽이 이김).
  *   변수의 주인은 base.css다. 여기서는 부분 글꼴 이름을 맨 앞에 더할 뿐이다.
- * SoriSound는 가장 굵은 굵기 하나뿐이라 font-weight 100~900 어느 값이든 이 글꼴을 쓴다(가짜 굵게 없음). */
-@font-face { font-family: 'SoriTitle'; src: url('../assets/fonts/title-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SoriTitle'; src: url('../assets/fonts/title-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SoriSound'; src: url('../assets/fonts/sound-900.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SoriBody'; src: url('../assets/fonts/body-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SoriBody'; src: url('../assets/fonts/body-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+ * 굵기 설명자를 범위로 두어(예: 700 900) 적힌 굵기 밖의 값에서도 가짜 굵게가 생기지 않게 했다. */
+@font-face { font-family: 'SoriTitle'; src: url('../assets/fonts/title-800.woff2') format('woff2'); font-weight: 600 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'SoriUI'; src: url('../assets/fonts/ui-500.woff2') format('woff2'); font-weight: 400 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'SoriUI'; src: url('../assets/fonts/ui-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'SoriUI'; src: url('../assets/fonts/ui-700.woff2') format('woff2'); font-weight: 700 900; font-style: normal; font-display: swap; }
 :root {
-  --font-title: 'SoriTitle', 'Hahmlet', 'Noto Serif KR', serif;
-  --font-body: 'SoriBody', 'Gowun Batang', 'Noto Serif KR', serif;
-  --font-sound: 'SoriSound', 'Hahmlet', 'Noto Serif KR', serif; /* 판 위 소리 표기 */
+  --font-title: 'SoriTitle', 'Noto Serif KR', serif;
+  --font-body: 'SoriUI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+  --font-sound: 'SoriUI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; /* 판 위 소리 표기(700) */
 }
