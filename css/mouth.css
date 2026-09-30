@@ -1,0 +1,78 @@
+/* 입안 단면도(G.mouth). 색은 base.css 값을 쓰고, 단면도에만 쓰는 살·혀 색은 여기 둔다. */
+.mouth {
+  --mouth-tissue: #F1D9CE;       /* 살 */
+  --mouth-tissue-line: #B88C7E;
+  --mouth-tongue: #D88F88;       /* 혀 */
+  --mouth-tongue-line: #A45F5A;
+  --mouth-way: #FCFCFA;          /* 공기 길(입안·콧길·목구멍) */
+  --mouth-bar: var(--ink);       /* 막음 표시 */
+  --mouth-tight: var(--hit);     /* 목청 조임 표시 */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+.mouth-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: visible;
+}
+.mouth-tissue { fill: var(--mouth-tissue); stroke: var(--mouth-tissue-line); stroke-width: 1.5; stroke-linejoin: round; }
+.mouth-air-way { fill: var(--mouth-way); stroke: var(--mouth-tissue-line); stroke-width: 1.5; stroke-linejoin: round; }
+.mouth-tongue { fill: var(--mouth-tongue); stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; }
+.mouth-teeth { fill: #fff; stroke: var(--ink-3); stroke-width: 1.2; stroke-linejoin: round; }
+.mouth-lip { fill: #E4A79C; stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; }
+.mouth-lip-hole { fill: #5b2f2c; }
+.mouth-lipinset.is-unset { opacity: 0.45; }
+
+/* 콧길 문 */
+.mouth-door rect { fill: var(--sea); }
+.mouth-door .mouth-door-hinge { fill: var(--sea); stroke: #fff; stroke-width: 1.5; }
+.mouth-door { transition: transform 0.2s ease-out; }
+.mouth-door[data-state="open"] rect { fill: var(--ui); }
+
+/* 목청 */
+.mouth-fold { fill: #C77F77; stroke: var(--mouth-tongue-line); stroke-width: 1; }
+.mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 자리 고리 */
+.mouth-spot { fill: rgba(255, 255, 255, 0.55); stroke: var(--ui); stroke-width: 1.6; stroke-dasharray: 3 3; pointer-events: none; }
+.mouth-spot.is-selected { fill: rgba(31, 111, 107, 0.18); stroke-dasharray: none; stroke-width: 2.6; }
+/* 모음 칸(2×3) */
+.mouth-cell { fill: rgba(255, 255, 255, 0.28); stroke-width: 1.4; }
+.mouth-cell.is-selected { fill: rgba(31, 111, 107, 0.16); }
+
+/* 막음 표시 */
+.mouth-bar { fill: var(--mouth-bar); }
+.mouth-bar-pending { fill: rgba(255, 255, 255, 0.7); stroke: var(--mouth-bar); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.mouth-bar-dotted { stroke: var(--mouth-bar); stroke-width: 7; stroke-dasharray: 3.5 3; }
+.mouth-closure { pointer-events: none; }
+
+/* 공기 입자: 밝은 바탕에서도 보이게 테두리를 둔다 */
+.mouth-particles { pointer-events: none; }
+.mouth-particle { fill: var(--air); stroke: var(--sea); stroke-width: 1.3; }
+.mouth-particle.is-far { opacity: 0.45; }
+
+/* 자리 이름(단계에 따라 숨김) */
+.mouth-labels { pointer-events: none; }
+.mouth-label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.mouth-label-sub { font-size: 12px; font-weight: 400; fill: var(--ink-2); }
+
+/* 누르는 곳(보이지 않음) */
+.mouth-hit { fill: transparent; stroke: none; cursor: pointer; }
+.mouth-hit:focus { outline: none; }
+.mouth-hit:focus-visible { stroke: var(--ui); stroke-width: 2; stroke-dasharray: 4 3; }
