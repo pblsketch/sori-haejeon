@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>바다(판) 점검</title>
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/board.css">
+<style>
+  /* 점검 전용 배치. 게임 화면 배치는 T10·T11이 정한다. */
+  body { margin: 0; }
+  #stage { padding: 16px; }
+  .wide { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; height: calc(100vh - 32px); }
+  .wide .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .wide .sea { flex: 1; min-height: 0; }
+  .wide .mouth { background: #d7dcd8; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #6b736e; }
+  .phone { display: flex; flex-direction: column; gap: 8px; height: calc(100vh - 16px); padding: 8px 0; }
+  .phone .mouth { height: 190px; flex: none; background: #d7dcd8; border-radius: 12px; }
+  .phone .sea { flex: 1; min-height: 0; }
+  .phone .ctl { height: 104px; flex: none; background: #cfd8d4; border-radius: 12px; }
+  .phone .top { flex: none; }
+  .tag { font: 14px/1.2 var(--font-body); color: var(--ink-2); margin: 0; }
+</style>
+</head><body>
+<div id="stage"></div>
+<script src="../../js/core/util.js"></script>
+<script src="../../js/data/sounds.js"></script>
+<script src="../../js/data/fleets.js"></script>
+<script src="../../js/data/levels.js"></script>
+<script src="../../js/data/text.js"></script>
+<script src="../../js/core/rules.js"></script>
+<script src="../../js/game/board.js"></script>
+<script>
+  // 점검 도우미: 규칙 엔진으로 진짜 판 상태를 만든다.
+  //   BT.play(바다, 단계, 함대, 쏠 소리들) → { state, outcomes }
+  //   쏠 것은 소리 id('ㄱ') 또는 조합 객체({ place, manner, strength })
+  window.BT = {
+    play(sea, level, fleet, shots, opts) {
+      opts = opts || {};
+      let state = G.rules.newGame({ mode: 'practice', grade: opts.grade || 'm3', sea, level, fleet, rng: G.rules.makeRng(7) });
+      const outcomes = [];
+      for (const s of shots) {
+        const input = typeof s === 'string' ? G.rules.inputOf(s) : s;
+        const r = G.rules.fire(state, input);
+        state = r.state; outcomes.push(r.outcome);
+      }
+      return { state, outcomes };
+    },
+    // 자음 2단계 대표 사례(여러 신호가 쌓임, 한 칸에 여러 표시, 격침)
+    c2() {
+      return BT.play('consonant', 2, [
+        { size: 3, sounds: ['ㅂ', 'ㅃ', 'ㅍ'] }, { size: 2, sounds: ['ㄱ', 'ㅇ'] }, { size: 1, sounds: ['ㅎ'] },
+      ], ['ㄲ', 'ㄱ', 'ㅁ', 'ㅈ',
+        { place: 'palatal', manner: 'stop', strength: 'tense' }, { place: 'palatal', manner: 'stop', strength: 'plain' },
+        { place: 'alveolar', manner: 'fricative', strength: 'aspirated' }, 'ㅂ', 'ㅃ', 'ㅍ']);
+    },
+    // 자음 1단계 사례
+    c1() {
+      return BT.play('consonant', 1, [
+        { size: 2, sounds: ['ㄷ', 'ㄴ'] }, { size: 1, sounds: ['ㅇ'] }, { size: 1, sounds: ['ㄹ'] },
+      ], ['ㅅ', 'ㄴ', 'ㄷ', 'ㅂ', { place: 'bilabial', manner: 'fricative', strength: null }]);
+    },
+  };
+  G.board.setImageBase('../../assets/img/');
+
+  // ?view=wide | phone | map-phone  (크기별 틀 frame.html 안에서 보려고)
+  (function () {
+    const q = new URLSearchParams(location.search);
+    const view = q.get('view');
+    if (!view) return;
+    const stage = document.getElementById('stage');
+    const el = G.util.el;
+    const grade = q.get('grade') || 'm3';
+    if (view === 'wide') {
+      stage.innerHTML = '';
+      const w = el('div', { class: 'wide' });
+      const left = el('div', { class: 'col' }), mid = el('div', { class: 'col mouth' }, '단면도 자리'), right = el('div', { class: 'col' });
+      w.append(left, mid, right); stage.append(w);
+      // 왼쪽: 자음 2단계(숨김) 판 + 남은 배 + 배 종류
+      const g1 = BT.c2();
+      const ships1 = el('div'), sea1 = el('div', { class: 'sea' }), leg1 = el('div');
+      left.append(ships1, sea1, leg1);
+      const b1 = G.board.create(sea1, { sea: 'consonant', level: 2, grade, mode: 'play', fitHeight: true, shipsEl: ships1 });
+      b1.render({ shots: g1.state.teams.player.shots, fleet: g1.state.teams.enemy.fleet });
+      G.board.legend(leg1, { sea: 'consonant' });
+      // 오른쪽: 자음 1단계(보임) 판, 끝나서 공개
+      const g2 = BT.c1();
+      const ships2 = el('div'), sea2 = el('div', { class: 'sea' }), leg2 = el('div');
+      right.append(ships2, sea2, leg2);
+      const b2 = G.board.create(sea2, { sea: 'consonant', level: 1, grade, mode: 'play', fitHeight: true, shipsEl: ships2 });
+      b2.render({ shots: g2.state.teams.player.shots, fleet: g2.state.teams.enemy.fleet, reveal: true });
+      G.board.legend(leg2, { sea: 'consonant' });
+      window.__boards = [b1, b2];
+    } else if (view === 'phone') {
+      const lv = +(q.get('lv') || 1);
+      const sea = q.get('sea') || 'consonant';
+      stage.style.padding = '0 16px';
+      const p = el('div', { class: 'phone' });
+      const top = el('div', { class: 'top' }), mouth = el('div', { class: 'mouth' }), seaEl = el('div', { class: 'sea' }), ctl = el('div', { class: 'ctl' });
+      p.append(top, mouth, seaEl, ctl); stage.append(p);
+      let g;
+      if (sea === 'vowel') g = BT.play('vowel', lv, [{ size: 3, sounds: ['ㅣ', 'ㅔ', 'ㅐ'] }, { size: 2, sounds: ['ㅡ', 'ㅜ'] }, { size: 1, sounds: ['ㅗ'] }], ['ㅟ', 'ㅏ', 'ㅣ', { backness: 'front', height: 'low', lips: 'rounded' }]);
+      else g = lv === 1 ? BT.c1() : BT.c2();
+      const b = G.board.create(seaEl, { sea, level: lv, grade, mode: 'play', fitHeight: true, shipsEl: top, compactShips: true });
+      b.render({ shots: g.state.teams.player.shots, fleet: g.state.teams.enemy.fleet });
+      window.__boards = [b];
+    } else if (view === 'map-phone' || view === 'map-wide') {
+      stage.append(el('p', { class: 'tag' }, '자음'));
+      const m1 = el('div'); stage.append(m1);
+      G.board.soundMap(m1, { sea: 'consonant', grade, hitSounds: ['ㄱ', 'ㄲ', 'ㅇ', 'ㅅ', 'ㄹ', 'ㅎ'] });
+      stage.append(el('p', { class: 'tag' }, '모음'));
+      const m2 = el('div'); stage.append(m2);
+      G.board.soundMap(m2, { sea: 'vowel', grade, hitSounds: ['ㅟ', 'ㅏ'] });
+    } else if (view === 'place') {
+      const lv = +(q.get('lv') || 3);
+      const seaEl = el('div', { style: 'height: calc(100vh - 32px)' }); stage.append(seaEl);
+      const L = G.rules.level('consonant', lv);
+      let fleet = G.rules.addShip(L, [], ['ㄱ', 'ㄲ', 'ㅋ']);
+      const b = G.board.create(seaEl, { sea: 'consonant', level: lv, grade, mode: 'place', fitHeight: true, onPick() {} });
+      b.setPlaced(fleet);
+      b.setPlaceable(G.rules.placeableGroups(L, fleet));
+      window.__boards = [b];
+    }
+  })();
+</script>
+</body></html>
