@@ -17,8 +17,12 @@ if (!files.length) { console.log('점검 파일이 없습니다.'); process.exit
 let server = null;
 const env = { ...process.env };
 if (!env.BASE) {
-  const port = +(env.PORT || 8791);
-  server = await startServer(port);
+  // 다른 점검이 같은 포트를 쓰고 있으면 다음 포트로 넘어간다
+  let port = +(env.PORT || 8791);
+  for (let i = 0; i < 20 && !server; i++, port++) {
+    try { server = await startServer(port); } catch (e) { if (e.code !== 'EADDRINUSE') throw e; }
+  }
+  if (!server) throw new Error('점검용 서버를 띄울 포트가 없습니다');
   env.BASE = server.base;
 }
 const results = [];
