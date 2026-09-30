@@ -55,10 +55,10 @@
 /* 목청: 단면도에서는 성대 높이만 옅게, 여닫힘은 '위에서 본 성대' 작은 그림 */
 .mouth-fold-side { fill: var(--mouth-fold); opacity: .45; stroke: none; }
 .mouth-larynx { fill: var(--mouth-tissue-2); stroke: var(--mouth-line); stroke-width: 1.2px; }
-.mouth-glottis-hole { fill: #5A3431; }
+.mouth-glottis-hole { fill: #3E2523; }
 .mouth-glottis-seam { fill: none; stroke: var(--mouth-line); stroke-width: 1px; }
 .mouth-vib path { fill: none; stroke: var(--mouth-line); stroke-width: 1.4px; stroke-linecap: round; }
-.mouth-svg .mouth-fold { fill: none; stroke: var(--mouth-fold); stroke-linecap: round; vector-effect: none; }
+.mouth-svg .mouth-fold { fill: var(--mouth-fold); stroke: var(--mouth-line); stroke-width: 1px; stroke-linejoin: round; }
 .mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 2.2px; stroke-linecap: round; stroke-linejoin: round; }
 /* 비음: 콧길로 나가는 길 */
 .mouth-route path { fill: none; stroke: var(--air); stroke-width: 1.4px; stroke-dasharray: 4 4; opacity: .55; }

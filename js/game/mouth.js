@@ -270,33 +270,38 @@ G.mouth = (function () {
     routeG.appendChild(U.svg('path', { class: 'mouth-route-head', d: `M${ah(0.5).map(f1).join(',')} L${ne.join(',')} L${ah(-0.5).map(f1).join(',')}` }));
     const partG = g('mouth-particles');
     layer = svg;
-    // 앞에서 본 입술(모음 바다, 턱 앞 빈 곳) + 이름
+    // 작은 그림 두 개(턱 아래 빈 곳): 휴대폰처럼 작은 화면에서도 읽히게 단면도와 따로 키운다(sizeLabels)
+    // 앞에서 본 입술(모음 바다) + 이름
     const li = S.lipInset;
     const insetG = g('mouth-lipinset');
+    const lipBody = g('mouth-inset-body', insetG);
     const insetOuter = U.svg('ellipse', { cx: li.x, cy: li.y, class: 'mouth-lip' });
     const insetHole = U.svg('ellipse', { cx: li.x, cy: li.y, class: 'mouth-lip-hole' });
-    insetG.appendChild(insetOuter); insetG.appendChild(insetHole);
-    const insetCap = U.svg('text', { class: 'mouth-caption', x: li.x, y: li.y + 34, 'text-anchor': 'middle' });
+    lipBody.appendChild(insetOuter); lipBody.appendChild(insetHole);
+    const insetCap = U.svg('text', { class: 'mouth-caption', x: 2, y: li.y - 20, 'text-anchor': 'start' });
     insetCap.textContent = window.TEXT.mouthParts.lipsFront;
     insetG.appendChild(insetCap);
-    // 위에서 본 성대(목 뒤 살): 앞(왼쪽) 끝이 붙은 두 성대 사이 틈(성문)이 열리고 닫힌다. 된소리는 조임 표시
+    // 위에서 본 성대: 앞(왼쪽) 끝이 붙은 두 성대, 그 사이 성문(짙은 면)이 열리고 닫힌다. 된소리는 조임 표시, 울림은 떨림 물결.
+    // 단면도의 후두(성대 높이)와 가는 선으로 잇는다.
     const gi = gl.inset;
     const glottisG = g('mouth-glottis');
-    glottisG.appendChild(U.svg('ellipse', { class: 'mouth-larynx', cx: gi.x, cy: gi.y, rx: gi.w / 2, ry: gi.h / 2 }));
+    const gCall = U.svg('line', { class: 'mouth-lead' });
+    glottisG.appendChild(gCall);
+    const gBody = g('mouth-inset-body', glottisG);
+    gBody.appendChild(U.svg('ellipse', { class: 'mouth-larynx', cx: gi.x, cy: gi.y, rx: gi.w / 2, ry: gi.h / 2 }));
     const gHole = U.svg('path', { class: 'mouth-glottis-hole' });
     const foldF = U.svg('path', { class: 'mouth-fold' }), foldB = U.svg('path', { class: 'mouth-fold' });
     const gSeam = U.svg('path', { class: 'mouth-glottis-seam' }); // 닫혀도 두 성대의 경계가 보이게
-    glottisG.appendChild(gHole); glottisG.appendChild(foldF); glottisG.appendChild(foldB); glottisG.appendChild(gSeam);
-    // 울림(떨림) 표시: 작은 그림 양옆의 물결
-    const vibG = g('mouth-vib', glottisG);
+    gBody.appendChild(gHole); gBody.appendChild(foldF); gBody.appendChild(foldB); gBody.appendChild(gSeam);
+    const vibG = g('mouth-vib', gBody);
     [-1, 1].forEach((dir) => { const x = gi.x + dir * (gi.w / 2 + 5); vibG.appendChild(U.svg('path', { d: `M${x},${gi.y - 9} q${dir * 4},3 0,6 q${-dir * 4},3 0,6 q${dir * 4},3 0,6` })); });
-    const gCap = U.svg('text', { class: 'mouth-caption', x: gi.x, y: gi.y + gi.h / 2 + 12, 'text-anchor': 'middle' });
-    gCap.textContent = window.TEXT.mouthParts.glottisTop;
-    glottisG.appendChild(gCap);
-    const tightG = g('mouth-tight', glottisG);
+    const tightG = g('mouth-tight', gBody);
     [[gi.y - gi.h / 2 - 1, 1], [gi.y + gi.h / 2 + 1, -1]].forEach(([y, dir]) => {
       tightG.appendChild(U.svg('path', { d: `M${gi.x - 8},${y - dir * 6} L${gi.x},${y} L${gi.x + 8},${y - dir * 6}` }));
     });
+    const gCap = U.svg('text', { class: 'mouth-caption', x: gi.x, y: gi.y + gi.h / 2 + 12, 'text-anchor': 'middle' });
+    gCap.textContent = window.TEXT.mouthParts.glottisTop;
+    glottisG.appendChild(gCap);
     const targetRing = U.svg('circle', { class: 'mouth-target', r: 7 }); // 모음: 고른 자리(혓몸 가장 높은 곳)
     svg.appendChild(targetRing);
     const labelsG = g('mouth-labels');
@@ -344,13 +349,15 @@ G.mouth = (function () {
       svg.setAttribute('data-velum', f1(ps.v));
       // 목청(위에서 본 성대): 조이면(sq) 성대가 두꺼워지며 붙는다
       // 된소리 조임은 성문을 좁히되(가는 틈) 닫지는 않는다 — 완전히 닫힘은 목청 자리의 막음뿐
-      const gh = ps.g * (1 - 0.75 * ps.sq), gi2 = gl.inset, ax = gi2.x - gi2.w * 0.36, px = gi2.x + gi2.w * 0.3, o = gh * 1.9;
-      gSeam.setAttribute('d', o < 0.6 ? `M${f1(ax)},${gi2.y} L${f1(px)},${gi2.y}` : '');
+      let gh = ps.g * (1 - 0.75 * ps.sq);
+      if (ps.sq > 0.3 && ps.g > 0.5) gh = Math.max(gh, 2.2);
+      const gi2 = gl.inset, ax = gi2.x - gi2.w * 0.36, px = gi2.x + gi2.w * 0.32, o = gh * 1.9, y0 = gi2.y, th = 6 + ps.sq * 2.5;
+      // 성대는 성문 바깥쪽에 놓인 쐐기(성문을 덮지 않음), 성문은 그 사이의 짙은 면
+      foldF.setAttribute('d', `M${f1(ax)},${y0} L${f1(px)},${f1(y0 - o)} L${f1(px)},${f1(y0 - o - th)} L${f1(ax + 5)},${f1(y0 - 2.4)} Z`);
+      foldB.setAttribute('d', `M${f1(ax)},${y0} L${f1(px)},${f1(y0 + o)} L${f1(px)},${f1(y0 + o + th)} L${f1(ax + 5)},${f1(y0 + 2.4)} Z`);
+      gHole.setAttribute('d', o > 0.3 ? `M${f1(ax)},${y0} L${f1(px)},${f1(y0 - o)} L${f1(px)},${f1(y0 + o)} Z` : '');
+      gSeam.setAttribute('d', o < 0.6 ? `M${f1(ax)},${y0} L${f1(px)},${y0}` : '');
       vibG.style.display = (ps.vib || 0) > 0.3 ? '' : 'none';
-      foldF.setAttribute('d', `M${f1(ax)},${gi2.y} L${f1(px)},${f1(gi2.y - o)}`);
-      foldB.setAttribute('d', `M${f1(ax)},${gi2.y} L${f1(px)},${f1(gi2.y + o)}`);
-      foldF.style.strokeWidth = foldB.style.strokeWidth = f1(5 + ps.sq * 2);
-      gHole.setAttribute('d', o > 0.3 ? `M${f1(ax + 3)},${gi2.y} L${f1(px)},${f1(gi2.y - o + 2)} L${f1(px)},${f1(gi2.y + o - 2)} Z` : '');
       tightG.style.opacity = ps.sq > 0.02 ? String(Math.min(1, ps.sq * 1.4)) : '0';
       tightG.style.display = ps.sq > 0.02 ? '' : 'none';
       const glottis = ps.sq > 0.5 ? 'tight' : info.place === 'glottal' && ps.g < 0.4 ? 'closed' : info.place === 'glottal' && ps.g <= gl.half.narrow + 0.6 ? 'narrow' : (ps.vib || 0) > 0.5 ? 'voiced' : 'normal';
@@ -446,10 +453,11 @@ G.mouth = (function () {
       applyNames();
       sizeLabels();
     }
-    let labelFs = 18;
+    let labelFs = 18, lastScale = 0;
     function sizeLabels() {
       const rect = svg.getBoundingClientRect();
       const scale = Math.min(rect.width / M.VIEW.w, rect.height / M.VIEW.h);
+      lastScale = scale > 0 ? scale : lastScale;
       const px = parseFloat(getComputedStyle(container).getPropertyValue('--mouth-label')) || 16;
       const band = M.labelBand[1] - M.labelBand[0];
       labelFs = U.clamp(scale > 0 ? px / scale : 18, 11, band / 2.3);
@@ -473,10 +481,18 @@ G.mouth = (function () {
     }
     function layoutLabels() {
       const lf = labelFs, lh = lf * 1.12, B = M.labelBand;
-      insetCap.style.fontSize = f1(lf * 0.72) + 'px';
-      insetCap.setAttribute('y', f1(S.lipInset.y + 18 + lf * 0.72));
-      gCap.style.fontSize = f1(Math.min(lf * 0.72, 13)) + 'px';
-      gCap.setAttribute('y', f1(Math.min(M.VIEW.h - 2, gl.inset.y + gl.inset.h / 2 + 9 + Math.min(lf * 0.72, 13))));
+      // 작은 그림: 화면에서 너비 약 52px 이상이 되게 따로 키우고(최대 1.35배), 이름은 화면 12px 이상
+      const gi3 = gl.inset, li3 = S.lipInset;
+      const kG = U.clamp(52 / (gi3.w * (lastScale || 1)), 1, 1.35), kL = U.clamp(48 / (56 * (lastScale || 1)), 1, 1.35);
+      const around = (x, y, k) => `translate(${x},${y}) scale(${f1(k)}) translate(${-x},${-y})`;
+      gBody.setAttribute('transform', around(gi3.x, gi3.y, kG));
+      lipBody.setAttribute('transform', around(li3.x, li3.y, kL));
+      const cu = U.clamp(12 / (lastScale || 1), 7, 24);
+      gCap.style.fontSize = insetCap.style.fontSize = f1(cu) + 'px';
+      gCap.setAttribute('y', f1(Math.min(M.VIEW.h - 2, gi3.y + (gi3.h / 2) * kG + 9 + cu * 0.9)));
+      insetCap.setAttribute('y', f1(li3.y + 17 * kL + 4 + cu * 0.9));
+      gCall.setAttribute('x1', f1(gi3.x + (gi3.w / 2) * kG)); gCall.setAttribute('y1', f1(gi3.y));
+      gCall.setAttribute('x2', gl.front); gCall.setAttribute('y2', gl.y);
       labelRecs.forEach((L) => {
         L.main.style.fontSize = f1(lf) + 'px';
         if (L.vh) { // 모음 높이: 오른쪽 목 뒤 살, 그 높이의 안내선 끝
