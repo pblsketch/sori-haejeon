@@ -1,0 +1,34 @@
+/* 공통 색·크기 값. 역할별 색은 그림체가 정해지면 T13에서 값만 바꾼다(다크 모드 없음). */
+:root {
+  --paper: #EEF0EA;      /* 밝은 바탕 */
+  --ink: #1E2320;        /* 글씨·선 */
+  --ink-2: #4a524d;
+  --ink-3: #7d857f;
+  --sea: #2E5266;        /* 바다·신호 물결 */
+  --sea-2: #d9e3e8;
+  --ui: #1F6F6B;         /* 조작 UI */
+  --hit: #A8342B;        /* 명중 */
+  --air: #8FC7B8;        /* 공기 입자 */
+  --touch: 64px;         /* 터치 목표(가로) */
+  --radius: 12px;
+  --font-title: 'Hahmlet', 'Noto Serif KR', serif;
+  --font-body: 'Gowun Batang', 'Noto Serif KR', serif;
+  --font-sound: 'Hahmlet', 'Noto Serif KR', serif; /* 판 위 소리 표기(가장 굵게) */
+}
+@media (max-width: 760px), (orientation: portrait) {
+  :root { --touch: 48px; } /* 휴대폰 세로 배치 */
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+button { font: inherit; color: inherit; }
+#app { min-height: 100%; }
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }

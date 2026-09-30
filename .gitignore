@@ -1,0 +1,8 @@
+.dryforge
+.omc
+tests/node_modules
+tests/shots
+tools/fonts_src
+assets/raw
+__pycache__
+*.pyc

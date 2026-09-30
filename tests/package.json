@@ -1,0 +1,8 @@
+{
+  "name": "sori-haejeon-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run-all.mjs"
+  }
+}
