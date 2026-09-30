@@ -5,7 +5,7 @@
 <!-- 점검 전용: 입안 단면도(G.mouth)만 따로 띄운다. index.html 등록은 연결 단계에서 한다.
      ?sea=consonant|vowel  &grade=m3|h1  &names=0(이름 숨김)  &reduce=1(움직임 줄이기)
      &w=360&h=640  → 그 크기의 세로 상자 안에 띄운다(캡처용. aside는 frame.html 안을 캡처하지 못해서 따로 둠)
-     window.mouth = 만든 단면도, window.picks = 누른 자리 기록 -->
+     window.mouth = 만든 단면도(보여 주기 전용 — 누르는 자리가 없다) -->
 <link rel="stylesheet" href="../../css/base.css">
 <link rel="stylesheet" href="../../css/fonts.css">
 <link rel="stylesheet" href="../../css/mouth.css">
@@ -36,10 +36,8 @@
     sg.classList.add('fixed'); document.body.classList.add('fixed-page');
     sg.style.width = q.get('w') + 'px'; sg.style.height = (q.get('h') || 640) + 'px';
   }
-  window.picks = [];
   window.mouth = G.mouth.create(document.getElementById('box'), {
     sea: q.get('sea') || 'consonant', grade: q.get('grade') || 'm3', showNames: q.get('names') !== '0',
-    onPick(id) { window.picks.push(id); },
   });
 </script>
 </body></html>

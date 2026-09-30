@@ -3,11 +3,12 @@
 //     → 일반 판(무작위 함대, state.id, 저장) → 턴을 안 쓰는 결과(이번 바다에 없는 칸 · 이미 쏜 소리) → 끝까지 → G.app.finishGame
 //  2) 가로: 자음 1단계 턴 소진(남은 배 공개 → finishGame 실패 판) · 모음 1단계 끝까지(없는 소리·이미 쏜 소리 포함)
 //  3) 가로: 자음 2단계 숨김(칸 안 소리가 DOM 어디에도 없음 — 쏜 칸 도장·기록장만) · '처음으로' · 새로고침 뒤 이어서 하기(판·기록장·턴 그대로)
-//  4) 세로 틀 390×844 · 360×740(T17 새 배치, spec 6.2): 윗줄(남은 배·턴) → 바다 → 한 줄 문구 → 하단 조작부
-//     ([1 위치 · 요약 줄] / 방법 / 세기·입술 + 발사 + 기록), 조작 단추가 모두 화면 아래 45% 안(한 손), 조작부가 바다의 마지막 줄을
-//     가리지 않음, '위치' 단추 → 아래 패널(단면도)이 열리고 자리를 고르면 닫힘, 발사하면 패널이 잠깐 떠서 공기 흐름을 보여 준 뒤 닫힘,
-//     스크롤 없이 한 발, 가로 넘침 없음, 기록장 접힘/펼침, 터치 목표 48px, 방향 바뀜(가로↔세로)에도 판 그대로,
-//     낮은 가로 화면은 '세로로 돌려 주세요'. 가로의 기록장은 조작부 안 최근 세 발 띠
+//  (T19) 고르기는 모두 아래 조작부의 카드로 한다(① 자리 ② 방법 ③ 세기 / 모음 ① 높이 ② 앞뒤 ③ 입술). 단면도는 보여 주기 전용 —
+//     누르는 요소가 없고, 카드를 고르면 단면도 모양이 따라 바뀌며(data-place·data-vowel·data-manner), 발사하면 조음 동작을 재생한다.
+//  4) 세로 틀 390×844 · 360×740(spec 6.2 선생님 결정): 윗줄(남은 배·턴) → 입안 단면도(위 반) · 적 바다(아래 반, 둘 다 늘 보임, 겹침 없음)
+//     → 한 줄 문구 → 하단 고정 조작부([요약 줄 · 기록 N] / ① / ② / ③ + 발사), 조작 단추가 모두 화면 아래 45% 안(한 손),
+//     스크롤 없이 한 발, 가로 넘침 없음, 기록장 접힘/펼침, 터치 목표 48px·발사 56px, 방향 바뀜(가로↔세로)에도 판 그대로,
+//     낮은 가로 화면은 '세로로 돌려 주세요'. 가로의 기록장은 조작부 안 최근 세 발 띠. 가로: ①②③ 카드가 모두 화면 아래 35% 안
 //  5) 캡처: tests/shots/practice-landscape.png, practice-portrait-390.png, practice-portrait-360.png
 //  모든 조각에서 페이지 오류(window.__soriErrors) 0.
 //  점검 드라이버만 숨은 함대를 G.practice.debug().state에서 읽는다(화면에는 드러나지 않음).
@@ -46,28 +47,29 @@ const tapPoint = (n, what) => {
   if (x < 0 || y < 0 || x > fw.innerWidth || y > fw.innerHeight) bad(what + ': 화면 밖(' + Math.round(x) + ',' + Math.round(y) + ')');
   return { x, y };
 };
-const sheetOpen = () => { const sh = $('.pr-sheet'); return !!sh && sh.classList.contains('is-open'); };
-// 패널이 올라오는 0.2초 움직임을 끝난 자리로 곧바로(점검이 바로 누르므로 — 사람은 올라온 뒤 누른다)
-const settleSheet = () => { const sh = $('.pr-sheet'); if (!sh) return; sh.style.transition = 'none'; void sh.offsetHeight; sh.style.transition = ''; };
-const pickMouth = (id) => {
-  const h = $('.mouth-hit[data-id="' + id + '"]');
-  if (!h) { bad('단면도 자리 없음 ' + id); return; }
-  // 세로: '위치' 단추로 아래 패널을 열어야 단면도를 누를 수 있다
-  const pb = $('.ctl-placebtn');
-  if (pb && fw.getComputedStyle(pb).display !== 'none' && !sheetOpen()) { tapPoint(pb, '위치 단추'); pb.click(); if (!sheetOpen()) bad('위치 단추를 눌러도 패널이 안 열림'); settleSheet(); }
-  const p = tapPoint(h, '단면도 ' + id);
-  h.ownerSVGElement.dispatchEvent(new fw.PointerEvent('pointerdown', { clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }));
-};
 const card = (g, id) => $('.ctl-card[data-group="' + g + '"][data-id="' + id + '"]');
 const tap = (n, what) => { if (!n) { bad('없음: ' + what); return; } tapPoint(n, what); n.click(); };
+const msvg = () => $('.mouth-svg');
+// 자리 고르기: 아래 조작부의 ① 카드(자음 자리 / 모음 높이 + 앞뒤) — 단면도가 그 자리를 보여 주는지도 본다
+const pickPlace = (id) => {
+  if (st().sea === 'vowel') {
+    const [b, h] = id.split('-');
+    tap(card('height', h), '높이 카드 ' + h); tap(card('backness', b), '앞뒤 카드 ' + b);
+    if (msvg() && msvg().dataset.vowel !== id) bad('높이·앞뒤 카드를 골라도 단면도가 안 바뀜 ' + id + ' / ' + (msvg() && msvg().dataset.vowel));
+  } else {
+    tap(card('place', id), '자리 카드 ' + id);
+    if (msvg() && msvg().dataset.place !== id) bad('자리 카드를 골라도 단면도가 안 바뀜 ' + id + ' / ' + (msvg() && msvg().dataset.place));
+  }
+};
 const turnsLeft = () => +(($('.pr-turns-n') || {}).textContent || NaN);
-// 한 발: 단면도 → 카드 → 발사 → 끝날 때까지 기다림
+// 한 발: ① ② ③ 카드 → 발사 → 끝날 때까지 기다림
 const shoot = async (input, what) => {
   what = what || JSON.stringify(input);
-  if (st().sea === 'vowel') { pickMouth(input.backness + '-' + input.height); tap(card('lips', input.lips), '입술 카드 ' + what); }
+  if (st().sea === 'vowel') { pickPlace(input.backness + '-' + input.height); tap(card('lips', input.lips), '입술 카드 ' + what); }
   else {
-    pickMouth(input.place);
+    pickPlace(input.place);
     tap(card('manner', input.manner), '방법 카드 ' + what);
+    if (msvg() && msvg().dataset.manner !== input.manner) bad('방법 카드를 골라도 단면도가 안 바뀜 ' + what);
     const sc = card('strength', input.strength);
     if (input.strength && sc && !sc.disabled) tap(sc, '세기 카드 ' + what);
   }
@@ -75,10 +77,9 @@ const shoot = async (input, what) => {
   if (!fb || fb.disabled) { bad('발사 단추가 꺼져 있음: ' + what); return null; }
   tap(fb, '발사 ' + what);
   if (!dbg().busy) bad('발사했는데 잠기지 않음: ' + what);
-  if (dbg().layout === 'portrait' && !sheetOpen() && !fw.document.documentElement.classList.contains('reduce-motion')) bad('세로: 발사했는데 공기 흐름 패널이 안 떠오름: ' + what);
+  if (!fw.document.documentElement.classList.contains('reduce-motion') && msvg() && msvg().dataset.playing !== '1') bad('발사했는데 단면도가 조음 동작을 재생하지 않음: ' + what);
   if ($$('.ctl-card').some((b) => !b.disabled) || !$('.ctl-fire').disabled) bad('공기 흐름 도중 조작부가 잠기지 않음: ' + what);
   await until(() => !dbg().busy, 9000, '발사 끝 ' + what);
-  if (sheetOpen()) bad('발사가 끝났는데 아래 패널이 닫히지 않음: ' + what);
   return msg();
 };
 const inp = (id) => G.rules.inputOf(id);
@@ -195,6 +196,12 @@ try {
       const selNow = G.save.getSelection();
       if (selNow.sea !== 'consonant' || selNow.level !== 1 || selNow.grade !== 'm3') bad('시작한 선택이 기억되지 않음');
       if (!$('.mouth-label') || !visible($('.mouth-labels'))) bad('1단계인데 단면도 자리 이름이 안 보임');
+      // 단면도는 보여 주기 전용: 누르는 요소가 없다. 고르기는 모두 아래 조작부(가로: 화면 아래 35% 안)
+      if ($$('.mouth-svg [tabindex], .mouth-svg [role="button"], .mouth-hit').length || fw.getComputedStyle(msvg()).pointerEvents !== 'none') bad('단면도에 누르는 요소가 있음');
+      if (!$('.pr-mouthcard .mouth-svg') || !$('.pr-seacol .sb')) bad('가로 [바다 | 단면도]가 아님');
+      if (!(box($('.pr-seacol')).right <= box($('.pr-mouthcard')).left + 1)) bad('가로에서 바다가 단면도 왼쪽이 아님');
+      $$('.ctl-card').concat([$('.ctl-fire')]).forEach((b) => { if (box(b).top < fw.innerHeight * 0.65 - 0.5) bad('가로: 조작 단추가 화면 아래 35% 밖 ' + b.textContent + ' ' + Math.round(box(b).top)); });
+      ['place', 'manner'].forEach((gp) => { if ($$('.ctl-card[data-group="' + gp + '"]').length !== 5) bad('가로: ' + gp + ' 카드가 5장이 아님'); });
       // 턴을 안 쓰는 결과: /ㅎ/ = 이번 바다에 없는 칸
       await shoot({ place: 'glottal', manner: 'fricative', strength: null }, '/ㅎ/');
       if (msg() !== TX.signal.notInSea) bad('/ㅎ/ 문구: ' + msg());
@@ -389,41 +396,42 @@ try {
     const big = (n, tag) => { const b = box(n); if (b.width < 47.5 || b.height < 47.5) bad(tag + ' 터치 목표 ' + Math.round(b.width) + '×' + Math.round(b.height)); };
     const checkLayout = (tag, second) => {
       if (!$('.pr.pr--portrait')) bad(tag + ': 세로 배치가 아님');
-      const top = $('.pr-top'), sea = $('.pr-sea .sb'), m = $('.ctl-msg'), mc = $('.ctl-card[data-group="manner"]') || $('.ctl-card'), fb = $('.ctl-fire');
-      const pb = $('.ctl-placebtn'), dock = $('.pr-dockwrap'), combo = $('.ctl-combo');
-      if (!top || !sea || !m || !mc || !fb || !pb || !dock || !combo) { bad(tag + ': 요소가 모자람'); return; }
+      const top = $('.pr-top'), mc = $('.pr-mouthcard'), sv = $('.pr-mouth .mouth-svg'), sea = $('.pr-sea .sb'), m = $('.ctl-msg'), fb = $('.ctl-fire');
+      const first = $('.ctl-group .ctl-card'), dock = $('.pr-dockwrap'), combo = $('.ctl-combo');
+      if (!top || !mc || !sv || !sea || !m || !first || !fb || !dock || !combo) { bad(tag + ': 요소가 모자람'); return; }
       if (!top.querySelector('.sb-ships') || !top.querySelector('.pr-turns')) bad(tag + ': 윗줄에 남은 배·남은 턴이 없음');
       const shipIt = $$('.pr-top .sb-ship-item');
       if (shipIt.some((x) => Math.abs(box(x).top - box(shipIt[0]).top) > 2)) bad(tag + ': 윗줄의 남은 배가 두 줄로 넘어감');
-      // 바다 중심: 윗줄 → 바다 → 한 줄 문구 → [위치 · 요약] → 카드
-      const order = [top, sea, m, pb, mc].map((n) => box(n));
+      // spec 6.2: 윗줄 → 단면도(위 반) → 바다(아래 반) → 한 줄 문구 → 요약 줄 → 카드
+      const order = [top, mc, sea, m, combo, first].map((n) => box(n));
       for (let i = 1; i < order.length; i++) if (order[i].top < order[i - 1].bottom - 1) bad(tag + ': 위에서 아래 순서가 아님(' + i + ')');
-      if (visible($('.pr-sheet')) && sheetOpen()) bad(tag + ': 아래 패널이 처음부터 열려 있음');
-      // 고정 조작부가 바다의 마지막 줄을 가리지 않음
+      // 단면도와 바다: 둘 다 보이고 크기가 비슷(반반), 겹치지 않음, 화면 안
+      const hm = box(mc).height, hs = box($('.pr-seacol')).height;
+      if (!(hm > 150 && hs > 150)) bad(tag + ': 단면도·바다가 너무 작음 ' + Math.round(hm) + '/' + Math.round(hs));
+      if (!(hm / hs > 0.7 && hm / hs < 1.45)) bad(tag + ': 단면도와 바다가 반반이 아님 ' + Math.round(hm) + '/' + Math.round(hs));
+      const svb = box(sv);
+      if (svb.bottom > box(sea).top + 1) bad(tag + ': 단면도가 바다를 덮음');
+      if (svb.top < box(top).bottom - 1) bad(tag + ': 단면도가 윗줄을 덮음');
+      inView(sv, tag + ' 단면도'); inView(sea, tag + ' 바다');
       const cells = $$('.pr-sea .sb-cell');
       if (Math.max(...cells.map((c) => box(c).bottom)) > box(dock).top + 1) bad(tag + ': 조작부가 바다의 마지막 줄을 가림');
-      // 한 손 조작: 위치·방법·세기·발사·기록 단추가 모두 화면 아래 45% 안
-      const ctlBtns = [pb, fb, $('.ctl-logtoggle')].concat($$('.ctl-card'));
-      ctlBtns.forEach((n, i) => { if (box(n).top < H * 0.55 - 0.5) bad(tag + ': 조작 단추가 아래 45% 밖 ' + i + ' top ' + Math.round(box(n).top)); });
-      // 조작부 두 줄: 방법 카드 / 세기·입술 카드 + 발사 (모음은 방법 카드가 없어 입술 카드 + 발사 한 줄)
-      if (mc.getAttribute('data-group') === 'manner' && box(fb).top < box(mc).bottom - 1) bad(tag + ': 발사가 방법 카드 줄과 같은 줄');
+      if (Math.min(...cells.map((c) => box(c).top)) < box(mc).bottom - 1) bad(tag + ': 바다 칸이 단면도와 겹침');
+      // 단면도는 보여 주기 전용(누르는 요소 없음), 고르기는 모두 아래(한 손): 자리·방법·세기·발사·기록 단추가 모두 화면 아래 45% 안
+      if ($$('.mouth-svg [tabindex], .mouth-svg [role="button"], .mouth-hit').length || fw.getComputedStyle(sv).pointerEvents !== 'none') bad(tag + ': 단면도에 누르는 요소가 있음');
+      const ctlBtns = [fb, $('.ctl-logtoggle')].concat($$('.ctl-card'));
+      ctlBtns.forEach((n, i) => { if (box(n).top < H * 0.55 - 0.5) bad(tag + ': 조작 단추가 아래 45% 밖 ' + i + ' ' + n.textContent + ' top ' + Math.round(box(n).top)); });
+      // ① 카드 줄 / ② 줄 / ③ + 발사(모음은 ① 높이 / ② 앞뒤 + ③ 입술 / 발사)
+      const g1 = $$('.ctl-group')[0].querySelectorAll('.ctl-card');
+      if (g1.length !== (st().sea === 'vowel' ? 3 : 5)) bad(tag + ': ① 카드 수 ' + g1.length);
       if (second) { const s2 = $('.ctl-card[data-group="' + second + '"]'); if (!s2 || Math.abs(box(s2).top - box(fb).top) > 8) bad(tag + ': ' + second + ' 카드와 발사가 같은 줄이 아님'); }
       if (box(fb).height < 55.5) bad(tag + ': 발사 단추 높이 ' + Math.round(box(fb).height) + ' < 56');
-      [mc, fb, pb, $('.ctl-logtoggle'), $('.pr-home')].concat($$('.ctl-card')).forEach((n, i) => { if (n) { inView(n, tag + ' 단추' + i); big(n, tag + ' 단추' + i); } });
-      // 조합 요약 줄: 발사 단추 위, 화면 안
-      if (box(combo).bottom > box(fb).top + 1) bad(tag + ': 요약 줄이 발사 단추 위가 아님');
+      [fb, $('.ctl-logtoggle'), $('.pr-home')].concat($$('.ctl-card')).forEach((n, i) => { if (n) { inView(n, tag + ' 단추' + i); big(n, tag + ' 단추' + i); } });
+      // 조합 요약 줄: 카드 위, 화면 안
+      if (box(combo).bottom > box(first).top + 1) bad(tag + ': 요약 줄이 카드 위가 아님');
       inView(combo, tag + ' 요약 줄');
       inView(m, tag + ' 문구');
       if (visible($('.ctl-log'))) bad(tag + ': 기록장이 펼쳐져 있음');
-      // '위치' 단추 → 아래 패널: 단면도가 크게, 누르는 곳 48px 이상·화면 안, 닫기 → 닫힘
-      tapPoint(pb, tag + ' 위치 단추'); pb.click(); settleSheet();
-      if (!sheetOpen() || !visible($('.pr-sheet'))) bad(tag + ': 위치 단추로 패널이 안 열림');
-      else {
-        if (box($('.pr-mouth')).height < 150) bad(tag + ': 단면도가 너무 작음 ' + Math.round(box($('.pr-mouth')).height));
-        $$('.mouth-hit').forEach((n) => { inView(n, tag + ' 단면도 자리'); big(n, tag + ' 단면도 자리'); });
-        const cl = $('.pr-sheet-close'); big(cl, tag + ' 닫기 단추'); cl.click(); settleSheet();
-        if (sheetOpen()) bad(tag + ': 닫기로 패널이 안 닫힘');
-      }
+      if ($('.pr-sheet') || $('.ctl-placebtn')) bad(tag + ': 없앤 위치 패널·단추가 남아 있음');
       noScroll(tag);
     };
     const start = async (grade, sea, level) => {
@@ -442,10 +450,10 @@ try {
       await start('m3', 'consonant', 1);
       checkLayout('자음 1단계', null);
       const fleetIds = [].concat(...st().teams.enemy.fleet.map((x) => x.sounds));
-      // 자리를 고르면 패널이 닫혀 바다가 다시 드러난다 · 요약 줄이 고른 조합을 한 줄로 보인다
-      pickMouth('bilabial');
-      if (sheetOpen()) bad('자리를 골랐는데 패널이 닫히지 않음');
+      // 카드를 고르면 단면도가 따라 바뀐다 · 요약 줄이 고른 조합을 한 줄로 보인다
+      pickPlace('bilabial');
       tap(card('manner', 'stop'), '방법 카드(요약 줄 점검)');
+      if ($('.mouth-svg').dataset.lipshape !== 'closed') await until(() => $('.mouth-svg').dataset.lipshape === 'closed', 1000, '두 입술 + 파열을 고르면 단면도의 입술이 붙음');
       const cmb = $('.ctl-combo').textContent;
       if (cmb !== TX.mouthParts.bilabial + ' · ' + G.text.short('m3', 'manner', 'stop')) bad('요약 줄: ' + cmb);
       await shoot(inp(fleetIds[0]), '세로 한 발');
@@ -466,8 +474,7 @@ try {
       if (JSON.stringify(shots()) !== shots0) bad('가로로 바꾸니 쏜 기록이 바뀜');
       if ($$('.sb .sb-mark').length !== marks0) bad('가로로 바꾸니 판 표시 수가 다름');
       if (!$('.ctl-log.ctl-log--strip') || !visible($('.ctl-log'))) bad('가로인데 기록 띠가 안 보임');
-      if (visible($('.pr-sheet'))) bad('가로인데 아래 패널이 보임');
-      if (!$('.pr-mouthcard .mouth-svg')) bad('가로인데 단면도가 가운데 패널에 없음');
+      if (!$('.pr-mouthcard .mouth-svg')) bad('가로인데 단면도가 [바다 | 단면도]에 없음');
       ifr.style.width = W + 'px'; ifr.style.height = H + 'px';
       await until(() => dbg().layout === 'portrait' && $('.pr.pr--portrait'), 3000, '세로로 돌아옴');
       await wait(300);
@@ -488,7 +495,10 @@ try {
       if (shots().length !== 1) bad('세로 2단계 한 발이 안 나감');
       // 모음 1단계: 입술 + 발사
       await start('m3', 'vowel', 1);
-      checkLayout('모음 1단계', 'lips');
+      checkLayout('모음 1단계', null);
+      // 모음: ① 높이 줄 / ② 앞뒤 + ③ 입술 한 줄 / 발사 한 줄
+      if (Math.abs(box(card('backness', 'front')).top - box(card('lips', 'rounded')).top) > 2) bad('모음: 앞뒤·입술 카드가 한 줄이 아님');
+      if (!(box($('.ctl-fire')).top >= box(card('lips', 'rounded')).bottom - 1)) bad('모음: 발사가 입술 줄 아래가 아님');
       await shoot({ backness: 'back', height: 'high', lips: 'rounded' }, '세로 모음 한 발');
       if (shots().length !== 1) bad('세로 모음 한 발이 안 나감');
       noScroll('모음 한 발 뒤');
@@ -499,8 +509,8 @@ try {
   ${report}
 } finally { await closeTab(tf); }
 `;
-step('세로 틀 390×844: 스크롤 없이 한 발 · 두 줄 조작부 · 기록장 · 방향 바뀜', portrait(390, 844));
-step('세로 틀 360×740: 스크롤 없이 한 발 · 두 줄 조작부 · 기록장 · 방향 바뀜', portrait(360, 740));
+step('세로 틀 390×844: 단면도·바다 반반 · 스크롤 없이 한 발 · ①②③ 아래 조작부 · 기록장 · 방향 바뀜', portrait(390, 844));
+step('세로 틀 360×740: 단면도·바다 반반 · 스크롤 없이 한 발 · ①②③ 아래 조작부 · 기록장 · 방향 바뀜', portrait(360, 740));
 
 // ───────────────────────────────────────────────────────────────
 const capture = (w, h, level, name) => `
@@ -517,7 +527,7 @@ const capture = (w, h, level, name) => `
         const fleetIds = [].concat(...st().teams.enemy.fleet.map((x) => x.sounds));
         await shoot(inp(fleetIds[0]));
         await shoot(${level === 1 ? "{ place: 'alveolar', manner: 'fricative' }" : "{ place: 'velar', manner: 'stop', strength: 'aspirated' }"});
-        pickMouth('bilabial');
+        card('place', 'bilabial').click();
         if (${level} === 1) card('manner', 'stop').click();
         await wait(400);
         const pr = $('.pr');

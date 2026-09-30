@@ -1,16 +1,20 @@
-/* 입안 단면도(G.mouth). 색은 base.css 값을 쓰고, 단면도에만 쓰는 살·혀 색은 여기 둔다.
-   누르는 자리는 분명한 단추 모양: 흰 원(2px 실선 조작 경계선), 고르면 청록 채움 + 흰 체크.
-   자리 이름은 흰 외곽선 없이 기본 잉크(Pretendard 600). 공기 입자는 --air 채움 + 흰 테두리. */
+/* 입안 단면도(G.mouth) — 보여 주기 전용(누르는 자리 없음). 교과서 도해처럼 절제된 평면 채색 + 한 가지 잉크 윤곽.
+   색은 base.css 값을 쓰고, 단면도에만 쓰는 살·혀·뼈 색은 여기 둔다(밝은 바탕 #F2F6F6·잉크 #183540과 어울리는 옅은 살빛).
+   윤곽 굵기는 화면 크기와 상관없이 같게(vector-effect: non-scaling-stroke): 바깥 윤곽 1.6px, 안쪽 세부 1px.
+   이름은 흰 외곽선 없이 기본 잉크(Pretendard 600), 고른 자리의 이름은 청록('현재 선택'). */
 .mouth {
-  --mouth-tissue: #F3DDD3;       /* 살 */
-  --mouth-tissue-line: #B98F82;
-  --mouth-tongue: #D9918A;       /* 혀 */
-  --mouth-tongue-line: #A45F5A;
-  --mouth-way: #FCFCFA;          /* 공기 길(입안·콧길·목구멍) */
+  --mouth-tissue: #F6E4DC;       /* 살(단면) */
+  --mouth-tissue-2: #EFD3C8;     /* 여린입천장·후두덮개(움직이는 살은 조금 짙게) */
+  --mouth-bone: #FBF6EC;         /* 센입천장 뼈 */
+  --mouth-tongue: #DC8D86;       /* 혀 */
+  --mouth-tongue-2: #C9746E;     /* 혀 안쪽 선 */
+  --mouth-lip: #F1CFC5;          /* 입술(살빛보다 조금 붉게) */
+  --mouth-fold: #C56F69;         /* 성대 */
+  --mouth-way: #FFFFFF;          /* 공기 길(입안·콧길·인두·기관) */
+  --mouth-line: var(--ink);      /* 윤곽 */
   --mouth-bar: var(--ink);       /* 막음 표시 */
   --mouth-tight: var(--ink);     /* 목청 조임 표시 */
-  --mouth-spot: 48px;            /* 누르는 자리 표식 지름(화면 px) — mouth.js가 읽는다 */
-  --mouth-label: 22px;           /* 자리 이름 글씨(화면 px) — mouth.js가 읽는다 */
+  --mouth-label: 20px;           /* 이름 글씨(화면 px) — mouth.js가 읽는다 */
   position: relative;
   width: 100%;
   height: 100%;
@@ -21,63 +25,61 @@
   width: 100%;
   height: 100%;
   max-height: 100%;
-  touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  overflow: visible;
+  overflow: hidden;
+  pointer-events: none; /* 보여 주기 전용 */
 }
-.mouth-tissue { fill: var(--mouth-tissue); stroke: var(--mouth-tissue-line); stroke-width: 1.5; stroke-linejoin: round; }
-.mouth-air-way { fill: var(--mouth-way); stroke: var(--mouth-tissue-line); stroke-width: 1.5; stroke-linejoin: round; }
-.mouth-tongue { fill: var(--mouth-tongue); stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; }
-.mouth-teeth { fill: #fff; stroke: var(--ink-2); stroke-width: 1.2; stroke-linejoin: round; }
-.mouth-lip { fill: #E4A79C; stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; }
-.mouth-lip-hole { fill: #5b2f2c; }
+.mouth-svg path, .mouth-svg line, .mouth-svg ellipse, .mouth-svg circle, .mouth-svg rect { vector-effect: non-scaling-stroke; }
+.mouth-tissue { fill: var(--mouth-tissue); stroke: none; }
+.mouth-tissue-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; }
+.mouth-air-way { fill: var(--mouth-way); stroke: none; }
+.mouth-air-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; }
+.mouth-bone { fill: var(--mouth-bone); stroke: var(--ink-2); stroke-width: 1px; stroke-linejoin: round; }
+.mouth-tongue { fill: var(--mouth-tongue); stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; }
+.mouth-tongue-mid { fill: none; stroke: var(--mouth-tongue-2); stroke-width: 1px; stroke-linecap: round; opacity: .7; }
+.mouth-teeth { fill: #fff; stroke: var(--mouth-line); stroke-width: 1.2px; stroke-linejoin: round; }
+.mouth-lip { fill: var(--mouth-lip); stroke: none; }
+.mouth-lip-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; stroke-linecap: round; }
+.mouth-lipinset .mouth-lip { stroke: var(--mouth-line); }
+.mouth-lip-hole { fill: #6B3531; }
+.mouth-lipinset .mouth-lip { fill: #E2A198; }
+.mouth-lipinset .mouth-lip { stroke-width: 1.2px; }
 .mouth-lipinset.is-unset { opacity: 0.45; }
+.mouth-epiglottis { fill: var(--mouth-tissue-2); stroke: var(--mouth-line); stroke-width: 1.2px; stroke-linejoin: round; }
 
-/* 콧길 문 */
-.mouth-door rect { fill: var(--sea); }
-.mouth-door .mouth-door-hinge { fill: var(--sea); stroke: #fff; stroke-width: 1.5; }
-.mouth-door { transition: transform 0.2s ease-out; }
-.mouth-door[data-state="open"] rect { fill: var(--accent); }
+/* 콧길 문 = 여린입천장(목젖까지). 내려가면(콧길 열림) 청록 테두리로 눈에 띄게 */
+.mouth-velum { fill: var(--mouth-tissue-2); stroke: none; }
+.mouth-velum-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; transition: stroke .15s; }
+.mouth-door[data-state="open"] .mouth-velum-line { stroke: var(--accent); stroke-width: 2.4px; }
 
-/* 목청 */
-.mouth-fold { fill: #C77F77; stroke: var(--mouth-tongue-line); stroke-width: 1; }
-.mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+/* 목청(성대) */
+.mouth-fold { fill: var(--mouth-fold); stroke: var(--mouth-line); stroke-width: 1.2px; stroke-linejoin: round; }
+.mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 2.4px; stroke-linecap: round; stroke-linejoin: round; }
 
-/* 누르는 자리(보이는 표식): 흰 단추 + 2px 실선. 고르면 청록 채움 + 흰 체크(선택 반응 0.12초) */
-.mouth-spot {
-  fill: #fff; stroke: var(--control-line); stroke-width: 2px; pointer-events: none;
-  filter: drop-shadow(0 1px 1.5px rgba(24, 53, 64, .25));
-  transition: fill var(--t-pick), stroke var(--t-pick);
-}
-.mouth-spot.is-selected { fill: var(--accent); stroke: var(--accent-2); }
-.mouth-check { fill: none; stroke: #fff; stroke-width: .2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; visibility: hidden; }
-.mouth-check.is-selected { visibility: visible; }
-/* 모음 칸(2×3) */
-.mouth-cell { fill: rgba(255, 255, 255, .78); }
-.mouth-cell.is-selected { fill: var(--accent); }
+/* 모음 안내(혀 밑): 높이마다 옅은 점선, 여섯 자리 점. 고른 자리는 혀 위에 청록 고리 */
+.mouth-guide { stroke: var(--divider); stroke-width: 1px; stroke-dasharray: 3 4; }
+.mouth-guide-dot { fill: var(--divider); }
+.mouth-guide-dot.is-selected { fill: var(--accent); }
+.mouth-target { fill: none; stroke: var(--accent); stroke-width: 2.4px; }
 
 /* 막음 표시 */
 .mouth-bar { fill: var(--mouth-bar); }
-.mouth-bar-pending { fill: rgba(255, 255, 255, 0.85); stroke: var(--mouth-bar); stroke-width: 1.5; }
-.mouth-bar-dotted { stroke: var(--mouth-bar); stroke-width: 7; stroke-dasharray: 3.5 3; } /* 유음: 점선 막대(spec 5.2) */
-.mouth-closure { pointer-events: none; }
+.mouth-bar-pending { fill: rgba(255, 255, 255, 0.9); stroke: var(--mouth-bar); stroke-width: 1.4px; }
+.mouth-bar-dotted { stroke: var(--mouth-bar); stroke-width: 7; stroke-dasharray: 3.5 3; vector-effect: none; } /* 유음: 점선 막대(spec 5.2) */
+
+/* 거센소리 입김 */
+.mouth-puff path { fill: none; stroke: var(--air); stroke-width: 3px; stroke-linecap: round; opacity: .75; }
 
 /* 공기 입자: 짙은 청록 채움 + 흰 테두리(밝은 살·공기 길 위에서 모두 보임) */
-.mouth-particles { pointer-events: none; }
-.mouth-particle { fill: var(--air); stroke: #fff; stroke-width: 1.3; }
+.mouth-particle { fill: var(--air); stroke: #fff; stroke-width: 1.2px; }
 .mouth-particle.is-far { opacity: 0.45; }
 
-/* 자리 이름(단계에 따라 숨김): 흰 외곽선 없이 또렷한 잉크, 자기 단추와 가는 선으로 이음(글씨 크기는 mouth.js가 정함) */
-.mouth-labels { pointer-events: none; }
+/* 이름(단계에 따라 숨김): 흰 외곽선 없이 또렷한 잉크. 가는 연결선 + 끝점 */
 .mouth-label { font-family: var(--font-body); font-size: 15px; font-weight: 600; fill: var(--ink); }
-.mouth-label-sub { font-weight: 500; fill: var(--ink-2); }
+.mouth-label.is-selected { fill: var(--accent); font-weight: 700; }
 .mouth-lead { stroke: var(--ink-2); stroke-width: 1px; }
+.mouth-lead-dot { fill: var(--ink); }
 @media (max-width: 760px), (orientation: portrait) {
-  .mouth { --mouth-spot: 44px; --mouth-label: 16px; }
+  .mouth { --mouth-label: 15px; }
 }
-
-/* 누르는 곳(보이지 않음) */
-.mouth-hit { fill: transparent; stroke: none; cursor: pointer; }
-.mouth-hit:focus { outline: none; }
-.mouth-hit:focus-visible { stroke: var(--accent); stroke-width: 2; }
