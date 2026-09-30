@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""assets/raw/*.png(Codex 생성 원본)를 게임용 webp로 만든다.
+"""assets/raw/v2/*.png(Codex 생성 원본, v2 디자인 개편)를 게임용 webp로 만든다.
 
     python tools/process_assets.py            # 모두 만들기
     python tools/process_assets.py --check    # 만든 파일의 크기·투명도·이음매 점검만
 
-- ship3 / ship2 / ship1 (+ _burnt) → 자홍(#FF00FF) 단색 배경을 지워 투명하게, 여백을 잘라 가로 1024 이하
+- ship3 / ship2 / ship1 (+ _burnt) → 자홍(#FF00FF) 단색 배경을 지워 투명하게(불탄 배는 연기의 보랏빛도 지움), 여백을 잘라 가로 1024 이하
 - splash → 4열×2행 견본을 칸별로 잘라 배경을 지우고, 256×256 칸 8개를 가로 한 줄(2048×256)로 잇는다
 - sea_tile → 이음매 없이 반복되도록 가장자리를 섞은 뒤 1024×1024
 - title / result_bg → 16:9로 자른 뒤 1920×1080
-원본은 assets/raw(저장소에 올리지 않음), 결과는 assets/img/<이름>.webp.
+- title_phone → 양옆을 조금만 자르고 빈 하늘을 세로로 늘려 9:16(1080×1920)으로(배가 잘리지 않게)
+원본은 assets/raw/v2(저장소에 올리지 않음), 결과는 assets/img/<이름>.webp.
 """
 import os
 import sys
@@ -17,7 +18,7 @@ from PIL import Image
 from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RAW = os.path.join(ROOT, 'assets', 'raw')
+RAW = os.path.join(ROOT, 'assets', 'raw', 'v2')  # v1 원본은 assets/raw 바로 아래(프롬프트 기록: assets/prompts.md)
 OUT = os.path.join(ROOT, 'assets', 'img')
 
 SHIPS = ['ship3', 'ship2', 'ship1', 'ship3_burnt', 'ship2_burnt', 'ship1_burnt']
@@ -80,12 +81,26 @@ def fit_width(im, w):
     return im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
 
 
+def smoke_tint(im):
+    """불탄 배의 연기에 남은 보랏빛(자홍 번짐, R·B가 모두 G보다 큼)을 푸른 회색으로 되돌린다.
+    배의 색(회색·흰색·쪽빛·청록·주황 불씨)은 R·B가 함께 G를 넘지 않아 건드리지 않는다."""
+    a = np.array(im).astype(np.float32)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    purple = (r > g) & (b > g)
+    a[..., 0] = np.where(purple, g, r)
+    a[..., 2] = np.where(purple, g + 0.35 * (b - g), b)
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), 'RGBA')
+
+
 def ships():
     for n in SHIPS:
         if not os.path.exists(os.path.join(RAW, n + '.png')):
             print('  (없음)', n)
             continue
-        save_webp(fit_width(trim(key_out(raw(n))), 1024), n, 84)
+        im = key_out(raw(n))
+        if n.endswith('_burnt'):
+            im = smoke_tint(im)
+        save_webp(fit_width(trim(im), 1024), n, 84)
 
 
 def water_tint(im):
@@ -196,25 +211,51 @@ def sea_tile():
     print(f'  sea_tile.webp {fixed.size[0]}x{fixed.size[1]} RGB {os.path.getsize(path) // 1024}KB (무손실)')
 
 
-# ---------- 16:9 배경 ----------
+# ---------- 16:9 배경 / 9:16 세로 시작 그림 ----------
 
-def wide(name):
+def wide(name, aw=16, ah=9, size=(1920, 1080)):
+    """가운데를 aw:ah 비율로 잘라 size로 맞춘다(기본 16:9 → 1920×1080)."""
     im = raw(name)
     tw = im.width
-    th = round(tw * 9 / 16)
+    th = round(tw * ah / aw)
     if th > im.height:
         th = im.height
-        tw = round(th * 16 / 9)
+        tw = round(th * aw / ah)
     l = (im.width - tw) // 2
     t = (im.height - th) // 2
-    im = im.crop((l, t, l + tw, t + th)).resize((1920, 1080), Image.LANCZOS)
+    im = im.crop((l, t, l + tw, t + th)).resize(size, Image.LANCZOS)
     save_webp(im, name, 82)
+
+
+def tall(name, size=(1080, 1920), side=24):
+    """세로 시작 그림: 원본(2:3)을 9:16으로 만들 때 양옆을 크게 자르면 배가 잘리므로,
+    양옆은 side 픽셀만 자르고 모자란 높이는 위쪽 빈 하늘(무늬 없는 단색 번짐)만 세로로 늘려 채운다."""
+    im = raw(name)
+    a = np.asarray(im, dtype=np.float32)
+    lum = a.mean(axis=2)
+    horizon = int(np.argmax(lum.mean(axis=1) < 170))           # 밝은 하늘 → 어두운 바다로 바뀌는 줄
+    dev = np.abs(lum[:horizon] - np.median(lum[:horizon], axis=1, keepdims=True))
+    busy = np.nonzero((dev > 25).sum(axis=1) > 2)[0]           # 하늘에 무엇(돛대 등)이 처음 나오는 줄
+    sky_end = max(8, (int(busy[0]) if len(busy) else horizon) - 20)
+    cw = im.width - 2 * side
+    ch = round(cw * size[1] / size[0])
+    extra = ch - im.height
+    if extra > 0:
+        sky = im.crop((0, 0, im.width, sky_end)).resize((im.width, sky_end + extra), Image.LANCZOS)
+        grown = Image.new('RGB', (im.width, ch))
+        grown.paste(sky, (0, 0))
+        grown.paste(im.crop((0, sky_end, im.width, im.height)), (0, sky_end + extra))
+        im = grown
+    t = (im.height - ch) // 2
+    print(f'  {name}: 수평선 {horizon}, 하늘 {sky_end}줄 → {sky_end + max(0, extra)}줄로 늘림, 양옆 {side}px 자름')
+    save_webp(im.crop((side, t, side + cw, t + ch)).resize(size, Image.LANCZOS), name, 82)
 
 
 # ---------- 점검 ----------
 
 EXPECT = {n: 'RGBA' for n in SHIPS + ['splash']}
-EXPECT.update({'sea_tile': 'RGB', 'title': 'RGB', 'result_bg': 'RGB'})
+EXPECT.update({'sea_tile': 'RGB', 'title': 'RGB', 'title_phone': 'RGB', 'result_bg': 'RGB'})
+SIZE = {'title': (1920, 1080), 'result_bg': (1920, 1080), 'title_phone': (1080, 1920)}
 
 
 def check():
@@ -235,6 +276,14 @@ def check():
             good = has_alpha and corners_clear and 0.03 < opaque < 0.95
             if n.startswith('ship'):
                 good = good and im.width <= 1024
+            # 자홍이 남은 곳(보이는 픽셀 중 R·B가 G보다 크게 높은 곳)이 거의 없어야 한다
+            if has_alpha:
+                a = np.asarray(im.convert('RGBA')).astype(np.int16)
+                vis = a[..., 3] > 128
+                mag = vis & (a[..., 0] - a[..., 1] > 60) & (a[..., 2] - a[..., 1] > 60)
+                left = mag.sum() / max(1, vis.sum())
+                msg += f' 자홍 남음 {left:.2%}'
+                good = good and left < 0.005
             if n == 'splash':
                 good = good and im.size == (SPLASH_FRAME * SPLASH_FRAMES, SPLASH_FRAME)
         elif n == 'sea_tile':
@@ -242,7 +291,7 @@ def check():
             msg += f' 이음매 순위 {sc:.2f}'
             good = im.size == (1024, 1024) and sc < 0.99
         else:
-            good = im.size == (1920, 1080)
+            good = im.size == SIZE[n]
         print(('PASS ' if good else 'FAIL ') + msg)
         ok = ok and good
     return ok
@@ -254,6 +303,6 @@ if __name__ == '__main__':
         print('배'); ships()
         print('물보라'); splash()
         print('바다 질감'); sea_tile()
-        print('배경'); wide('title'); wide('result_bg')
+        print('배경'); wide('title'); wide('result_bg'); tall('title_phone')
     print('점검')
     sys.exit(0 if check() else 1)
