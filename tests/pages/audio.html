@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>소리 엔진 점검</title>
+<style>html,body{margin:0;height:100%;font:16px sans-serif}#tap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#eef}</style>
+</head><body>
+<!-- 점검 전용: 소리 엔진(js/core/audio.js)만 따로 불러 본다.
+     ?base=audio-fixture/  → 점검용 작은 mp3(거의 무음)로 실제 재생 길을 확인
+     (없으면)              → 게임 폴더 assets/audio/ (파일이 아직 없어도 조용해야 함)
+     &nofetch=1            → fetch를 막아 file:// 로 연 것처럼 <audio> 요소 대신 재생 길을 확인 -->
+<div id="tap">여기를 누르면 소리가 켜집니다</div>
+<script>
+  if (new URLSearchParams(location.search).get('nofetch')) window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+</script>
+<script src="../../js/core/util.js"></script>
+<script src="../../js/core/audio.js"></script>
+<script>
+  G.audio.setBase(new URLSearchParams(location.search).get('base') || '../../assets/audio/');
+</script>
+</body></html>
