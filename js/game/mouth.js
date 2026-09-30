@@ -489,7 +489,7 @@ G.mouth = (function () {
       lipBody.setAttribute('transform', around(li3.x, li3.y, kL));
       const cu = U.clamp(12 / (lastScale || 1), 7, 24);
       gCap.style.fontSize = insetCap.style.fontSize = f1(cu) + 'px';
-      gCap.setAttribute('y', f1(Math.min(M.VIEW.h - 2, gi3.y + (gi3.h / 2) * kG + 9 + cu * 0.9)));
+      gCap.setAttribute('y', f1(Math.min(M.VIEW.h - 2, gi3.y + (gi3.h / 2) * kG + 11 + cu * 0.9)));
       insetCap.setAttribute('y', f1(li3.y + 17 * kL + 4 + cu * 0.9));
       gCall.setAttribute('x1', f1(gi3.x + (gi3.w / 2) * kG)); gCall.setAttribute('y1', f1(gi3.y));
       gCall.setAttribute('x2', gl.front); gCall.setAttribute('y2', gl.y);
@@ -761,7 +761,8 @@ G.mouth = (function () {
           if (t < t0) return null;
           const s = t < tr ? holdS(i, t, tr) : cap(i) + Math.max(0, t - tr - i * 0.014) * 260 * force;
           if (s > route.len) return null;
-          const shake = t < tr ? ((i % 3) - 1) * 3 : Math.sin(t * 45 + i * 1.3) * (1.5 + 3 * bump(s - sC, 40));
+          const past = s - sC, rough = t >= tr && past > 0 ? (rnd(i * 13 + Math.floor(t * 24)) - 0.5) * Math.min(8, past * 0.12) : 0;
+          const shake = t < tr ? ((i % 3) - 1) * 3 : Math.sin(t * 45 + i * 1.3) * (1.5 + 3 * bump(s - sC, 40)) + rough;
           return put(route, s, shake);
         };
       } else if (flow === 'hiss') {
@@ -772,7 +773,9 @@ G.mouth = (function () {
           if (t < ts) return null;
           const s = s0 + (t - ts) * 330 * Math.sqrt(force);
           if (s > route.len) return null;
-          const shake = Math.sin(t * 55 + i * 1.7) * (1 + 4 * bump(s - sC, 40)) + side(i) * 0.3;
+          // 좁은 틈을 지난 공기는 짧고 불규칙하게 흩어진다(마찰 — 파열의 한 번 분출과 구별)
+          const past = s - sC, rough = past > 0 ? (rnd(i * 13 + Math.floor(t * 24)) - 0.5) * Math.min(9, past * 0.12) : 0;
+          const shake = Math.sin(t * 55 + i * 1.7) * (1 + 4 * bump(s - sC, 40)) + side(i) * 0.3 + rough;
           return put(route, s, shake);
         };
       } else if (flow === 'nose') {
