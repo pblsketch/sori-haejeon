@@ -10,7 +10,7 @@ const FIX = PAGE + '?base=audio-fixture/';
 const NOFETCH = PAGE + '?base=audio-fixture/&nofetch=1';
 
 step('파일이 없어도 조용히, 설정은 state()에 반영', `
-const ta = await openTab(${JSON.stringify(PAGE)});
+const ta = await openTab(${JSON.stringify(PAGE + '?base=no-such-audio/')});
 try {
   const a1 = await ta.evaluate(() => {
     const A = G.audio, r = {};
