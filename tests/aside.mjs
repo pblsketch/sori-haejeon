@@ -63,6 +63,11 @@ openTab = async (...__a) => {
 
 // 코드 한 조각을 aside로 돌린다. { ok, out } 을 돌려준다.
 export function runAside(code, { label = '' } = {}) {
+  // ASIDE_DRY=1: aside를 부르지 않고 대본의 문법만 확인한다(점검을 고칠 때)
+  if (process.env.ASIDE_DRY === '1') {
+    try { new (Object.getPrototypeOf(async function () {}).constructor)('openTab', 'closeTab', 'sleep', 'fs', 'path', PRELUDE + code); return { ok: true, out: 'DRY', label }; }
+    catch (e) { return { ok: false, out: '문법 오류: ' + e.message, label }; }
+  }
   const r = spawnSync(asideBin(), ['repl', PRELUDE + code], { encoding: 'utf8', timeout: 170000, windowsHide: true });
   const out = strip((r.stdout || '') + (r.stderr || ''));
   if (r.error) return { ok: false, out: out + '\n[도우미] aside 실행 실패: ' + r.error.message, label };
@@ -79,9 +84,15 @@ export function runAside(code, { label = '' } = {}) {
 }
 
 // 한 조각을 돌리고 결과를 찍는다. 실패하면 process.exitCode = 1.
+//   STEP=낱말 환경 변수를 주면 이름에 그 낱말이 든 조각만 돈다(점검을 고칠 때).
 export function step(label, code) {
+  if (process.env.STEP && !label.includes(process.env.STEP)) return { ok: true, out: '', label };
+  const t0 = Date.now();
   const r = runAside(code, { label });
-  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${label}`);
+  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${label} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+  // 점검이 찍은 INFO(판 요약)·WARN(캡처 실패 경고) 줄은 늘 보여 준다
+  const notes = r.out.split('\n').filter((l) => /^(INFO|WARN)\b/.test(l.trim()));
+  if (notes.length) console.log(notes.map((l) => '     ' + l.trim()).join('\n'));
   if (!r.ok) {
     const tail = r.out.split('\n').filter((l) => l.trim() && !/^✔︎|^\[system\]/.test(l.trim())).slice(-15).join('\n');
     console.log(tail);
