@@ -1,0 +1,311 @@
+/* 판 다시 그리기 시안(T20 1단계) — tests/pages/board-concepts.html 전용. 제품 화면에는 쓰지 않는다.
+   세 시안이 같은 뼈대(.bc-*)를 쓰고, 색·질감만 .concept-a / .concept-b / .concept-c 아래에서 바꾼다.
+     A 맑은 바다 해도 · B 깊은 바다 · C 섬과 암초 지도
+   공통 약속(spec 5.4·8.1, design-review-1):
+     명중 = 황금(칸 테두리 + 소리 표 + 과녁 배지) + 그 칸에 드러난 배 조각 · 같은 줄 = 보라 윤곽 + ↔/↕ ·
+     빗나감 = 물보라 고리 + × · 없는 소리 = ∅(C는 암초 + ∅). 최근 1발 = 공통 테두리(잉크, B는 흰색). */
+
+.bc { --fs: 54px; --hf: 28px; --rf: 28px; --badge: 30px; font-family: var(--font-body); color: var(--ink); }
+
+/* ── 시안별 색 ─────────────────────────────────────────── */
+.concept-a {
+  --panel: #F5F1E6; --panel-edge: #D9D0BA; --head: #183540;
+  --water: linear-gradient(180deg, #D3EEF2 0%, #BFE3EA 100%);
+  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='40'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' opacity='.75'%3E%3Cpath d='M4 12q6-5 12 0'/%3E%3Cpath d='M36 30q6-5 12 0'/%3E%3C/g%3E%3C/svg%3E");
+  --cell-edge: rgba(56, 122, 140, .45);
+  --foam: inset 0 0 0 1px rgba(255, 255, 255, .8), inset 0 -12px 20px rgba(255, 255, 255, .35);
+  --closed: #E3E9EA; --lock: #8A9BA3;
+  --chip-bg: #FFFFFF; --chip-ink: #183540; --chip-edge: #3D6574; --chip-r: 999px;
+  --line-c: #6746A5; --line-bg: rgba(103, 70, 165, .10); --line-chip: #F0ECFA;
+  --miss-c: #526774; --miss-chip: #E9EEF1; --splash: #FFFFFF; --splash-2: #6F97A6;
+  --dud-c: #625B53;
+  --latest: #183540; --badge-bg: #FFFFFF;
+  --hull: #7C95A2; --hull-deck: #A9BEC8; --hull-edge: #3F5866;
+  --tow: #8B4E00;
+  --fleet-bg: #FFFFFF; --fleet-ink: #183540; --fleet-ink-2: #536971;
+}
+.concept-b {
+  --panel: radial-gradient(120% 90% at 50% 0%, #11425F 0%, #0B3148 70%); --panel-edge: #0B3148; --head: #E8F6F8;
+  --water: linear-gradient(180deg, #2371A0 0%, #17557A 100%);
+  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='40'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' opacity='.22'%3E%3Cpath d='M4 12q6-5 12 0'/%3E%3Cpath d='M36 30q6-5 12 0'/%3E%3C/g%3E%3C/svg%3E");
+  --cell-edge: rgba(150, 214, 230, .28);
+  --foam: inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -14px 22px rgba(4, 30, 46, .35);
+  --closed: #123C54; --lock: #7FA3B5;
+  --chip-bg: transparent; --chip-ink: #FFFFFF; --chip-edge: transparent; --chip-r: 10px;
+  --line-c: #CDBBFF; --line-bg: rgba(205, 187, 255, .26); --line-chip: rgba(205, 187, 255, .22);
+  --miss-c: #DCE8EE; --miss-chip: rgba(220, 232, 238, .16); --splash: #FFFFFF; --splash-2: #9CC6D8;
+  --dud-c: #D9D3CB;
+  --latest: #FFFFFF; --badge-bg: #0B3148;
+  --hull: #A5B8C3; --hull-deck: #D3DEE4; --hull-edge: #0E2D40;
+  --tow: #F6BE48;
+  --fleet-bg: #0B3148; --fleet-ink: #E8F6F8; --fleet-ink-2: #A9C4D0;
+}
+.concept-c {
+  --panel: #F1E8D2; --panel-edge: #D8C9A6; --head: #183540;
+  --water: #B3DCE8;
+  --wave: none;
+  --cell-edge: rgba(40, 104, 128, .45);
+  --foam: inset 0 0 0 1px rgba(255, 255, 255, .55);
+  --closed: #DDE5E6; --lock: #7E8F97;
+  --chip-bg: #FFFDF6; --chip-ink: #183540; --chip-edge: #183540; --chip-r: 6px;
+  --line-c: #6746A5; --line-bg: rgba(103, 70, 165, .10); --line-chip: #F0ECFA;
+  --miss-c: #526774; --miss-chip: #E9EEF1; --splash: #FFFFFF; --splash-2: #5F8FA2;
+  --dud-c: #625B53;
+  --latest: #183540; --badge-bg: #FFFFFF;
+  --hull: #7C95A2; --hull-deck: #A9BEC8; --hull-edge: #3F5866;
+  --tow: #8B4E00;
+  --fleet-bg: #FBF7EC; --fleet-ink: #183540; --fleet-ink-2: #536971;
+}
+
+/* ── 판 틀 ─────────────────────────────────────────────── */
+.bc-panel { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--r-panel); position: relative; display: flex; align-items: center; justify-content: center; }
+.bc-board { position: relative; display: grid; }
+.bc-over { position: absolute; inset: 0; display: grid; pointer-events: none; z-index: 3; }
+.bc-lines { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 5; overflow: visible; }
+
+.bc-ch, .bc-rh { display: flex; color: var(--head); font-weight: 600; line-height: 1.15; }
+.bc-ch { align-items: flex-end; justify-content: center; text-align: center; font-size: var(--hf); padding-bottom: 6px; white-space: nowrap; }
+.bc-rh { align-items: center; justify-content: flex-end; font-size: var(--rf); padding-right: 12px; }
+
+/* 칸 = 바다 한 조각 */
+.bc-cell {
+  position: relative; overflow: hidden; border-radius: 8px;
+  background: var(--wave), var(--water); background-size: 64px 40px, auto;
+  box-shadow: var(--foam), 0 0 0 1px var(--cell-edge);
+  display: flex; flex-direction: column;
+}
+.concept-c .bc-cell { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 124' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23286880' stroke-width='1.6'%3E%3Cpath stroke-opacity='.22' d='M18 32C48 6 124 12 152 34C168 62 150 102 108 108C66 116 20 102 12 70C8 52 10 42 18 32Z'/%3E%3Cpath stroke-opacity='.16' d='M46 48C72 30 114 38 128 54C138 72 118 90 92 92C64 96 40 84 36 68C34 58 38 52 46 48Z'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat, radial-gradient(60% 60% at 50% 55%, #A3D3E2 0%, #BDE2EC 100%); }
+.bc-cell.is-closed { background: var(--closed); box-shadow: 0 0 0 1px var(--cell-edge); }
+.bc-lock { position: absolute; left: 50%; top: 50%; width: 26%; max-width: 28px; transform: translate(-50%, -50%); color: var(--lock); }
+
+.bc-item { position: relative; flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.bc-item + .bc-item { border-top: 2px solid rgba(255, 255, 255, .7); }
+.concept-b .bc-item + .bc-item { border-top-color: rgba(255, 255, 255, .25); }
+.bc-item.k-hit { flex-grow: 2; }
+
+/* 소리 표(부표·해도 표지) */
+.bc-chip {
+  position: relative; z-index: 2; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-sound); font-weight: 700; font-size: var(--cfs, var(--fs)); line-height: 1; white-space: nowrap;
+  color: var(--chip-ink); background: var(--chip-bg); border: 2px solid var(--chip-edge); border-radius: var(--chip-r);
+  padding: .14em .32em .16em;
+}
+.bc-item.k-hit .bc-chip { background: var(--hit); color: var(--ink); border-color: var(--hit-ink); }
+.bc-item.k-line .bc-chip { background: var(--line-chip); border-color: var(--line-c); }
+.bc-item.k-miss .bc-chip { background: var(--miss-chip); border-color: var(--miss-c); }
+.concept-b .bc-item.k-line .bc-chip, .concept-b .bc-item.k-miss .bc-chip { color: #FFFFFF; }
+
+/* 명중: 황금 테두리(칸 안쪽) */
+/* (명중 칸의 황금은 배 조각의 갑판이 맡는다 — 칸 테두리는 진한 황금 1줄만) */
+.bc-cell.has-hit { box-shadow: var(--foam), 0 0 0 2px var(--hit-ink); }
+
+/* 배 조각(위에서 내려다본 선체, 뱃머리 오른쪽): 갑판 = 명중 황금, 테두리 = 선체(가라앉으면 검게 탐) */
+.bc-hull { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; width: 94%; height: 76%; overflow: visible; }
+.bc-hull .h-body { fill: var(--hit); stroke: var(--hull); stroke-width: var(--rim, 11px); vector-effect: non-scaling-stroke; stroke-linejoin: round; paint-order: stroke; }
+.bc-hull .h-cut { stroke: var(--hull-edge); stroke-width: 3px; vector-effect: non-scaling-stroke; stroke-dasharray: 6 5; }
+.bc-hull .h-seam { stroke: var(--hull); stroke-width: 4px; vector-effect: non-scaling-stroke; }
+.bc-hull .h-soot { fill: #231F1D; opacity: .45; }
+.bc-hull-tall .h-soot { display: none; }
+.bc-hull.is-sunk { --hull: #3E3835; }
+.bc-hull-tall { width: 64%; height: 94%; }
+.bc-item.k-hit .bc-chip { background: transparent; border-color: transparent; color: var(--ink); }
+
+/* 빗나감 물보라 고리 */
+.bc-splash { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 96%; height: 96%; z-index: 1; overflow: visible; }
+.bc-splash .s1 { fill: none; stroke: var(--splash); stroke-width: 3.5; }
+.bc-splash .s2 { fill: none; stroke: var(--splash-2); stroke-width: 2; opacity: .8; }
+.bc-splash .dr { fill: var(--splash); }
+
+/* 없는 소리 */
+.bc-dud { position: relative; z-index: 2; height: 58%; max-height: 64px; aspect-ratio: 1; color: var(--dud-c); }
+.bc-puff { position: absolute; inset: 12% 20%; border-radius: 50%; background: radial-gradient(closest-side, rgba(98, 91, 83, .28), rgba(98, 91, 83, 0)); z-index: 1; }
+.concept-b .bc-puff { background: radial-gradient(closest-side, rgba(10, 20, 26, .55), rgba(10, 20, 26, 0)); }
+.bc-dudlab { position: relative; z-index: 2; font-weight: 700; font-size: calc(var(--fs) * .42); color: var(--dud-c); margin-left: 4px; }
+.concept-c .bc-dudlab { background: #FFFDF6; border-radius: 4px; padding: 0 4px; color: #625B53; }
+.bc-reef { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; z-index: 1; overflow: visible; }
+
+/* 배지(칸 오른쪽 위 한 곳) */
+.bc-badge {
+  position: absolute; z-index: 4; right: 5px; top: 5px; width: var(--badge); height: var(--badge);
+  border-radius: 50%; background: var(--badge-bg); border: 2.5px solid currentColor; padding: 3px; display: block;
+}
+.bc-badge svg { width: 100%; height: 100%; display: block; }
+.bc-badge.k-hit { color: var(--hit-ink); background: var(--hit); border-color: var(--hit-ink); }
+.concept-b .bc-badge.k-hit { border-color: #0B3148; }
+.bc-badge.k-line { color: var(--line-c); }
+.bc-badge.k-miss { color: var(--miss-c); }
+.bc-badge.k-dud { color: var(--dud-c); }
+.bc-item .bc-badge { --badge: calc(var(--bsz, 30px)); }
+
+/* 최근 1발: 공통 테두리 */
+.bc-item.is-latest::before { content: ''; position: absolute; inset: 0; border-radius: 6px; box-shadow: inset 0 0 0 3px var(--latest); z-index: 6; pointer-events: none; }
+
+/* 같은 줄 범위 */
+.bc-trace { position: relative; border-radius: 10px; background: var(--line-bg); box-shadow: inset 0 0 0 2px var(--line-c); opacity: .7; }
+.bc-trace.is-latest { opacity: 1; box-shadow: inset 0 0 0 3px var(--line-c); }
+.concept-b .bc-trace { opacity: 1; box-shadow: inset 0 0 0 3px var(--line-c); }
+.bc-dir { position: absolute; width: 30px; height: 30px; padding: 4px; border-radius: 50%; background: var(--badge-bg); color: var(--line-c); border: 2.5px solid var(--line-c); }
+.bc-dir svg { width: 100%; height: 100%; display: block; }
+.bc-trace.o-col .bc-dir { bottom: 0; left: 50%; transform: translate(-50%, 55%); }
+.bc-trace.o-row .bc-dir { right: 0; top: 50%; transform: translate(55%, -50%); }
+
+/* 끌줄(격침된 두 칸 배의 떨어진 조각 잇기) + 배 배지 */
+.bc-tow { fill: none; stroke: var(--tow); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 0.1 10; }
+.bc-towbadge > rect { fill: var(--badge-bg); stroke: var(--tow); stroke-width: 2.5; }
+.concept-b .bc-towbadge > rect { fill: #0B3148; }
+
+/* ── 남은 배(조각 수 = 칸 수) ──────────────────────────── */
+.bc-fleet { background: var(--fleet-bg); color: var(--fleet-ink); border-radius: var(--r-panel); border: 1px solid var(--panel-edge); padding: 14px 24px 16px; }
+.concept-a .bc-fleet { border-color: var(--divider); }
+.bc-fleet-title { font-weight: 600; font-size: 22px; color: var(--fleet-ink-2); margin-bottom: 10px; display: flex; justify-content: space-between; }
+.bc-fleet-title b { color: var(--fleet-ink); font-weight: 700; }
+.bc-fleet-row { display: flex; gap: 36px; align-items: flex-end; }
+.bc-ship { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.bc-ship svg { display: block; width: auto; overflow: visible; }
+.bc-ship .f-edge { fill: none; stroke: var(--hull-edge); stroke-width: 26; stroke-linejoin: round; }
+.bc-ship .f-seg { fill: var(--hull-deck); stroke: var(--hull); stroke-width: 18; stroke-linejoin: round; }
+.bc-ship.is-sunk .f-seg { fill: var(--hit); stroke: #3E3835; }
+.bc-ship.is-sunk .f-edge { stroke: #231F1D; }
+.bc-ship .f-smoke { fill: #8E8782; opacity: .75; }
+.bc-ship-name { font-size: 20px; font-weight: 600; line-height: 1.2; }
+.bc-ship-sub { font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--fleet-ink-2); display: flex; align-items: center; gap: 6px; }
+.bc-ship.is-sunk .bc-ship-sub { color: var(--fleet-ink); }
+.bc-ship-sub .ok { display: inline-flex; align-items: center; gap: 3px; font-size: 16px; font-weight: 700; color: var(--hit-ink); background: var(--hit); border-radius: 6px; padding: 2px 6px; }
+
+/* ── 쪽 배치(가로 1920×1080 · 휴대폰 390×844) ─────────────── */
+.bc-screen { background: var(--bg); position: relative; overflow: hidden; }
+.bc-wide { width: 1920px; height: 1080px; display: grid; grid-template-columns: 1040px 1fr; grid-template-rows: 76px 760px 1fr; gap: 0 16px; padding: 0 16px 12px; }
+.bc-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 20px; }
+.bc-btn { border: 2px solid var(--control-line); border-radius: var(--r-btn); padding: 10px 20px; font-weight: 600; font-size: 20px; background: var(--surface); }
+.bc-title { font-weight: 700; font-size: 30px; }
+.bc-turns { margin-left: auto; font-size: 22px; font-weight: 600; color: var(--ink-2); display: flex; align-items: baseline; gap: 12px; }
+.bc-turns b { font-size: 44px; color: var(--ink); }
+.bc-tag { font-size: 16px; font-weight: 700; color: #fff; background: var(--ink); border-radius: 8px; padding: 4px 10px; }
+.bc-right { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.bc-mouth { flex: 1; min-height: 0; background: var(--surface) url(../design/board-concepts/_ctx/mouth.png) center / contain no-repeat; border-radius: var(--r-panel); border: 1px solid var(--divider); position: relative; }
+.bc-note { position: absolute; left: 12px; bottom: 10px; font-size: 14px; color: var(--ink-2); background: rgba(255, 255, 255, .85); padding: 2px 8px; border-radius: 6px; }
+.bc-bottom { grid-column: 1 / -1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 10px; }
+.bc-log { display: flex; gap: 22px; align-items: center; background: var(--surface); border: 1px solid var(--divider); border-radius: 10px; padding: 6px 16px; font-size: 19px; font-weight: 600; }
+.bc-log .n { color: var(--ink-2); font-weight: 500; }
+.bc-log .g { width: 20px; height: 20px; display: inline-block; vertical-align: -3px; }
+.bc-log .k-hit { color: var(--hit-ink); } .bc-log .k-line { color: var(--line); } .bc-log .k-miss { color: var(--miss); } .bc-log .k-none { color: var(--dud); }
+.bc-ctl { width: 908px; flex: 1; min-height: 0; background: url(../design/board-concepts/_ctx/controls-wide.png) center top / contain no-repeat; }
+
+.bc-phone { width: 390px; height: 844px; display: flex; flex-direction: column; }
+.bc-phone .bc-ptop { display: flex; align-items: center; gap: 10px; padding: 8px 12px 4px; }
+.bc-phone .bc-btn { font-size: 15px; padding: 7px 12px; }
+.bc-phone .bc-title { font-size: 17px; }
+.bc-phone .bc-turns { font-size: 14px; } .bc-phone .bc-turns b { font-size: 28px; }
+.bc-phone .bc-fleet { border: 0; border-radius: 0; padding: 4px 12px 6px; background: transparent; color: var(--ink); }
+.bc-phone .bc-fleet-row { gap: 14px; align-items: center; }
+.bc-phone .bc-fleet-title { display: none; }
+.bc-phone .bc-plabel { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.bc-phone .bc-mouth { flex: none; height: 200px; margin: 0 8px; }
+.bc-phone .bc-panel { margin: 6px 4px 0; padding: 6px 0 10px; }
+.bc-pline { text-align: center; font-size: 16px; font-weight: 600; padding: 6px 8px 0; }
+.bc-pctl { flex: 1; background: url(../design/board-concepts/_ctx/controls-phone.png) center bottom / 390px auto no-repeat; }
+.bc-phone .bc-fleet-mini { display: flex; align-items: center; gap: 12px; padding: 0 12px; }
+
+/* 쏘기 전(숨김 단계) 작은 판 */
+.bc-before { background: var(--surface); border: 1px solid var(--divider); border-radius: var(--r-panel); padding: 12px 16px; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.bc-before h3 { margin: 0; font-size: 20px; font-weight: 700; align-self: flex-start; }
+.bc-before p { margin: 0; font-size: 16px; color: var(--ink-2); align-self: flex-start; }
+.bc-before .bc-panel { padding: 10px 18px 14px; }
+
+/* 목차 쪽 */
+.bc-index { padding: 24px; }
+.bc-index h1 { font: 700 28px/1.2 var(--font-body); margin: 0 0 6px; }
+.bc-index .row { display: flex; gap: 16px; margin: 18px 0 8px; align-items: flex-start; }
+.bc-index a.th { display: block; border: 1px solid var(--divider); background: #fff; border-radius: 10px; padding: 6px; text-decoration: none; color: var(--ink); font-weight: 600; }
+.bc-index .th iframe { border: 0; display: block; pointer-events: none; transform-origin: 0 0; }
+.bc-index .clip { overflow: hidden; }
+
+.bc-ctl.no-help { background-image: url(../design/board-concepts/_ctx/controls-wide-nohelp.png); }
+
+/* ══ 2차 시안 C(선생님 선택): 섬과 암초 바다 지도 — tests/pages/board-concepts-c2.js ══════════════
+   색은 다섯 가지 역할만: 바다 파랑(지도) · 잉크(글씨·격자·배 테두리) · 황금(명중) · 보라(같은 줄 범위) · 돌 회색(암초).
+   판 전체 밑에 바다 지도 한 장, 칸은 얇은 격자선뿐(칸마다 틀·둥근 모서리 없음). */
+.concept-c2 {
+  --panel: #FFFFFF; --panel-edge: var(--divider); --head: #183540;
+  --line-c: #6746A5; --line-bg: rgba(103, 70, 165, .10);
+  --miss-c: #526774; --dud-c: #4F5A5F;
+  --latest: #183540; --badge-bg: #FFFFFF; --tow: #183540;
+  --fleet-bg: #FFFFFF; --fleet-ink: #183540; --fleet-ink-2: #536971;
+  --grid: rgba(24, 53, 64, .30);
+}
+.c2-board { gap: 0; }
+.c2-board .bc-ch { padding-bottom: 8px; }
+.c2-sea { border-radius: 10px; background-size: 100% 100%; box-shadow: inset 0 0 0 1.5px rgba(24, 53, 64, .45); z-index: 0; }
+.c2-cell { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  border-right: 1px solid var(--grid); border-bottom: 1px solid var(--grid); }
+.c2-cell.cr { border-right: 0; } .c2-cell.rb { border-bottom: 0; }
+.c2-cell.is-closed { background: rgba(255, 255, 255, .55); }
+.c2-cell.has-hit { box-shadow: inset 0 0 0 3px var(--hit); }
+
+.c2-item { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6%; gap: 2px; }
+.c2-item.is-plain { justify-content: center; padding-top: 0; }
+.c2-item + .c2-item { border-top: 1px dashed var(--grid); }
+.c2-item.is-multi { flex-direction: row; justify-content: center; padding-top: 0; gap: 6px; }
+.c2-item.k-hit { flex-grow: 2; }
+/* 소리 표지: 흰 판 + 잉크 글씨(12.9:1). 쏜 결과에 따라 판 색만 바뀐다 */
+.c2-mark {
+  position: relative; z-index: 3; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  font-family: var(--font-sound); font-weight: 700; line-height: 1; font-size: var(--cfs, var(--fs)); color: var(--ink);
+  background: #FFFFFF; border: 1.5px solid rgba(24, 53, 64, .55); border-radius: 6px; padding: .1em .22em .12em;
+  box-shadow: 0 1px 0 rgba(24, 53, 64, .18);
+}
+.c2-item.k-hit .c2-mark { background: var(--hit); border-color: var(--hit-ink); }
+.c2-item.k-line .c2-mark { background: var(--line-soft); border-color: var(--line); }
+.c2-item.k-miss .c2-mark { background: var(--miss-soft); border-color: var(--miss); }
+/* 물속에 드러난 것(칸 아래쪽) */
+.c2-low { position: relative; flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.c2-item.is-multi .c2-low { flex: 0 1 auto; width: auto; height: 100%; }
+.c2-ship { display: block; max-width: 92%; max-height: 100%; width: auto; height: auto; object-fit: contain; filter: drop-shadow(0 2px 0 rgba(24, 53, 64, .25)); }
+/* 조각은 모두 같은 배율(원본 너비 비례): 뱃머리 538 · 배꼬리 484 · 가운데 434 · 경비정 768(여백 포함) */
+.c2-wide .c2-ship.p-bow { width: 150px; } .c2-wide .c2-ship.p-stern { width: 135px; } .c2-wide .c2-ship.p-mid { width: 121px; } .c2-wide .c2-ship.p-boat1 { width: 156px; }
+.c2-phone .c2-ship.p-bow { width: 56px; } .c2-phone .c2-ship.p-stern { width: 50px; } .c2-phone .c2-ship.p-mid { width: 45px; } .c2-phone .c2-ship.p-boat1 { width: 58px; }
+.c2-splash { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 86%; height: 90%; }
+.c2-item.k-miss .c2-low { min-height: 40%; }
+.c2-reef { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 96%; height: 96%; }
+.c2-item.k-none { justify-content: center; padding: 0; }
+.c2-dudlab { position: relative; z-index: 3; font-weight: 700; font-size: calc(var(--fs) * .44); color: var(--ink); background: #FFFFFF; border-radius: 4px; padding: 0 4px; margin-top: 30%; }
+.c2-item .bc-badge { right: 4px; top: 4px; }
+.c2-item.is-latest::before { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--latest); z-index: 6; pointer-events: none; }
+.c2-cell.has-hit .c2-item.is-latest::before { inset: 3px; }
+/* 한 칸 안의 세 칸 배: 세운 한 척 + 소리 셋 */
+.c2-whole { flex-direction: row; justify-content: center; align-items: center; gap: 10%; padding: 0; }
+.c2-tall { position: relative; height: 100%; width: 22%; }
+.c2-ship-tall { position: absolute; left: 50%; top: 50%; width: calc(var(--ch, 130px) - 10px); height: auto; transform: translate(-50%, -50%) rotate(-90deg); }
+.c2-wide .c2-ship-tall { width: 124px; } .c2-phone .c2-ship-tall { width: 54px; } .c2-mini .c2-ship-tall { width: 46px; }
+.c2-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+/* 같은 줄 범위: 보라 2px 윤곽 + 10% 바탕(명중·배는 위에서 제 색 유지) */
+.c2-trace { opacity: 1; background: var(--line-bg); box-shadow: inset 0 0 0 2px var(--line-c); border-radius: 6px; }
+.c2-trace.is-latest { box-shadow: inset 0 0 0 3px var(--line-c); }
+.c2-board .bc-over { gap: 0; z-index: 2; }
+.c2-board .bc-dir { width: var(--badge); height: var(--badge); }
+/* 끌줄(점선)·번호 배지 */
+.c2-tow { stroke: var(--ink); stroke-width: 3.5; stroke-dasharray: 0.1 9; }
+.c2-towbadge rect { fill: #FFFFFF; stroke: var(--ink); stroke-width: 2; }
+.c2-num { position: absolute; z-index: 4; left: 4%; bottom: 4%; min-width: 1.5em; height: 1.5em; padding: 0 .3em; border-radius: 999px;
+  background: var(--ink); color: #FFFFFF; font-weight: 700; font-size: calc(var(--badge) * .8); line-height: 1.5em; text-align: center; box-shadow: 0 0 0 2px #FFFFFF; }
+.c2-phone .c2-num { font-size: 13px; left: 0; bottom: 0; }
+/* 남은 배(흰 카드) */
+.c2-fleet .bc-fleet-row { gap: 40px; }
+.c2-fship { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.c2-segs { position: relative; display: flex; align-items: center; gap: 5px; height: 56px; }
+.c2-seg { height: 46px; width: auto; display: block; }
+.c2-seg.p-boat1 { height: 56px; }
+.c2-fship.is-sunk .c2-segs { filter: none; }
+.c2-fship .c2-num { left: auto; right: -14px; top: -8px; bottom: auto; font-size: 20px; }
+.c2-fleet.is-compact .c2-segs { height: 24px; gap: 2px; }
+.c2-fleet.is-compact .c2-seg { height: 18px; } .c2-fleet.is-compact .c2-seg.p-boat1 { height: 22px; }
+.c2-fleet.is-compact .bc-fleet-row { gap: 14px; }
+.c2-fleet.is-compact .c2-num { font-size: 12px; right: -8px; top: -6px; }
+.concept-c2.bc-phone .bc-mouth { height: 176px; }
+.concept-c2 .bc-panel { background: var(--surface); }
+/* 휴대폰: 배지는 칸 오른쪽 아래(소리 표지를 가리지 않게), 쏜 칸의 표지는 위로 붙인다 */
+.c2-phone .c2-item:not(.is-plain), .c2-phone .c2-item.k-line, .c2-phone .c2-item.k-miss { justify-content: flex-start; padding-top: 3px; }
+.c2-phone .c2-item .bc-badge { top: auto; bottom: 2px; right: 2px; }
+.c2-phone .c2-item.k-line.is-plain { justify-content: flex-start; }
+.c2-phone .c2-item.k-hit .bc-badge { bottom: auto; top: auto; bottom: 2px; }
+.concept-c2 .bc-pctl { background-image: url(../design/board-concepts/_ctx/controls-phone-noline.png); }

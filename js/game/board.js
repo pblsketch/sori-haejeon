@@ -1,6 +1,7 @@
 'use strict';
 // ───────────────────────────────────────────────────────────────
-// 바다(판) 그리기 G.board — 판은 교과서의 자음 체계표(5×5)·단모음 체계표(3×4) 그 자체다.
+// 바다(판) 그리기 G.board — 판은 교과서의 자음 체계표(5×5)·단모음 체계표(3×4) 그 자체이고,
+//   그 밑에 하나로 이어진 '섬과 암초 바다 지도'(등심선·잔물결)가 깔린다(spec 3.3, 선생님 결정 — 시안 C).
 //   불러오는 순서: util → data(sounds·fleets·levels·text) → core(rules) → 이 파일. 모양은 css/board.css.
 //   점검: tests/check-board.mjs (점검용 페이지 tests/pages/board.html)
 //
@@ -20,38 +21,51 @@
 //   b.render(보기)      조용히 다시 그린다(되살리기·새로고침). 보기 = { shots: Shot[], fleet: 쏘는 바다의 배(선택), reveal: bool }
 //                       또는 Shot[] 또는 판 상태(GameState, opts.shooter 기준). Shot은 G.rules의 기록 그대로.
 //   b.update(보기)      render와 같고, 지난번보다 늘어난 발만 짧게(0.2초 안팎) 강조한다(같은 줄 범위 윤곽 한 번,
-//                       명중 칸 황금 채움 강조, 격침 배 흔들림). 움직임 줄이기면 강조 없이 그린다. 불꽃·물보라 연출은 없다.
+//                       명중 표지 강조, 격침 배 흔들림). 움직임 줄이기면 강조 없이 그린다. 불꽃 연출은 없다.
 //   b.highlight(강조)   G.rules의 targets를 받아 그 범위의 윤곽을 한 번 짧게 강조한다 → Promise(끝나면). 흔적은 shots에서 그린다.
 //   b.setSelection(고른것)  지금 고른 자리·방법(자음 { place, manner } / 모음 { backness, height, lips })의 줄·열 머리를
 //                       '현재 선택'(청록 + 체크)으로 표시한다. 줄 이름을 숨기는 단계에서는 아무것도 표시하지 않는다.
-//   b.revealFleet(배?)  끝날 때 남은 배 공개: 아직 안 맞힌 칸에 소리를 찍고 배마다 점선으로 잇는다.
-//   b.markSunk(번호)    그 배를 격침으로 표시(선 잇기 + 목록 불탄 그림 + 흔들림). 보통은 shots의 sunkShip으로 저절로 된다.
+//   b.revealFleet(배?)  끝날 때 남은 배 공개: 아직 안 맞힌 칸에 소리와 배의 제 모양(온전한 그림)을 드러내고 배마다 가는 선으로 잇는다.
+//   b.markSunk(번호)    그 배를 격침으로 표시(불탄 제 모양 + 목록 불탄 그림 + 흔들림). 보통은 shots의 sunkShip으로 저절로 된다.
 //   b.setPlaceable(묶음들)  place: 누를 수 있는 묶음(G.rules.placeableGroups). 그 묶음의 칸만 눌린다.
-//   b.setPlaced(함대)       place: 이미 놓은 배(칸 칠하기 + 선 잇기).
-//   b.setHits(소리들)       map: 맞힌 소리 도장.
+//   b.setPlaced(함대)       place: 이미 놓은 배(팀 색 표지 + 위에서 본 배 그림 + 선 잇기).
+//   b.setHits(소리들)       map: 맞힌 소리 도장(황금 표지).
 //   b.setActive(bool)       대결: 차례인 팀이 쏘는 바다의 테두리.
 //   b.destroy()
 //   · 한 칸이 놓을 수 있는 묶음 여러 개에 들면(지금 데이터에서는 생기지 않음) 칸을 누를 때 작은 고르기 창이
 //     뜨고, 묶음마다 단추 하나('/ㄱ/ /ㄲ/ /ㅋ/')를 눌러 고른다. 다른 곳을 누르면 닫힌다.
 //
 // ── 판 옆 조각 ─────────────────────────────────────────────────────────
-//   G.board.ships(요소, { sizes: [3,2,1], compact })  → { el, set(격침된 번호들, 방금 격침된 번호), destroy }  남은 배 목록
+//   G.board.ships(요소, { sizes: [3,2,1], compact })  → { el, set(격침된 번호들, 방금 격침된 번호, 번호표{배: 숫자}), destroy }  남은 배 목록
 //   G.board.legend(요소, { sea })                      → { el, destroy }  배 종류 그림 한 줄씩(G.text.legend)
-//   G.board.soundMap(요소, { sea, grade, hitSounds })  → 판 객체(map 모드)  결과 화면·누적 소리 지도
+//   G.board.soundMap(요소, { sea, grade, hitSounds })  → 판 객체(map 모드)  결과 화면·누적 소리 지도(바다 지도 위, 배 조각 없음)
 //   G.board.viewOf(판상태, 쏘는팀)                      → { shots, fleet, reveal:false }
-//   G.board.setImageBase('assets/img/')                 배 그림 폴더(ship3.webp, ship3_burnt.webp …). 그림이 없으면 코드로 그린 모양.
-//   · 판 위에는 그림을 깔지 않는다(바다 질감은 시작 화면 그림으로만). 신호는 색 + 벡터 기호(G.util.glyph) + 글씨.
+//   G.board.setImageBase('assets/img/')                 배 그림 폴더(top_*.webp). 그림이 없으면 코드로 그린 모양.
+//   G.board.shipPic(크기, 불탐)                         남은 배 목록의 배 한 척(칸 수만큼의 조각을 이은 위에서 본 배)
 //
-// ── 신호 표시(디자인 검수 · spec 8.1) ─────────────────────────────────
-//   명중 = 황금 채움 + 과녁 배지 · 같은 줄 = 보라 윤곽·옅은 바탕(게임이 돌려준 범위에만) + ↔/↕/겹친 네모 기호
-//   빗나감 = 회색 × · 없는 소리 = ∅. 최근 발(.is-latest)은 굵은 테두리와 큰 배지, 이전 발은 같은 기호의 작은 배지.
+// ── 바다 지도 · 배 조각(spec 3.3) ─────────────────────────────────────
+//   · 격자 전체 밑에 바다 지도 한 장(.sb-sea, 코드로 그린 SVG — 등심선·잔물결). 칸은 얇은 격자선뿐이다.
+//   · 소리 표기(.sb-snd/.sb-stamp)는 흰 '바다 표지'(판) 위 잉크 글씨. 쏜 결과에 따라 표지 색만 바뀐다
+//     (명중 황금 · 같은 줄 옅은 보라 · 빗나감 옅은 회색 · 공개 흰색+테두리). 모두 명암비 4.5 이상.
+//   · 칸(자리)의 위쪽 = 표지, 아래쪽 = 물속에 드러난 것(.sb-obj): 위에서 본 배 조각(img.sb-top) · 물보라 고리(.sb-ripple).
+//     자리가 낮으면(.is-row) 드러난 것을 표지 옆 작게 둔다.
+//   · 명중(가라앉기 전) = 어느 배든 같은 조각 top_hit(배 크기·종류가 새지 않음).
+//     격침 = 제 모양의 불탄 그림: 한 칸 배 top_boat1 · 여러 칸에 걸친 배는 칸마다 뱃머리/가운데/배꼬리
+//     (세로로 놓인 배는 위가 뱃머리, 가로로 놓인 배는 오른쪽이 뱃머리) · 한 칸 안의 배(세기만 다른 소리들)는
+//     칸 왼쪽에 세운 한 척(.sb-vship)으로.
+//   · 떨어진 조각의 격침 배: 점선 끌줄(.sb-tow) + 가운데 작은 배 배지(.sb-towbadge) + 두 조각과 남은 배 목록에 같은 번호(.sb-num, 배 순서+1).
+//   · 없는 소리(빈칸) = 그 칸에 암초(.sb-reef) + ∅ 배지(.sb-dudmark). 소리 지도에는 배 조각을 그리지 않는다.
+//
+// ── 신호 표시(디자인 검수 · spec 5.4·8.1) ─────────────────────────────────
+//   명중 = 황금 표지 + 칸 황금 테두리 + 과녁 배지 · 같은 줄 = 보라 윤곽·옅은 바탕(게임이 돌려준 범위에만) + ↔/↕/겹친 네모 기호
+//   빗나감 = 물보라 고리 + × · 없는 소리 = 암초 + ∅. 최근 발(.is-latest)은 공통 잉크 테두리, 이전 발은 같은 기호의 배지.
 //   맞히지 않은 소리는 언제나 기본 잉크(흐리게 하지 않음). 소리 표기는 한 판 안에서 모두 같은 크기(--sb-fs).
 //
 // ── 숨김(단계, spec 4) ─────────────────────────────────────────────────
-//   칸 안 소리를 숨기는 단계에서는 25칸(12칸)을 모두 같은 모양으로 그린다: 빈칸·세기 자리·소리가 DOM 속성·글·aria
-//   어디에도 없다(칸의 자리는 data-r/data-c 번호뿐). 쏜 뒤에야 그 칸에 표시가 생긴다. 줄 이름을 숨기는 단계는 머리글이 빈다.
+//   칸 안 소리를 숨기는 단계에서는 25칸(12칸)을 모두 같은 모양으로 그린다: 빈칸·세기 자리·소리·암초·자물쇠·배 조각이
+//   DOM 속성·글·aria 어디에도 없다(칸의 자리는 data-r/data-c 번호뿐, 바다 지도는 칸 밖의 한 장). 쏜 뒤에야 그 칸에 표시가 생긴다.
+//   줄 이름을 숨기는 단계는 머리글이 빈다.
 //   배치(place) 화면은 단계와 상관없이 소리와 줄 이름을 보인다(spec 6.3). 소리 지도(map)는 모두 보인다.
-//   판 위에는 배 그림을 올리지 않는다(선과 칠하기만). 배 그림은 판 옆 목록에만.
 // ───────────────────────────────────────────────────────────────
 G.board = (function () {
   const U = G.util, S = window.SOUNDS;
@@ -61,7 +75,6 @@ G.board = (function () {
   S.consonants.concat(S.vowels).forEach((s) => { byId[s.id] = s; });
   const slash = (id) => G.text.sound(id);
   let imgBase = 'assets/img/';
-  const probes = {};
 
   // 바다의 모양: 줄(행)·열, 소리·칸 → [행, 열]
   function geo(sea) {
@@ -78,37 +91,99 @@ G.board = (function () {
     const name = kind === 'line' ? dir || 'eq' : kind === 'hit' ? 'hit' : kind === 'miss' ? 'miss' : kind === 'dud' ? 'dud' : null;
     return name ? U.glyph(name, 'sb-badge') : null;
   }
-  // 배 모양(그림 파일이 없을 때 대신)
-  function shipSvg(size, burnt) {
-    const w = 44 + size * 26;
-    const s = U.svg('svg', { viewBox: '0 0 ' + w + ' 40', class: 'sb-ship-svg' + (burnt ? ' is-burnt' : ''), 'aria-hidden': 'true', focusable: 'false' });
-    let body = '<path d="M3 24 H' + (w - 3) + ' L' + (w - 13) + ' 36 H13 Z" class="sb-hull"/>';
-    for (let i = 0; i < size; i++) body += '<rect x="' + (18 + i * 26) + '" y="12" width="18" height="12" rx="2" class="sb-deck"/>';
-    body += '<rect x="' + (w / 2 - 1.5) + '" y="3" width="3" height="10" class="sb-deck"/>';
-    if (burnt) body += '<circle cx="' + (w * 0.35) + '" cy="9" r="6" class="sb-smoke"/><circle cx="' + (w * 0.55) + '" cy="6" r="5" class="sb-smoke"/><path d="M' + (w * 0.45) + ' 24c-4-5 0-8 2-12 2 4 6 7 2 12z" class="sb-fire"/>';
-    s.innerHTML = body;
+
+  // ── 위에서 본 배 그림 ─────────────────────────────────────────
+  // 조각 이름: hit(가라앉기 전 명중, 어느 배든 같음) · bow 뱃머리 · mid 가운데 · stern 배꼬리 · boat1 한 칸 배
+  const HULL = { // 그림 파일이 없을 때 대신 그리는 모양(200 × 100, 뱃머리 오른쪽)
+    bow: 'M0 12H112C160 12 188 32 196 50C188 68 160 88 112 88H0Z',
+    mid: 'M0 12H200V88H0Z', hit: 'M20 12H180V88H20Z',
+    stern: 'M200 12H36C18 12 8 24 8 40V60C8 76 18 88 36 88H200Z',
+    boat1: 'M28 12H118C162 12 188 32 196 50C188 68 162 88 118 88H28C16 88 8 80 8 68V32C8 20 16 12 28 12Z',
+  };
+  function hullSvg(part, burnt, cls) {
+    const s = U.svg('svg', { viewBox: '-6 -6 212 112', class: 'sb-top sb-top-svg ' + (cls || '') + (burnt ? ' is-burnt' : ''), 'aria-hidden': 'true', focusable: 'false', 'data-piece': part });
+    s.innerHTML = '<path class="sb-hull" d="' + (HULL[part] || HULL.mid) + '"/>';
     return s;
   }
-  function probe(url) {
-    if (!(url in probes)) probes[url] = new Promise((res) => {
-      const im = new Image();
-      im.onload = () => res(true);
-      im.onerror = () => res(false);
-      im.src = url;
-    });
-    return probes[url];
+  // <img class="sb-top" data-piece="bow" data-burnt>: 그림이 없으면(오류) 코드 모양으로 바꾼다
+  function topImg(part, burnt, cls) {
+    const im = U.el('img', { class: 'sb-top ' + (cls || ''), src: imgBase + 'top_' + part + (burnt ? '_burnt' : '') + '.webp', alt: '', draggable: 'false', 'data-piece': part, 'data-burnt': burnt ? '1' : null });
+    im.addEventListener('error', () => { if (im.parentNode) im.parentNode.replaceChild(hullSvg(part, burnt, cls), im); }, { once: true });
+    return im;
   }
-  // 배 그림: 먼저 코드로 그린 모양을 두고, 그림 파일이 있으면 바꿔 끼운다(없어도 오류 없음).
+  // 남은 배 목록의 배 한 척: 칸 수만큼의 조각(배꼬리 … 뱃머리)을 잇는다. 모든 배가 같은 축척(조각 하나 = 한 칸)
+  const SEGS = { 1: ['boat1'], 2: ['stern', 'bow'], 3: ['stern', 'mid', 'bow'] };
   function shipPic(size, burnt) {
-    const box = U.el('span', { class: 'sb-pic' + (burnt ? ' is-burnt' : ''), 'data-size': size });
-    box.appendChild(shipSvg(size, burnt));
-    const url = imgBase + 'ship' + size + (burnt ? '_burnt' : '') + '.webp';
-    probe(url).then((ok) => {
-      if (!ok || !box.isConnected && !box.parentNode) return;
-      box.textContent = '';
-      box.appendChild(U.el('img', { src: url, alt: '', draggable: 'false' }));
-    });
+    const box = U.el('span', { class: 'sb-pic is-top' + (burnt ? ' is-burnt' : ''), 'data-size': size });
+    (SEGS[size] || SEGS[1]).forEach((p) => box.appendChild(topImg(p, burnt, 'sb-seg p-' + p)));
     return box;
+  }
+  // 한 칸 안의 배(세기만 다른 소리들): 뱃머리를 위로 세운 한 척
+  function vship(parts, burnt, ship) {
+    const box = U.el('span', { class: 'sb-vship' + (burnt ? ' is-burnt' : ''), 'aria-hidden': 'true', 'data-ship': ship });
+    const inner = U.el('span', { class: 'sb-vship-in' });
+    parts.slice().reverse().forEach((p) => inner.appendChild(topImg(p, burnt, 'sb-seg p-' + p))); // 가로로 배꼬리→뱃머리, 돌려 세움
+    box.appendChild(inner);
+    return box;
+  }
+  // 물보라 고리(빗나감) · 암초(없는 소리)
+  function ripple() {
+    const s = U.svg('svg', { viewBox: '0 0 200 100', class: 'sb-ripple', 'aria-hidden': 'true', focusable: 'false' });
+    s.innerHTML = '<ellipse cx="100" cy="50" rx="70" ry="30" class="r1"/><ellipse cx="100" cy="50" rx="44" ry="18" class="r2"/>' +
+      '<ellipse cx="100" cy="50" rx="92" ry="42" class="r3"/><circle cx="100" cy="50" r="7" class="rd"/>' +
+      '<circle cx="28" cy="18" r="4.5" class="rd"/><circle cx="172" cy="84" r="4.5" class="rd"/>';
+    return s;
+  }
+  function reef() {
+    const s = U.svg('svg', { viewBox: '0 0 200 140', class: 'sb-reef', 'aria-hidden': 'true', focusable: 'false' });
+    s.innerHTML =
+      '<path class="rf-foam" d="M22 92C30 64 60 50 92 54 120 40 164 52 178 80 188 102 160 122 118 118 84 128 36 122 22 92Z"/>' +
+      '<path class="rf-rock" d="M46 96L64 60 84 72 100 40 122 66 142 58 158 96Z"/>' +
+      '<path class="rf-crack" d="M64 60L74 82M100 40L104 76M122 66L130 86"/>' +
+      '<path class="rf-lit" d="M100 40L112 54 104 60Z M64 60L72 70 66 72Z"/>' +
+      '<circle class="rf-rock" cx="34" cy="70" r="8"/><circle class="rf-rock" cx="170" cy="108" r="7"/>';
+    return s;
+  }
+
+  // ── 바다 지도 한 장(격자 전체 밑): 깊은 곳 몇 군데를 둘러싼 등심선 + 잔물결. 모양은 고정(같은 판이면 같은 그림) ──
+  function seaSvg(w, h) {
+    let t = 11;
+    const rnd = () => { t = (t * 16807) % 2147483647; return (t - 1) / 2147483646; };
+    const blob = (cx, cy, rx, ry, k) => {
+      const n = 10, pts = [], ph = rnd() * 6.28;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const r = 1 + 0.13 * Math.sin(a * 3 + ph + k) + 0.07 * Math.sin(a * 5 + ph * 2);
+        pts.push([cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r]);
+      }
+      let d = '';
+      for (let i = 0; i < n; i++) {
+        const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+        if (!i) d += 'M' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1);
+        d += 'C' + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + ' ' + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) + ' ' +
+          (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + ' ' + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) + ' ' + p2[0].toFixed(1) + ' ' + p2[1].toFixed(1);
+      }
+      return d + 'Z';
+    };
+    let deep = '', lines = '';
+    [[0.3, 0.62, 0.34, 0.42], [0.74, 0.3, 0.3, 0.36], [0.82, 0.86, 0.2, 0.22]].forEach(([x, y, rx, ry], j) => {
+      for (let k = 0; k < 4; k++) {
+        const s = 1 - k * 0.24;
+        const d = blob(x * w, y * h, rx * w * s, ry * h * s, j + k * 0.4);
+        deep += '<path d="' + d + '" fill="#1B5F82" fill-opacity=".045"/>';
+        lines += '<path d="' + d + '" fill="none" stroke="#1B5F82" stroke-opacity="' + (0.12 + k * 0.02).toFixed(2) + '" stroke-width="1.4"/>';
+      }
+    });
+    let waves = '';
+    const nW = Math.max(12, Math.round(w * h / 9000));
+    for (let i = 0; i < nW; i++) {
+      const x = rnd() * w, y = rnd() * h, s = 4 + rnd() * 4;
+      waves += '<path d="M' + x.toFixed(0) + ' ' + y.toFixed(0) + 'q' + s.toFixed(1) + ' -' + (s * 0.7).toFixed(1) + ' ' + (2 * s).toFixed(1) + ' 0"/>';
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CBE8EF"/><stop offset="1" stop-color="#AFD8E5"/></linearGradient></defs>' +
+      '<rect width="100%" height="100%" fill="url(#g)"/>' + deep + lines +
+      '<g fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="1.6" stroke-linecap="round">' + waves + '</g></svg>';
   }
 
   // ── 남은 배 목록 ─────────────────────────────────────────────
@@ -129,15 +204,20 @@ G.board = (function () {
     let sunkNow = [];
     return {
       el,
-      // set(격침된 배 번호들, 방금 격침된 번호(연출, 선택))
-      set(sunk, fresh) {
+      // set(격침된 배 번호들, 방금 격침된 번호(연출, 선택), 번호표 { 배 번호: 표시할 숫자 }(선택 — 떨어진 조각을 잇는 번호))
+      set(sunk, fresh, nums) {
         sunk = sunk || [];
+        nums = nums || {};
         items.forEach((it, i) => {
           const on = sunk.indexOf(i) >= 0, was = sunkNow.indexOf(i) >= 0;
           if (on !== was) {
             it.classList.toggle('is-sunk', on);
             it.replaceChild(shipPic(sizes[i], on), it.querySelector('.sb-pic'));
           }
+          const old = it.querySelector('.sb-num');
+          const want = on && nums[i] != null ? String(nums[i]) : '';
+          if (old && old.textContent !== want) old.remove();
+          if (want && (!old || old.textContent !== want)) it.querySelector('.sb-pic').appendChild(U.el('span', { class: 'sb-num', 'aria-hidden': 'true' }, want));
           if (on && fresh === i && !reduced()) {
             it.classList.remove('sb-sinking'); void it.offsetWidth; it.classList.add('sb-sinking');
             setTimeout(() => it.classList.remove('sb-sinking'), 1300);
@@ -200,9 +280,13 @@ G.board = (function () {
     });
     const over = U.el('div', { class: 'sb-over', 'aria-hidden': 'true' });
     const lines = U.svg('svg', { class: 'sb-lines', 'aria-hidden': 'true', focusable: 'false' });
+    // 바다 지도 한 장(격자 영역 전체, 칸 밖) — 숨긴 단계에서도 모든 칸 밑에 똑같이 깔린다
+    const seaEl = U.el('div', { class: 'sb-sea', 'aria-hidden': 'true', style: 'grid-row:2 / span ' + R + ';grid-column:2 / span ' + C });
+    let seaKey = '';
     // 쏘는 바다: 같은 줄 범위의 방향 기호가 판 오른쪽·아래 가장자리에 걸쳐 놓이므로 그만큼 여백을 둔다
-    let PAD = mode === 'play' ? 12 : 0; // 좁은 판(휴대폰)은 layout()이 8로 줄인다
+    let PAD = mode === 'play' ? 12 : 0; // 좁은 판(휴대폰)은 layout()이 줄인다
     if (PAD) for (const e of [root, over]) { e.style.paddingRight = PAD + 'px'; e.style.paddingBottom = PAD + 'px'; }
+    root.appendChild(seaEl);
     root.appendChild(U.el('div', { class: 'sb-corner' }));
     const colHeads = g.cols.map((k) => {
       const e = U.el('div', { class: 'sb-ch' }, disp.names ? G.text.short(grade, g.cg, k) : '');
@@ -223,7 +307,7 @@ G.board = (function () {
         const e = U.el(mode === 'place' ? 'button' : 'div', mode === 'place'
           ? { class: cls, 'data-r': r, 'data-c': c, type: 'button', disabled: true }
           : { class: cls, 'data-r': r, 'data-c': c });
-        // 이번 단계에서 뺀 칸(자음 1단계의 /ㅎ/ 칸): 옅은 바탕 + 잠금 기호(보이는 단계에서만)
+        // 이번 단계에서 뺀 칸(자음 1단계의 /ㅎ/ 칸): 옅은 안개 + 잠금 기호(보이는 단계에서만)
         if ((disp.sounds || disp.empty) && ci.kind === 'closed') e.appendChild(U.glyph('lock', 'sb-lock'));
         root.appendChild(e);
         cellEls[r].push(e);
@@ -247,14 +331,20 @@ G.board = (function () {
     const shipList = opts.shipsEl && mode === 'play' ? ships(opts.shipsEl, { sizes: lv.fleet, compact: !!opts.compactShips }) : null;
 
     // ── 크기 맞추기 ──
-    let size = { cw: 0, ch: 0 };
+    let size = { cw: 0, ch: 0, F: 0 };
     let lastBox = '';
+    // 소리 표지(판 포함) 한 개의 너비 / 글씨 크기 — 이 판에 나올 가장 넓은 소리로 잰다
+    //   (보이는 쏘는 바다는 그 단계에 열린 소리 가운데 가장 넓은 것, 그 밖에는 가장 넓은 소리 /ㅃ/·/ㅚ/)
     function measureK() {
-      const m = U.el('span', { class: 'sb-snd sb-measure' }, sea === 'vowel' ? '/ㅚ/' : '/ㅃ/');
-      root.appendChild(m);
-      const k = m.getBoundingClientRect().width / 100;
-      m.remove();
-      return k > 0.5 && k < 4 ? k : 1.8;
+      const ids = mode === 'play' && disp.sounds ? open : [sea === 'vowel' ? 'ㅚ' : 'ㅃ'];
+      let k = 0;
+      for (const id of ids) {
+        const m = U.el('span', { class: 'sb-snd sb-measure' }, slash(id));
+        root.appendChild(m);
+        k = Math.max(k, m.getBoundingClientRect().width / 100);
+        m.remove();
+      }
+      return k > 0.5 && k < 4 ? k : 2.1;
     }
     // 긴 열 이름은 두 줄로 나눈다(용어는 줄이지 않는다): '여린입천장' → 여린 / 입천장, '앞·둥글게' → 앞· / 둥글게
     function headHTML(name, two) {
@@ -264,36 +354,37 @@ G.board = (function () {
       return [name.slice(0, i), name.slice(i)];
     }
     // 크기: 한 판 안에서 소리 표기(--sb-fs)는 모두 같은 크기. 줄 높이는 내용에 맞춘다
-    //   세기 자리가 셋인 줄(보이는 단계) = 자리마다 1.4 × 글씨, 한 자리 줄·숨김 단계의 줄 = 1.6 × 글씨(터치 목표 이상)
-    //   소리 표기 글씨는 자리 높이의 60% 이상(점검 기준), 칸 너비 안에 들어가게.
+    //   쏘는 바다(play)의 한 자리 줄 = 2.1 × 글씨(위: 표지, 아래: 물속에 드러나는 배 조각·물보라·암초)
+    //   배치·소리 지도의 한 자리 줄 = 1.6 × 글씨, 세기 자리가 셋인 줄 = 자리마다 1.36 × 글씨. 모두 터치 목표 이상.
+    //   소리 표지 글씨는 칸 너비 안에 들어가게(표지 여백 포함).
     function layout() {
       if (destroyed) return;
       const cs = getComputedStyle(container);
       const W0 = container.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
       if (!(W0 > 0)) return;
       if (mode === 'play') {
-        PAD = W0 < 520 ? 8 : 12;
+        PAD = W0 < 520 ? 10 : 14;
         for (const e of [root, over]) { e.style.paddingRight = PAD + 'px'; e.style.paddingBottom = PAD + 'px'; }
       }
       const W = W0 - PAD;
       const Hc = opts.fitHeight ? container.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - PAD : Infinity;
       const touch = parseFloat(getComputedStyle(root).getPropertyValue('--touch')) || 48;
       const k = measureK();
-      const gap = W < 520 ? 3 : 6;
+      const narrow = W < 520;
       const rowNames = disp.names ? g.rows.map((x) => G.text.short(grade, g.rg, x)) : [];
       const colNames = disp.names ? g.cols.map((x) => G.text.short(grade, g.cg, x)) : [];
       const rLen = Math.max(0, ...rowNames.map((x) => x.length));
       const cLen = Math.max(2, ...colNames.map((x) => x.length));
-      // 축 이름 글씨: 칸 너비에 비례(휴대폰 15~16 · 태블릿 20 안팎 · 칠판 28~30)
-      const cw0 = (W * 0.86 - gap * C) / C;
-      const axis = U.clamp(cw0 * 0.22, 15, 30);
-      const hw = disp.names ? Math.round(U.clamp(rLen * axis + 10, 34, W * 0.2)) : Math.round(U.clamp(W * 0.03, 8, 16));
-      const cw = Math.max(touch, Math.min(170, Math.floor((W - hw - gap * C) / C)));
-      const rf = U.clamp(Math.min(axis, (hw - 10) / Math.max(1, rLen)), 12, 30);
-      let hf = U.clamp(Math.min(axis, (cw - 8) / cLen), 11, 30), two = false;
+      // 축 이름 글씨: 칸 너비에 비례(휴대폰 16~18 · 대결 반쪽 25 안팎 · 칠판 28~30)
+      const cw0 = (W * 0.86) / C;
+      const axis = U.clamp(cw0 * 0.3, 16, 30); // 대결 반쪽 판(≈500px)에서도 25px 안팎(검수 2b)
+      const hw = disp.names ? Math.round(U.clamp(rLen * axis + 12, 34, W * 0.2)) : Math.round(U.clamp(W * 0.03, 8, 16));
+      const cw = Math.max(touch, Math.min(170, Math.floor((W - hw) / C)));
+      const rf = U.clamp(Math.min(axis, (hw - 10) / Math.max(1, rLen)), 14, 30);
+      let hf = U.clamp(Math.min(axis, (cw - 6) / cLen), 14, 30), two = false;
       if (disp.names && hf < axis * 0.95 && cLen >= 4) { // 한 줄이면 너무 작아짐 → 두 줄
         two = true;
-        hf = U.clamp(Math.min(axis, (cw - 8) / Math.ceil(cLen / 2 + 0.5)), 11, 30);
+        hf = U.clamp(Math.min(axis, (cw - 6) / Math.ceil(cLen / 2 + 0.5)), 14, 30);
       }
       const hh = disp.names ? Math.ceil(hf * 1.2 * (two ? 2 : 1)) + 10 : 12;
       colHeads.forEach((e, i) => {
@@ -306,16 +397,17 @@ G.board = (function () {
         if (e.classList.contains('is-picked')) e.appendChild(U.glyph('check', 'sb-pick'));
         e.appendChild(t);
       });
-      // 소리 표기 글씨(한 판 안에서 같은 크기)
-      const widthCap = (cw - 8) / k;
+      // 소리 표기 글씨(한 판 안에서 같은 크기). 표지 너비 = k × 글씨
+      const widthCap = (cw - (narrow ? 4 : 10)) / k;
       // 소리 지도(체계표 전체)는 행이 많아 한 화면에 들어오게 조금 작게(검수 시작값: 태블릿 36~40)
       const cap = mode === 'map' ? (W >= 1100 ? 44 : 38) : 56;
-      let F = Math.min(widthCap, cap, Math.max(26, cw * 0.38));
+      let F = Math.min(widthCap, cap, Math.max(28, cw * 0.36)); // 휴대폰에서도 28px 이상(칸 너비가 허락하는 한)
+      const one = mode === 'play' ? 2.1 : 1.6;
       const multi = multiRow.map((m) => m && disp.sounds);
-      const rowsFor = (f) => multi.map((m) => (m ? Math.max(touch, Math.round(f * 1.3) * 3) : Math.max(touch, Math.round(f * 1.6))));
+      const rowsFor = (f) => multi.map((m) => (m ? Math.max(touch, Math.round(f * 1.36) * 3) : Math.max(touch, Math.round(f * one))));
       let rowsH = rowsFor(F);
       if (isFinite(Hc) && Hc > 0) {
-        const avail = Hc - hh - gap * R;
+        const avail = Hc - hh;
         for (let n = 0; n < 4; n++) {
           const sum = rowsH.reduce((a, b) => a + b, 0);
           if (sum <= avail) break;
@@ -323,29 +415,36 @@ G.board = (function () {
           rowsH = rowsFor(F);
         }
       }
-      // 터치 목표 때문에 줄이 글씨보다 크게 남으면 글씨를 그만큼 키운다(자리 높이의 61%까지, 칸 너비 안에서)
-      rowsH.forEach((h, r) => { if (!multi[r]) F = Math.max(F, Math.min(widthCap, h * 0.61)); else F = Math.max(F, Math.min(widthCap, (h / 3) * 0.61)); });
+      // 터치 목표 때문에 줄이 글씨보다 크게 남으면 글씨를 그만큼 키운다(칸 너비 안에서)
+      rowsH.forEach((h, r) => { if (!multi[r]) F = Math.max(F, Math.min(widthCap, h / one)); else F = Math.max(F, Math.min(widthCap, (h / 3) / 1.36)); });
       const ch = Math.min(...rowsH);
       const cols = hw + 'px repeat(' + C + ', ' + cw + 'px)';
       const rows = hh + 'px ' + rowsH.map((h) => h + 'px').join(' ');
-      for (const e of [root, over]) {
-        e.style.gridTemplateColumns = cols; e.style.gridTemplateRows = rows; e.style.gap = gap + 'px';
-      }
+      for (const e of [root, over]) { e.style.gridTemplateColumns = cols; e.style.gridTemplateRows = rows; e.style.gap = '0px'; }
       root.style.setProperty('--sb-cw', cw + 'px');
       root.style.setProperty('--sb-k', k.toFixed(3));
       root.style.setProperty('--sb-fs', F.toFixed(1) + 'px');
       root.style.setProperty('--sb-hf', hf.toFixed(1) + 'px');
       root.style.setProperty('--sb-rf', rf.toFixed(1) + 'px');
       root.classList.toggle('sb-two', two);
-      size = { cw, ch, gap };
+      root.classList.toggle('sb-narrow', narrow);
+      // 바다 지도: 격자 크기가 바뀔 때만 다시 그린다
+      const sw = cw * C, sh = rowsH.reduce((a, b) => a + b, 0), key = sw + 'x' + sh;
+      if (key !== seaKey) { seaKey = key; seaEl.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(seaSvg(sw, sh)) + '")'; }
+      size = { cw, ch, F };
       fit();
     }
-    // 표시 하나하나의 높이를 재어 소리 표기 크기(--h)를 정하고 선을 다시 긋는다
+    // 표시 하나하나의 높이를 재어 소리 표기 크기(--h)를 정하고, 낮은 자리는 드러난 것을 표지 옆으로(.is-row), 선을 다시 긋는다
     function fit() {
       if (destroyed || !size.cw) return;
       for (const e of root.querySelectorAll('.sb-slot, .sb-item')) {
         const h = e.getBoundingClientRect().height / (+e.dataset.u || 1);
         e.style.setProperty('--h', h.toFixed(1) + 'px');
+        if (e.querySelector(':scope > .sb-obj')) e.classList.toggle('is-row', h < size.F * 1.8);
+      }
+      for (const v of root.querySelectorAll('.sb-vship')) {
+        const q = v.parentNode.getBoundingClientRect();
+        v.style.setProperty('--vh', Math.max(10, q.height - 8).toFixed(1) + 'px');
       }
       drawLines();
     }
@@ -360,6 +459,8 @@ G.board = (function () {
     if (ro) ro.observe(container);
     else window.addEventListener('resize', layout);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => layout());
+    // 배 그림이 늦게 들어오면 선을 다시 긋는다
+    root.addEventListener('load', (ev) => { if (ev.target && ev.target.classList && ev.target.classList.contains('sb-top')) fit(); }, true);
 
     // ── 칸 안 그리기 ──
     function norm(x) {
@@ -374,12 +475,29 @@ G.board = (function () {
       extraSunk.forEach((i) => { if (s.indexOf(i) < 0) s.push(i); });
       return s.sort((a, b) => a - b);
     }
+    // 배 한 척의 모양: 칸 하나에 다 있으면 세운 한 척(whole), 여러 칸이면 칸마다 조각(세로 = 위가 뱃머리, 가로 = 오른쪽이 뱃머리)
+    function shapeOf(ship) {
+      const cells = ship.sounds.filter((id) => byId[id]).map((id) => ({ id, p: g.rc(byId[id]) }));
+      const n = cells.length;
+      if (n === 1) return { whole: false, parts: { [cells[0].id]: 'boat1' }, split: false };
+      const same = cells.every((x) => x.p[0] === cells[0].p[0] && x.p[1] === cells[0].p[1]);
+      if (same) {
+        const ids = cells.map((x) => x.id).sort((a, b) => ORDER[byId[a].strength || 'none'] - ORDER[byId[b].strength || 'none']);
+        return { whole: true, cell: cells[0].p, ids, list: n === 2 ? ['bow', 'stern'] : ['bow', 'mid', 'stern'], split: false };
+      }
+      const row = cells.every((x) => x.p[0] === cells[0].p[0]);
+      cells.sort((a, b) => (row ? a.p[1] - b.p[1] : a.p[0] - b.p[0]));
+      const names = row ? (n === 2 ? ['stern', 'bow'] : ['stern', 'mid', 'bow']) : (n === 2 ? ['bow', 'stern'] : ['bow', 'mid', 'stern']);
+      const parts = {};
+      cells.forEach((x, i) => { parts[x.id] = names[i] || 'mid'; });
+      return { whole: false, parts, split: true, order: cells.map((x) => x.id), row };
+    }
     function paint() {
       closeChooser();
       anchors = new Map();
       const per = cellEls.map((row) => row.map(() => []));
       const hitSet = new Set();
-      // 최근 발(판에 표시가 남는 마지막 발): 굵은 테두리·큰 배지. 이전 발은 같은 기호의 작은 배지
+      // 최근 발(판에 표시가 남는 마지막 발): 공통 잉크 테두리. 이전 발은 같은 기호의 배지
       const latest = mode === 'play' ? view.shots.length - 1 : -1;
       const dirOf = (i) => U.lineDir(view.shots[i] && view.shots[i].targets);
       view.shots.forEach((sh, i) => {
@@ -408,15 +526,50 @@ G.board = (function () {
       const placedIds = new Set();
       placed.forEach((sh) => sh.sounds.forEach((id) => placedIds.add(id)));
 
+      // 배 조각: 소리 id → { part, burnt, ship, num }, 한 칸 안의 배 → 칸 [행,열] → { list, burnt, ship }
+      const sunk = sunkList();
+      const piece = new Map(), whole = new Map();
+      const nums = {};
+      const addShip = (ship, i, burnt, onlyIds) => {
+        const sp = shapeOf(ship);
+        if (sp.whole) { whole.set(sp.cell.join(','), { list: sp.list, burnt, ship: i }); return; }
+        const num = burnt && sp.split ? i + 1 : null;
+        if (num != null) nums[i] = num;
+        Object.keys(sp.parts).forEach((id) => { if (!onlyIds || onlyIds.has(id)) piece.set(id, { part: sp.parts[id], burnt, ship: i, num }); });
+      };
+      if (mode === 'play' && view.fleet) {
+        view.fleet.forEach((ship, i) => {
+          if (sunk.indexOf(i) >= 0) addShip(ship, i, true);
+          else if (view.reveal) addShip(ship, i, false); // 끝난 판의 공개: 남은 배도 제 모양(온전한 그림)
+        });
+      }
+      if (mode === 'place') placed.forEach((ship, i) => addShip(ship, i, false));
+
       for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
         const cell = cellEls[r][c], ci = cellInfo[r][c];
         const marks = per[r][c].sort((a, b) => a.order - b.order || KIND_RANK[a.kind] - KIND_RANK[b.kind] || a.i - b.i);
         cell.textContent = '';
+        cell.classList.remove('has-hit', 'has-vship');
         if ((disp.sounds || disp.empty) && ci.kind === 'closed') cell.appendChild(U.glyph('lock', 'sb-lock'));
         if (mode === 'place') cell.classList.toggle('has-placed', ci.on.some((s) => placedIds.has(s.id)));
+        const wv = mode !== 'map' ? whole.get(r + ',' + c) : null;
+        if (wv) { cell.appendChild(vship(wv.list, wv.burnt, wv.ship)); cell.classList.add('has-vship'); }
         const stack = U.el('div', { class: 'sb-stack' });
         cell.appendChild(stack);
         const loose = [];
+        // 물속에 드러난 것(자리 아래쪽): 배 조각 / 물보라 고리
+        const objFor = (kind, id) => {
+          if (mode === 'map') return null;
+          if (kind === 'miss') return U.el('span', { class: 'sb-obj', 'aria-hidden': 'true' }, ripple());
+          const pc = id && piece.get(id);
+          let part = null, burnt = false, ship = null, num = null;
+          if (pc) ({ part, burnt, ship, num } = pc);
+          else if (kind === 'hit' && mode === 'play' && !wv) part = 'hit'; // 가라앉기 전: 어느 배든 같은 조각
+          if (!part) return null;
+          const o = U.el('span', { class: 'sb-obj', 'aria-hidden': 'true', 'data-ship': ship, 'data-part': part }, topImg(part, burnt, 'sb-piece'));
+          if (num != null) o.appendChild(U.el('span', { class: 'sb-num' }, String(num)));
+          return o;
+        };
         if (disp.sounds) {
           const units = multiRow[r] ? 3 : 1;
           ci.on.forEach((s) => {
@@ -429,13 +582,17 @@ G.board = (function () {
               'data-u': full && units > 1 ? 3 : null,
             }, U.el('span', { class: 'sb-snd' }, slash(s.id)));
             const mk = marks.find((m) => m.id === s.id);
+            let obj = null;
             if (mk) {
               slot.classList.add('sb-mark', 'k-' + mk.kind);
               if (mk.i === latest) slot.classList.add('is-latest');
               const ic = badge(mk.kind, mk.kind === 'line' ? dirOf(mk.i) : null); if (ic) slot.appendChild(ic);
               if (mk.kind !== 'reveal') slot.appendChild(U.el('span', { class: 'sb-sr' }, G.text.signalName(mk.kind === 'dud' ? 'none' : mk.kind)));
+              if (mk.kind === 'hit') cell.classList.add('has-hit');
+              obj = objFor(mk.kind, s.id);
               mk.el = slot;
-            }
+            } else if (placedIds.has(s.id)) obj = objFor('placed', s.id);
+            if (obj) { slot.appendChild(obj); slot.classList.add('has-obj'); const nb = obj.querySelector('.sb-num'); if (nb) slot.appendChild(nb); }
             if (placedIds.has(s.id)) slot.classList.add('is-placed');
             cell.appendChild(slot);
             anchors.set(s.id, slot);
@@ -445,12 +602,19 @@ G.board = (function () {
         // 칸 안에 차례로 쌓는 표시(숨김 단계, 빈칸의 불발)
         loose.forEach((m) => {
           const kids = [];
-          if (m.kind === 'dud') kids.push(U.glyph('dud', 'sb-dudmark')); // 없는 소리: 칸 가운데 ∅
+          if (m.kind === 'dud') { // 없는 소리: 그 칸에 암초 + ∅ 배지(세기를 고른 불발이면 세기 이름)
+            kids.push(reef());
+            kids.push(U.glyph('dud', 'sb-badge sb-dudmark'));
+          }
           if (m.id) kids.push(U.el('span', { class: 'sb-stamp' }, slash(m.id)));
           else if (m.strength) kids.push(U.el('span', { class: 'sb-lab' }, G.text.short(grade, 'strength', m.strength)));
           if (m.kind !== 'reveal') kids.push(U.el('span', { class: 'sb-sr' }, G.text.signalName(m.kind === 'dud' ? 'none' : m.kind)));
           const ic = m.kind !== 'dud' ? badge(m.kind, m.kind === 'line' ? dirOf(m.i) : null) : null; if (ic) kids.push(ic);
-          const it = U.el('div', { class: 'sb-mark sb-item k-' + m.kind + (m.i === latest ? ' is-latest' : '') }, kids);
+          const obj = m.kind !== 'dud' ? objFor(m.kind, m.id) : null;
+          if (obj) kids.push(obj);
+          const it = U.el('div', { class: 'sb-mark sb-item k-' + m.kind + (m.i === latest ? ' is-latest' : '') + (obj ? ' has-obj' : '') }, kids);
+          const nb = obj && obj.querySelector('.sb-num'); if (nb) it.appendChild(nb); // 번호는 자리 모서리에(표지 위)
+          if (m.kind === 'hit') cell.classList.add('has-hit');
           stack.appendChild(it);
           m.el = it;
           if (m.id) anchors.set(m.id, it);
@@ -463,18 +627,19 @@ G.board = (function () {
         if (sh.kind === 'line' && sh.targets) sh.targets.forEach((t) => over.appendChild(areaEl('sb-trace' + (i === latest ? ' is-latest' : ''), t, true)));
       });
 
-      // 선: 격침(실선) · 공개(점선) · 놓은 배
+      // 선: 격침(떨어진 조각만 점선 끌줄) · 공개(가는 선) · 놓은 배
       lineSpecs = [];
-      const sunk = sunkList();
       if (view.fleet) view.fleet.forEach((ship, i) => {
-        if (sunk.indexOf(i) >= 0) lineSpecs.push({ i, t: 'sunk', ids: ship.sounds });
+        if (sunk.indexOf(i) >= 0) lineSpecs.push({ i, t: 'sunk', ids: ship.sounds, shape: shapeOf(ship) });
         else if (view.reveal) lineSpecs.push({ i, t: 'reveal', ids: ship.sounds });
       });
       if (mode === 'place') placed.forEach((ship, i) => lineSpecs.push({ i, t: 'placed', ids: ship.sounds }));
-      if (shipList) shipList.set(sunk);
+      lastNums = nums;
+      if (shipList) shipList.set(sunk, undefined, nums);
       if (mode === 'place') applyPlaceable();
       fit();
     }
+    let lastNums = {};
 
     // 강조 대상(targets 한 개) → 칸/줄 자리
     function spot(t) {
@@ -503,8 +668,44 @@ G.board = (function () {
       const rq = root.getBoundingClientRect();
       lines.setAttribute('width', Math.ceil(rq.width));
       lines.setAttribute('height', Math.ceil(rq.height));
-      const sw = Math.max(3, Math.round(size.cw * 0.06));
+      const sw = Math.max(3, Math.round(size.cw * 0.05));
+      const rel = (q) => ({ l: q.left - rq.left, r: q.right - rq.left, t: q.top - rq.top, b: q.bottom - rq.top, cx: q.left + q.width / 2 - rq.left, cy: q.top + q.height / 2 - rq.top });
       lineSpecs.forEach((ln) => {
+        if (ln.t === 'sunk') {
+          // 한 칸 안의 배·한 칸 배는 선 없음. 떨어진 조각은 점선 끌줄 + (자리가 넉넉하면) 가운데 작은 배 배지
+          const sp = ln.shape;
+          if (!sp || !sp.split) return;
+          const objs = sp.order.map((id) => root.querySelector('.sb-obj[data-ship="' + ln.i + '"][data-part="' + sp.parts[id] + '"]')).filter(Boolean);
+          if (objs.length < 2) return;
+          let best = null;
+          for (let j = 0; j + 1 < objs.length; j++) {
+            const a = rel(objs[j].getBoundingClientRect()), b = rel(objs[j + 1].getBoundingClientRect());
+            let x1, y1, x2, y2;
+            if (sp.row) { x1 = a.r + 2; y1 = a.cy; x2 = b.l - 2; y2 = b.cy; }
+            else {
+              const mk = objs[j + 1].parentNode, lab = mk && mk.querySelector('.sb-snd, .sb-stamp');
+              const top = lab && !mk.classList.contains('is-row') ? rel(lab.getBoundingClientRect()).t : b.t;
+              x1 = a.cx; y1 = a.b + 2; x2 = a.cx; y2 = top - 3;
+            }
+            if (!sp.row && y2 < y1) y2 = y1; // 이웃한 칸이면 아주 짧은 줄(번호로 이어 읽는다)
+            lines.appendChild(U.svg('path', { class: 'sb-ln sb-tow t-sunk', 'data-ship': ln.i, 'data-t': 'sunk', d: 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + 'L' + x2.toFixed(1) + ' ' + y2.toFixed(1), 'stroke-width': Math.max(2.5, sw * 0.7).toFixed(1) }));
+            const len = Math.hypot(x2 - x1, y2 - y1);
+            if (!best || len > best.len) best = { len, x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+          }
+          const bh = U.clamp(size.cw * 0.24, 20, 38), bw = bh * 2.4;
+          if (best && best.len > bh * 1.5) {
+            const gb = U.svg('g', { class: 'sb-towbadge', 'data-ship': ln.i });
+            gb.appendChild(U.svg('rect', { x: (best.x - bw / 2).toFixed(1), y: (best.y - bh / 2).toFixed(1), width: bw.toFixed(1), height: bh.toFixed(1), rx: (bh / 2).toFixed(1) }));
+            // 배지 안의 작은 배: 조각 수만큼 이은 윤곽(코드로 그림 — 그림 파일이 없어도 같다)
+            const n = (ln.shape.order || []).length, pw = (bw * 0.74) / Math.max(2, n), ph = bh * 0.5;
+            ln.shape.order.slice().sort((a, b) => ['stern', 'mid', 'bow'].indexOf(ln.shape.parts[a]) - ['stern', 'mid', 'bow'].indexOf(ln.shape.parts[b])).forEach((id, j) => {
+              const x0 = best.x - bw * 0.37 + pw * j, y0 = best.y - ph / 2;
+              gb.appendChild(U.svg('path', { class: 'sb-tb-hull', d: HULL[ln.shape.parts[id]] || HULL.mid, transform: 'translate(' + x0.toFixed(1) + ',' + y0.toFixed(1) + ') scale(' + (pw / 204).toFixed(4) + ',' + (ph / 100).toFixed(4) + ')' }));
+            });
+            lines.appendChild(gb);
+          }
+          return;
+        }
         const pts = ln.ids.map((id) => anchors.get(id)).filter(Boolean).map((e) => {
           const q = e.getBoundingClientRect();
           return [q.left + q.width / 2 - rq.left, q.top + q.height / 2 - rq.top];
@@ -512,11 +713,11 @@ G.board = (function () {
         if (!pts.length) return;
         const cls = 'sb-ln t-' + ln.t;
         if (pts.length === 1) {
-          lines.appendChild(U.svg('circle', { class: cls, 'data-ship': ln.i, 'data-t': ln.t, cx: pts[0][0].toFixed(1), cy: pts[0][1].toFixed(1), r: (Math.min(size.cw, size.ch) * 0.42).toFixed(1), 'stroke-width': sw }));
+          lines.appendChild(U.svg('circle', { class: cls, 'data-ship': ln.i, 'data-t': ln.t, cx: pts[0][0].toFixed(1), cy: pts[0][1].toFixed(1), r: (Math.min(size.cw, size.ch) * 0.42).toFixed(1), 'stroke-width': Math.max(2, sw * 0.6) }));
           return;
         }
-        lines.appendChild(U.svg('polyline', { class: cls, 'data-ship': ln.i, 'data-t': ln.t, points: pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '), 'stroke-width': sw }));
-        pts.forEach((p) => lines.appendChild(U.svg('circle', { class: 'sb-dot t-' + ln.t, cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: (sw * 1.3).toFixed(1) })));
+        lines.appendChild(U.svg('polyline', { class: cls, 'data-ship': ln.i, 'data-t': ln.t, points: pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '), 'stroke-width': Math.max(2, sw * 0.6) }));
+        pts.forEach((p) => lines.appendChild(U.svg('circle', { class: 'sb-dot t-' + ln.t, cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: (sw * 1.1).toFixed(1) })));
       });
     }
 
@@ -600,7 +801,7 @@ G.board = (function () {
             if (sh.sound && (sh.kind === 'hit' || sh.kind === 'miss' || sh.kind === 'line')) freshen(anchors.get(sh.sound));
           });
           const nowSunk = sunkList().filter((i) => prevSunk.indexOf(i) < 0);
-          if (shipList && nowSunk.length) shipList.set(sunkList(), nowSunk[nowSunk.length - 1]);
+          if (shipList && nowSunk.length) shipList.set(sunkList(), nowSunk[nowSunk.length - 1], lastNums);
         }
         return board;
       },
@@ -617,7 +818,7 @@ G.board = (function () {
         if (i == null || i < 0) return board;
         if (extraSunk.indexOf(i) < 0) extraSunk.push(i);
         paint();
-        if (shipList) shipList.set(sunkList(), i);
+        if (shipList) shipList.set(sunkList(), i, lastNums);
         return board;
       },
       setPlaceable(groups) { placeable = (groups || []).map((x) => x.slice()); closeChooser(); if (mode === 'place') applyPlaceable(); return board; },
@@ -669,7 +870,7 @@ G.board = (function () {
     return { shots: state.teams[shooter].shots, fleet: state.teams[opp].fleet, reveal: false };
   }
 
-  // 소리 지도: 체계표 전체(모든 칸이 읽힘)에 맞힌 소리를 도장으로 찍는다
+  // 소리 지도: 체계표 전체(모든 칸이 읽힘)에 맞힌 소리를 황금 표지로 찍는다(바다 지도 위, 배 조각 없음)
   function soundMap(container, o) {
     o = o || {};
     const b = create(container, { sea: o.sea, grade: o.grade, mode: 'map', fitHeight: !!o.fitHeight });
