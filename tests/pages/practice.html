@@ -61,6 +61,7 @@
       window.__finishedRecord = G.rules.makeRecord(state);
     },
   };
+  G.board.setImageBase('../../assets/img/'); // 배 그림(점검 페이지는 tests/pages/ 아래라 주소를 맞춤)
   const app = document.getElementById('app');
   if (q.get('w')) {
     document.body.classList.add('fixed-page');

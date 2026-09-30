@@ -72,7 +72,7 @@ const shoot = async (input, what) => {
 };
 const inp = (id) => G.rules.inputOf(id);
 const jamo = /[\\u3131-\\u318E]/g;
-// 숨김 단계: 칸 안 소리가 DOM(글·속성)에 없는지. 쏜 칸 도장(.sb-stamp)·기록장(.ctl-log-what)의 쏜 소리만 허용
+// 숨김 단계: 칸 안 소리가 DOM(글·속성)에 없는지. 쏜 칸 도장(.sb-stamp)·명중 연출(.sb-burst, 1.4초)·기록장(.ctl-log-what)의 쏜 소리만 허용
 const leakCheck = (tag) => {
   const allowed = new Set(shots().map((x) => x.sound).filter(Boolean));
   const root = $('#app') || $('#box') || fd.body;
@@ -82,7 +82,7 @@ const leakCheck = (tag) => {
     if (n.nodeType === 3) {
       const m = n.nodeValue.match(jamo); if (!m) continue;
       const host = n.parentElement;
-      const ok = host && host.closest('.sb-stamp, .ctl-log-what') && m.every((c) => allowed.has(c));
+      const ok = host && host.closest('.sb-stamp, .sb-burst, .ctl-log-what') && m.every((c) => allowed.has(c));
       if (!ok) bad(tag + ': 숨긴 소리가 글로 드러남 "' + n.nodeValue + '" (' + (host && host.className) + ')');
     } else {
       for (const a of Array.from(n.attributes)) if (jamo.test(a.value)) { jamo.lastIndex = 0; bad(tag + ': 속성에 소리 ' + a.name + '="' + a.value + '"'); }

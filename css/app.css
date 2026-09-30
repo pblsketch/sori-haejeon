@@ -19,11 +19,11 @@
   word-break: keep-all; touch-action: manipulation;
   transition: background .15s, color .15s, transform .1s;
 }
-.app-btn:hover { background: #e3eeec; }
+.app-btn:hover { background: var(--ui-3); }
 .app-btn:active { transform: translateY(1px); }
 .app-btn:focus-visible { outline: 3px solid var(--sea); outline-offset: 3px; }
 .app-btn.is-primary { background: var(--ui); color: #fff; }
-.app-btn.is-primary:hover { background: #185a57; }
+.app-btn.is-primary:hover { background: var(--ui-2); border-color: var(--ui-2); }
 .app-btn.is-danger { background: var(--hit); border-color: var(--hit); color: #fff; }
 .app-btn.is-danger-line { border-color: var(--hit); color: var(--hit); }
 .app-btn.is-danger-line:hover { background: #f6e4e1; }
@@ -68,7 +68,11 @@
 .app-dialog-note { margin: 12px 0 0; min-height: 1.5em; color: var(--hit); }
 
 /* ── 설정·소리 지도·출처(종이 바탕 쪽) ── */
-.app-page { background: var(--paper); padding: var(--app-pad); }
+.app-page {
+  padding: var(--app-pad);
+  /* 결과 배경 그림을 아주 옅게(아래쪽 잔잔한 바다만 비침) — 넓은 화면에서 빈 종이만 보이지 않게 */
+  background: linear-gradient(rgba(238, 240, 234, .8), rgba(238, 240, 234, .8)), var(--paper) url('../assets/img/result_bg.webp') center bottom / cover no-repeat;
+}
 .app-page-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .app-page-wide { max-width: 1500px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .app-page-foot { display: flex; justify-content: center; padding-top: 8px; }
@@ -76,7 +80,7 @@
 
 .app-set-row {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 16px 20px; background: #fff; border-radius: 16px; border: 1px solid #d6dcd7;
+  padding: 16px 20px; background: #fff; border-radius: 16px; border: 1px solid var(--line);
 }
 .app-set-name { flex: 0 0 9em; font-family: var(--font-title); font-weight: 700; font-size: clamp(18px, 1.4vw, 24px); }
 .app-set-ctl { flex: 1 1 280px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
@@ -96,11 +100,11 @@
 .app-clear-msg { margin: 0; min-height: 1.5em; color: var(--ui); }
 
 .app-maps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 3vw, 48px); align-items: start; }
-.app-map { background: #fff; border-radius: 18px; padding: 18px 20px 20px; border: 1px solid #d6dcd7; min-width: 0; }
+.app-map { background: #fff; border-radius: 18px; padding: 18px 20px 20px; border: 1px solid var(--line); min-width: 0; }
 .app-map-count { margin: 2px 0 12px; color: var(--ink-2); }
 .app-map-box { min-width: 0; }
 
-.app-cred { background: #fff; border-radius: 16px; padding: 16px 20px; border: 1px solid #d6dcd7; }
+.app-cred { background: #fff; border-radius: 16px; padding: 16px 20px; border: 1px solid var(--line); }
 .app-cred .app-h2 { margin-bottom: 6px; }
 .app-cred-line { margin: 0; overflow-wrap: anywhere; font-size: 17px; }
 

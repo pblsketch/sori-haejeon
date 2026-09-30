@@ -123,7 +123,8 @@
 .ctl-log-item.k-hit .ctl-log-sig { color: var(--hit); }
 .ctl-log-item.k-line { border-left-color: var(--sea); border-left-style: double; border-left-width: 6px; }
 .ctl-log-item.k-line .ctl-log-sig { color: var(--sea); }
-.ctl-log-item.k-miss { border-left-color: var(--sea-2); }
+.ctl-log-item.k-miss { border-left-color: var(--miss); }
+.ctl-log-item.k-miss .ctl-log-sig { color: var(--miss); }
 .ctl-log-item.k-none { border-left-color: var(--ink-3); border-left-style: dotted; }
 .ctl-log-item.k-none .ctl-log-sig { color: var(--ink-2); }
 

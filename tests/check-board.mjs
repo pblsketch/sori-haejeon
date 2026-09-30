@@ -5,6 +5,8 @@
 //   3) 숨기기(배치) 화면: 단계와 상관없이 소리·줄 이름이 보이고, 놓을 수 있는 묶음의 칸만 누를 수 있음
 //   4) 크기별: 휴대폰 세로 360×740에서 칸 48px 이상·가로 스크롤 없음·소리 표기 글씨 크기 ≥ 칸(자리) 높이 60%,
 //      칠판 1920×1080에서 칸 64px 이상. 캡처를 tests/shots/에 남긴다.
+//   5) 그림 입히기(T13): 명중 연출(불꽃 + 소리, 2초 안에 사라짐, 누르면 건너뜀), 물보라 스프라이트, 바다 질감,
+//      격침된 배의 불탄 그림, 배 그림 크기(세 칸 > 두 칸 > 한 칸), 되살리기·움직임 줄이기에서는 연출 없음
 //   모든 단계에서 window.__soriErrors가 비어 있어야 한다.
 import { step, url, frame } from './aside.mjs';
 
@@ -210,6 +212,68 @@ try {
   if (r2.fails.length) console.log('FAIL ' + r2.fails.join('\\nFAIL '));
   else console.log('PASS');
 } finally { await closeTab(t2); }
+`);
+
+step('그림 입히기: 명중 연출(2초 안, 누르면 건너뜀) · 물보라 · 바다 질감 · 배 그림 크기', `
+const t5 = await openTab(${JSON.stringify(PAGE)});
+try {
+  const r5 = await t5.evaluate(async () => {
+    const fails = []; const F = (m) => fails.push(m);
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const fleet = [{ size: 3, sounds: ['ㄱ', 'ㄲ', 'ㅋ'] }, { size: 2, sounds: ['ㅂ', 'ㅁ'] }, { size: 1, sounds: ['ㄹ'] }];
+    const g = BT.play('consonant', 2, fleet, ['ㄹ', 'ㅎ', 'ㄱ']);
+    if (g.outcomes.map((o) => o.kind).join(',') !== 'hit,miss,hit') F('사례가 아님: ' + g.outcomes.map((o) => o.kind).join(','));
+    const shots = g.state.teams.player.shots;
+    const host = document.createElement('div'); host.style.width = '800px'; document.body.appendChild(host);
+    const shipsEl = document.createElement('div'); document.body.appendChild(shipsEl);
+    const b = G.board.create(host, { sea: 'consonant', level: 2, grade: 'm3', mode: 'play', shipsEl });
+    b.render({ shots: [], fleet: g.state.teams.enemy.fleet });
+    // 바다 질감: 쏘는 바다의 칸 밑에 깔림(그림 주소가 CSS에서 옴)
+    const bed = b.el.querySelector('.sb-under .sb-seabed');
+    if (!bed || !/sea_tile\.webp/.test(getComputedStyle(bed).backgroundImage)) F('바다 질감 없음');
+    // 명중: 큰 불꽃 + 쏜 소리, 2초 안에 사라짐
+    b.update({ shots: shots.slice(0, 1), fleet: g.state.teams.enemy.fleet });
+    let bu = b.el.querySelector('.sb-burst');
+    if (!bu || !bu.querySelector('.sb-burst-fire') || bu.textContent.trim() !== '/ㄹ/') F('명중 연출(불꽃 + /ㄹ/) 없음');
+    const t0 = Date.now();
+    while (b.el.querySelector('.sb-burst') && Date.now() - t0 < 3000) await wait(50);
+    const took = Date.now() - t0;
+    if (b.el.querySelector('.sb-burst') || took > 2000) F('명중 연출이 2초 안에 안 사라짐 ' + took + 'ms');
+    if (!b.el.querySelector('.sb-mark.k-hit')) F('연출 뒤 명중 도장이 없음');
+    // 격침 → 목록의 배가 불탄 그림으로
+    await wait(300);
+    const sunkPic = shipsEl.querySelectorAll('.sb-ship-item')[2].querySelector('.sb-pic');
+    if (!sunkPic.classList.contains('is-burnt')) F('격침된 배가 불탄 그림이 아님');
+    const im = sunkPic.querySelector('img');
+    if (!im || !/ship1_burnt\.webp$/.test(im.getAttribute('src'))) F('불탄 배 그림 파일이 아님: ' + (im && im.getAttribute('src')));
+    // 배 그림 크기: 세 칸 > 두 칸 > 한 칸
+    const ws = [...shipsEl.querySelectorAll('.sb-pic')].map((e) => e.getBoundingClientRect().width);
+    if (!(ws[0] > ws[1] && ws[1] > ws[2])) F('배 그림 크기 순서가 아님: ' + ws.map(Math.round).join(','));
+    // 빗나감: 물보라 스프라이트가 한 번 튄다
+    b.update({ shots: shots.slice(0, 2), fleet: g.state.teams.enemy.fleet });
+    const sp = b.el.querySelector('.sb-mark.k-miss .sb-splash');
+    if (!sp || !/splash\.webp/.test(getComputedStyle(sp).backgroundImage)) F('물보라 그림 없음');
+    else if (!sp.classList.contains('is-fresh')) F('방금 빗나간 물보라가 움직이지 않음');
+    // 명중 연출은 누르면 곧바로 사라짐
+    b.update({ shots: shots.slice(0, 3), fleet: g.state.teams.enemy.fleet });
+    if (!b.el.querySelector('.sb-burst')) F('두 번째 명중 연출 없음');
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    if (b.el.querySelector('.sb-burst')) F('눌렀는데 명중 연출이 안 사라짐');
+    // 되살리기(render)와 움직임 줄이기: 연출 없음, 물보라는 멈춘 그림
+    b.render({ shots, fleet: g.state.teams.enemy.fleet });
+    if (b.el.querySelector('.sb-burst') || b.el.querySelector('.sb-splash.is-fresh')) F('render()가 연출을 틀었음');
+    document.documentElement.classList.add('reduce-motion');
+    b.render({ shots: shots.slice(0, 1), fleet: g.state.teams.enemy.fleet });
+    b.update({ shots, fleet: g.state.teams.enemy.fleet });
+    if (b.el.querySelector('.sb-burst') || b.el.querySelector('.sb-splash.is-fresh')) F('움직임 줄이기인데 연출이 나옴');
+    document.documentElement.classList.remove('reduce-motion');
+    b.destroy(); host.remove(); shipsEl.remove();
+    return { fails, errs: window.__soriErrors.slice() };
+  });
+  if (r5.errs.length) r5.fails.push('페이지 오류: ' + r5.errs.join(' | '));
+  if (r5.fails.length) console.log('FAIL ' + r5.fails.join('\\nFAIL '));
+  else console.log('PASS');
+} finally { await closeTab(t5); }
 `);
 
 step('숨기기(배치) 화면: 소리·줄 이름 보임, 놓을 수 있는 묶음만 누름', `
