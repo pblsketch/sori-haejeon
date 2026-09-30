@@ -29,9 +29,8 @@ const HELP = `
   const newDuel = () => {
     let st = G.rules.newGame({ mode: 'duel', grade: 'h1', sea: 'consonant', level: 1, fleets: { blue: FLEET1, red: FLEET1 }, rng: G.rules.makeRng(5) });
     st.id = G.save.newGameId();
-    // 동시 발사 라운드: 청 ㄷ ㄴ ㅇ ㄹ(4라운드에 다 찾음) / 홍 ㅂ ㅈ ㅅ ㅁ(못 찾음) → 청팀 승
-    const B = ['ㄷ', 'ㄴ', 'ㅇ', 'ㄹ'], Rd = ['ㅂ', 'ㅈ', 'ㅅ', 'ㅁ'];
-    for (let i = 0; i < B.length; i++) st = G.rules.fireRound(st, { blue: G.rules.inputOf(B[i]), red: G.rules.inputOf(Rd[i]) }).state;
+    // 실시간(차례 없음): 홍 ㅂ ㅈ(못 찾음) · 청 ㄷ ㄴ ㅇ ㄹ(4발에 다 찾음 → 그 순간 청팀 승) — 두 팀의 발 수가 다름
+    for (const [t, x] of [['red', 'ㅂ'], ['blue', 'ㄷ'], ['blue', 'ㄴ'], ['red', 'ㅈ'], ['blue', 'ㅇ'], ['blue', 'ㄹ']]) st = G.rules.fireTeam(st, t, G.rules.inputOf(x)).state;
     return st;
   };
   const txt = (sel) => [...document.querySelectorAll(sel)].map((e) => e.textContent.trim());
@@ -232,13 +231,13 @@ try {
     const w = document.querySelector('.app-res-winner');
     if (!w || w.textContent !== TEXT.ui.result.winner.blue || w.dataset.winner !== 'blue') F('승패 줄: ' + (w && w.textContent));
     const stats = [...document.querySelectorAll('.app-res-stats')].map((s) => s.dataset.team + ':' + s.querySelector('[data-k="turns"]').textContent + ':' + s.querySelector('[data-k="none"]').textContent);
-    if (JSON.stringify(stats) !== JSON.stringify(['blue:4턴:0번', 'red:4턴:0번'])) F('두 팀 기록: ' + JSON.stringify(stats));
+    if (JSON.stringify(stats) !== JSON.stringify(['blue:4턴:0번', 'red:2턴:0번'])) F('두 팀 기록: ' + JSON.stringify(stats));
     const notes = txt('.app-res-note');
     if (JSON.stringify(notes) !== JSON.stringify(rec.notes.map((n) => G.text.know(n.id)))) F('대결 알아 두기(두 팀 합침): ' + JSON.stringify(notes));
     if (G.text.debrief('h1', 'consonant').indexOf(txt('.app-res-question')[0]) < 0) F('고1 자음 질문이 아님');
     if (G.save.mapGames('consonant') !== 2) F('누적 판 수: ' + G.save.mapGames('consonant'));
     // 무승부 표시
-    const draw = JSON.parse(JSON.stringify(rec)); draw.result = { winner: null, reason: 'both-found' };
+    const draw = JSON.parse(JSON.stringify(rec)); draw.result = { winner: null, reason: 'hits-tie' };
     G.app.go('result', { record: draw });
     if (txt('.app-res-winner')[0] !== TEXT.ui.result.winner.draw) F('무승부 줄: ' + txt('.app-res-winner'));
     G.app.go('result', { record: rec });
@@ -412,8 +411,8 @@ const portrait = (w, h, shot) => `
       const G2 = fw.G;
       const FLEET1 = [{ size: 2, sounds: ['ㄷ', 'ㄴ'] }, { size: 1, sounds: ['ㅇ'] }, { size: 1, sounds: ['ㄹ'] }];
       let st = G2.rules.newGame({ mode: 'duel', grade: 'm3', sea: 'consonant', level: 1, fleets: { blue: FLEET1, red: FLEET1 }, rng: G2.rules.makeRng(5) });
-      // 동시 발사 라운드: [청, 홍]
-      for (const [b, r] of [['ㄷ', 'ㅂ'], ['ㄴ', 'ㅈ'], ['ㅇ', 'ㅅ'], ['ㄹ', 'ㅁ']]) st = G2.rules.fireRound(st, { blue: G2.rules.inputOf(b), red: G2.rules.inputOf(r) }).state;
+      // 실시간(차례 없음): 청팀이 먼저 다 찾음
+      for (const [t, x] of [['blue', 'ㄷ'], ['red', 'ㅂ'], ['blue', 'ㄴ'], ['red', 'ㅈ'], ['red', 'ㅅ'], ['blue', 'ㅇ'], ['blue', 'ㄹ']]) st = G2.rules.fireTeam(st, t, G2.rules.inputOf(x)).state;
       G2.app.finishGame(st);
       noHScroll();
       if (d.querySelectorAll('.app-res-map .sb').length !== 2) F('세로 대결 결과 지도 수');

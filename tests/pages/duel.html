@@ -59,14 +59,28 @@
     screen: () => (G.duel.current ? G.duel.current.debug.screen() : ''),
     // 소리 id('ㄱ') 또는 조합 → 조합
     inp: (x) => (typeof x === 'string' ? G.rules.inputOf(x) : x),
-    // 한 라운드: 두 팀이 각자 조작부로 고르고 '준비' → 셈 → 동시 발사. 그 라운드가 끝나면 풀림
-    round: (b, r) => G.duel.current.debug.round(DT.inp(b), DT.inp(r)),
-    // 한 팀만: 고르고 '준비' 누르기 → 눌렸는지
+    // 한 팀만(실시간): 고르기 / 발사 단추 누르기 → 그 발이 끝나면 풀리는 Promise(못 누르면 null) / 고르고 쏘기
     compose: (t, x) => G.duel.current.debug.compose(t, DT.inp(x)),
-    ready: (t) => G.duel.current.debug.ready(t),
+    fire: (t) => G.duel.current.debug.fire(t),
+    shot: (t, x) => G.duel.current.debug.shot(t, DT.inp(x)),
+    // 목록 [[팀, 소리], …]을 차례로 쏘기(한 발씩 끝날 때까지 기다림, 판이 끝나면 멈춤)
+    async shots(list) {
+      for (const [t, x] of list) { if (DT.st().phase !== 'playing') break; await DT.shot(t, x); }
+    },
+    whenIdle: (t) => G.duel.current.debug.whenIdle(t),
+    busy: (t) => G.duel.current.debug.busy(t),
+    // 그 팀 단면도의 공기 흐름을 붙잡아 두기(점검이 풀 때까지 애니메이션이 끝나지 않음) / 풀기
+    hold(t) {
+      const m = G.duel.current.debug.mouths[t];
+      if (m.__play) return;
+      m.__play = m.play; DT.__rel = DT.__rel || {};
+      m.play = (input) => new Promise((r) => { DT.__rel[t] = () => { delete DT.__rel[t]; r(); }; });
+    },
+    release(t) { if (DT.__rel && DT.__rel[t]) DT.__rel[t](); },
+    unhold(t) { const m = G.duel.current.debug.mouths[t]; if (m.__play) { m.play = m.__play; delete m.__play; } DT.release(t); },
     station: (t) => document.querySelector('.duel-station.station-' + t),
-    readyBtn: (t) => DT.station(t).querySelector('.duel-ready'),
-    isReady: (t) => DT.station(t).classList.contains('is-ready'),
+    fireBtn: (t) => DT.station(t).querySelector('.ctl-fire'),
+    isOut: (t) => DT.station(t).classList.contains('is-out'),
     phase: () => G.duel.current.debug.phase(),
     // 여러 손가락 흉내: 요소에 포인터 이벤트(pointerId마다 따로)
     ptr(type, elm, id) {
@@ -81,8 +95,10 @@
     // 팀 자리의 한 줄 문구
     msg: (t) => DT.station(t).querySelector('.ctl-msg-text').textContent,
     msgKind: (t) => DT.station(t).querySelector('.ctl-msg').getAttribute('data-kind'),
-    roundText: () => document.querySelector('.duel-round').textContent,
-    roundsLeft: () => [...document.querySelectorAll('.duel-rounds')].map((e) => e.textContent),
+    statusText: () => document.querySelector('.duel-status').textContent,
+    // 위 띠: [청팀, 홍팀]의 '남은 배 n' · '남은 발 n'
+    shipsLeft: () => [...document.querySelectorAll('.duel-side .duel-stat[data-k="ships"]')].map((e) => e.textContent),
+    shotsLeft: () => [...document.querySelectorAll('.duel-side .duel-stat[data-k="shots"]')].map((e) => e.textContent),
     fleetIds: (team) => DT.st().teams[team].fleet.reduce((a, s) => a.concat(s.sounds), []),
     logCount: (t) => DT.station(t).querySelectorAll('.ctl-log-item').length,
     visible: (e) => !!e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length > 0,
