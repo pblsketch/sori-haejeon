@@ -368,13 +368,16 @@ G.controls = (function () {
     function setLayout(v) { layoutPref = v === 'landscape' || v === 'portrait' ? v : 'auto'; applyLayout(); }
     const onMq = () => applyLayout();
     if (mq) (mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq));
-    const ro = window.ResizeObserver ? new ResizeObserver(() => fitMsg()) : null;
+    // 글씨 크기를 바꾸면 문구 상자 크기도 바뀌므로 같은 틀 안에서 다시 재지 않게 다음 그림 차례로 미룬다(ResizeObserver 되돌이 오류 방지)
+    let fitRaf = 0;
+    const ro = window.ResizeObserver ? new ResizeObserver(() => { if (!fitRaf) fitRaf = requestAnimationFrame(() => { fitRaf = 0; fitMsg(); }); }) : null;
     if (ro) ro.observe(msg);
     const onResize = () => fitMsg();
     if (!ro) window.addEventListener('resize', onResize);
 
     function destroy() {
       if (mq) (mq.removeEventListener ? mq.removeEventListener('change', onMq) : mq.removeListener(onMq));
+      if (fitRaf) cancelAnimationFrame(fitRaf);
       if (ro) ro.disconnect(); else window.removeEventListener('resize', onResize);
       if (root.parentNode) root.parentNode.removeChild(root);
       if (logPanel.parentNode) logPanel.parentNode.removeChild(logPanel);

@@ -180,7 +180,7 @@
 .ctl--portrait .ctl-msg { font-size: 17px; }
 .ctl--portrait .ctl-deck { gap: 6px; }
 /* 세로: [빈 칸 | 요약(화면 가운데) | 기록 단추] — 요약 줄이 안내·카드와 같은 중심선에 오게 */
-.ctl--portrait .ctl-comborow { display: grid; grid-template-columns: 1fr auto 1fr; justify-content: stretch; width: 100%; }
+.ctl--portrait .ctl-comborow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(max-content, 1fr); justify-content: stretch; width: 100%; }
 .ctl--portrait .ctl-comborow-pad { display: block; }
 .ctl--portrait .ctl-combo { justify-self: center; padding: 3px 10px; }
 .ctl--portrait .ctl-bar { flex-direction: column; flex-wrap: nowrap; width: 100%; gap: 6px; align-items: stretch; }
@@ -202,7 +202,7 @@
 .ctl--portrait.ctl--vowel .ctl-group--last .ctl-fire { grid-column: 1 / -1; }
 .ctl--portrait .ctl-logtoggle {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto; justify-self: end;
-  min-width: var(--touch); min-height: var(--touch); padding: 0 10px;
+  min-width: var(--touch); min-height: var(--touch); padding: 0 10px; white-space: nowrap;
   border: 2px solid var(--control-line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink);
   font-size: 15px; font-weight: 600; line-height: 1.1; cursor: pointer; touch-action: manipulation;
 }

@@ -582,10 +582,15 @@ async function playShot() {
     if (off.length) F(t + ' 조작 단추가 화면 아래 35% 밖 ' + off.map((b) => b.textContent).join(','));
     // 단면도는 보여 주기 전용
     if (s.querySelectorAll('.mouth-svg [tabindex], .mouth-svg [role="button"], .mouth-hit').length || getComputedStyle(s.querySelector('.mouth-svg')).pointerEvents !== 'none') F(t + ' 단면도에 누르는 요소가 있음');
+    // 쏘는 바다를 크게(단면도는 보여 주기 전용이라 작아도 됨): 칠판 1920×1080에서 소리 40px·축 이름 24px 이상(상자 배율로 환산)
+    const boxK = R.width / root.clientWidth;
+    const sndPx = Math.min(...[...s.querySelectorAll('.sb-snd:not(.sb-measure)')].map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    const axisPx = Math.min(...[...s.querySelectorAll('.sb-hn')].map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    if (root.clientWidth >= 1900 && (!(sndPx >= 39.5) || !(axisPx >= 23.5))) F(t + ' 1920에서 바다 글씨가 작음: 소리 ' + sndPx + 'px, 축 ' + axisPx + 'px');
     const msgFont = parseFloat(getComputedStyle(s.querySelector('.ctl-msg')).fontSize);
     if (msgFont < 22) F(t + ' 한 줄 문구 글씨 ' + msgFont);
     const cell = s.querySelector('.sb-cell'), mouth = s.querySelector('.mouth-svg');
-    info[t] = { station: [Math.round(S.width), Math.round(S.height)], cell: [cell.offsetWidth, cell.offsetHeight], mouth: [mouth.clientWidth, mouth.clientHeight], msgFont };
+    info[t] = { station: [Math.round(S.width), Math.round(S.height)], cell: [cell.offsetWidth, cell.offsetHeight], mouth: [mouth.clientWidth, mouth.clientHeight], msgFont, sndPx, axisPx };
   }
   // 위 띠 글이 잘리지 않음
   document.querySelectorAll('.duel-side .duel-stat').forEach((e) => { if (e.scrollWidth > e.clientWidth + 1) F('위 띠 글 잘림: ' + e.textContent); });

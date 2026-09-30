@@ -217,7 +217,7 @@
 .station-blue { --team: var(--blue); --team-soft: var(--blue-soft); border-right: 4px solid var(--ink-2); }
 .station-red { --team: var(--red); --team-soft: var(--red-soft); } /* 발사는 두 팀 모두 공통 행동색(청록) — 팀색은 팀명·띠·소유 표시에만(2차 검수) */
 .duel-station.is-busy { background: var(--team-soft); } /* 그 팀이 쏘는 중(공기 흐름) — 그 자리만 잠김 */
-.duel-st-body { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } /* [바다 | 단면도] — 단면도를 조금 더 크게(보여 주기의 주인공) */
+.duel-st-body { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s4); grid-template-columns: minmax(0, 2.7fr) minmax(0, 1fr); } /* [바다 | 단면도] — 단면도가 보여 주기 전용이 되어 쏘는 바다에 폭을 준다(칠판 1920에서 소리 40px·축 이름 24px 이상) */
 .duel-sea { position: relative; display: flex; flex-direction: column; gap: 4px; min-height: 0; min-width: 0; }
 .duel-sea-name { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 8px; font-size: calc(var(--ctl-label-fs) + 2px); font-weight: 700; text-align: center; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--team); }
 .duel-board {
