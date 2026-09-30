@@ -34,7 +34,7 @@ npm test
 
 | 명령·환경 값 | 뜻 |
 |---|---|
-| `npm test -- rules save text` | 이름에 그 낱말이 든 점검만(브라우저 없는 세 개는 몇 초) |
+| `npm test -- check-rules check-save check-text` | 이름에 그 낱말이 든 점검만(이 세 개는 브라우저 없이 몇 초). 낱말은 이름의 일부와 맞춰 보므로 `text`만 주면 `check-screen-text`(브라우저 점검)도 돈다 |
 | `BASE=https://주소/ npm test` | 로컬 서버 대신 그 주소를 점검(배포 확인). 브라우저 점검만 주소를 쓴다 |
 | `STEP=낱말 node check-duel.mjs` | 한 점검 파일 안에서 이름에 그 낱말이 든 조각만(서버를 따로 켜 두어야 함: `node server.mjs 8791`) |
 | `ASIDE_DRY=1 node check-<이름>.mjs` | aside를 부르지 않고 대본 문법만 확인 |
@@ -69,9 +69,9 @@ python tools/build_fonts.py
 1. 프롬프트(영어)를 `tools/prompts/`(v2는 `tools/prompts/v2/`, 위에서 본 배는 `tools/prompts/top/`)에 둔다.
 2. 생성(Bash에서, 표준 입력을 닫는다):
    ```bash
-   powershell -File tools/gen.ps1 -Name ship3 -PromptFile tools/prompts/v2/ship3.txt -Out assets/raw/v2/ship3.png </dev/null
+   powershell -File tools/gen.ps1 -Name title -PromptFile tools/prompts/v2/title.txt -Out assets/raw/v2/title.png </dev/null
    ```
-3. 후처리: `python tools/process_assets.py`(배·시작·결과·물보라·바다 질감), `python tools/process_top.py`(판 위 배 조각). 확인: `python tools/process_assets.py --check`.
+3. 후처리: `python tools/process_assets.py`(시작·휴대폰 시작·결과 그림, 그리고 지금은 쓰이지 않는 옆모습 배·물보라·바다 질감), `python tools/process_top.py`(판 위 배 조각). 확인: `python tools/process_assets.py --check`.
 4. 결과 `assets/img/*.webp`만 커밋한다(원본 `assets/raw/`는 올리지 않음). 프롬프트와 쓴 화풍을 `assets/prompts.md`에 적는다.
 - 그림체는 선생님이 견본을 보고 고른 'A v2'다. 화풍을 바꾸려면 견본 2~3장을 먼저 보여 드리고 고르신 것으로만 만든다.
 

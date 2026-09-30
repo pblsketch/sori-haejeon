@@ -277,8 +277,14 @@ const keysOf = (st) => [...st._m.keys()].sort();
   const seaIds = over.teams.enemy.fleet.flatMap((s) => s.sounds);
   for (const id of seaIds) { if (over.phase !== 'playing') break; const r = R.fire(over, R.inputOf(id)); over = r.state; }
   check(over.phase === 'over', '(준비) 모든 배를 찾아 판이 끝남');
+  over.id = 'over-test-1';
   b.S.saveGame(over);
   check(b.S.loadGame() === null && boot(st).S.loadGame() === null, '끝난 판을 저장하려 하면 진행 판이 지워짐');
+  // 끝나는 순간 누적 지도에 더해진다(결과 화면 전에 새로고침해도 잃지 않음) — 뒤이은 finishGame의 addRecord는 아무것도 안 함
+  const overRec = R.makeRecord(over);
+  eq(sortS(boot(st).S.soundMap('consonant')), sortS(overRec.hitSoundsAll), '끝난 판은 saveGame 순간 누적 지도에 더해짐(새로고침 뒤에도)');
+  check(b.S.addRecord(overRec, over.id) === false, '끝난 판을 finishGame이 다시 더하려 하면 거절(한 판 한 번)');
+  check(b.S.mapGames ? b.S.mapGames('consonant') === 1 : true, '더한 판 수 1');
   // 망가진 진행 판이 있어도 다른 저장 값은 멀쩡
   const st2 = makeStorage();
   const c = boot(st2);

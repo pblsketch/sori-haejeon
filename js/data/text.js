@@ -356,6 +356,7 @@ window.TEXT = {
       // 조작 순서(① 자리 → ② 방법 → ③ 세기 → 발사)의 묶음 이름은 shortTerms.axis를 쓴다. 지금 고른 조합 요약 한 줄:
       choose: '{what} 선택',      // 요약 줄에서 아직 안 고른 칸('세기 선택')
       shipsLeft: '남은 배', turnsLeft: '남은 턴', turnsN: '{n}턴',
+      shipFound: '찾음 · {sounds}',  // 남은 배 목록에서 가라앉은 배 이름 대신('찾음 · /ㄱ/ /ㄲ/ /ㅋ/')
       allFound: '배를 모두 찾았어요',
       outOfTurns: '턴을 다 썼어요. 남은 배를 보여 줄게요',
       home: '처음으로',

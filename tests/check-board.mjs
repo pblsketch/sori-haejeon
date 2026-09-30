@@ -168,6 +168,10 @@ try {
     const items = [...shipsEl.querySelectorAll('.sb-ship-item')];
     if (items.length !== 3 || !items[0].classList.contains('is-sunk') || items[1].classList.contains('is-sunk') || items[2].classList.contains('is-sunk')) F('남은 배 목록: ' + items.map((e) => e.className).join('|'));
     if (!items.every((e) => e.querySelector('svg, img'))) F('배 그림(그림 또는 대신 그린 모양)이 없음');
+    // 가라앉은 배는 '찾음'과 그 배의 소리, 남은 배는 크기 이름 그대로
+    const foundTxt = G.text.fill(TEXT.ui.play.shipFound, { sounds: fleet[0].sounds.map(G.text.sound).join(' ') });
+    if (items[0] && items[0].querySelector('.sb-ship-name').textContent !== foundTxt) F('가라앉은 배 이름 자리: ' + items[0].querySelector('.sb-ship-name').textContent + ' ≠ ' + foundTxt);
+    if (items[1] && items[1].querySelector('.sb-ship-name').textContent !== G.text.shipName(fleet[1].size)) F('남은 배 이름이 바뀜: ' + items[1].querySelector('.sb-ship-name').textContent);
     // 숨은 배 소리가 새지 않음: DOM의 소리는 쏜 소리뿐
     const shotIds = new Set(shots.map((x) => x.sound).filter(Boolean));
     const seen = new Set((root.outerHTML + shipsEl.outerHTML).match(JAMO_G) || []);

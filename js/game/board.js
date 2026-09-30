@@ -36,7 +36,8 @@
 //     뜨고, 묶음마다 단추 하나('/ㄱ/ /ㄲ/ /ㅋ/')를 눌러 고른다. 다른 곳을 누르면 닫힌다.
 //
 // ── 판 옆 조각 ─────────────────────────────────────────────────────────
-//   G.board.ships(요소, { sizes: [3,2,1], compact })  → { el, set(격침된 번호들, 방금 격침된 번호, 번호표{배: 숫자}), destroy }  남은 배 목록
+//   G.board.ships(요소, { sizes: [3,2,1], compact })  → { el, set(격침된 번호들, 방금 격침된 번호, 번호표{배: 숫자}, 함대), destroy }  남은 배 목록
+//     가라앉은 배는 불탄 그림 + 이름 자리에 '찾음 · /ㄱ/ /ㄲ/ /ㅋ/'(함대를 주었을 때). 이름을 숨기는 좁은 배치에서는 읽기 도구에만.
 //   G.board.legend(요소, { sea })                      → { el, destroy }  배 종류 그림 한 줄씩(G.text.legend)
 //   G.board.soundMap(요소, { sea, grade, hitSounds })  → 판 객체(map 모드)  결과 화면·누적 소리 지도(바다 지도 위, 배 조각 없음)
 //   G.board.viewOf(판상태, 쏘는팀)                      → { shots, fleet, reveal:false }
@@ -204,8 +205,9 @@ G.board = (function () {
     let sunkNow = [];
     return {
       el,
-      // set(격침된 배 번호들, 방금 격침된 번호(연출, 선택), 번호표 { 배 번호: 표시할 숫자 }(선택 — 떨어진 조각을 잇는 번호))
-      set(sunk, fresh, nums) {
+      // set(격침된 배 번호들, 방금 격침된 번호(연출, 선택), 번호표 { 배 번호: 표시할 숫자 }(선택 — 떨어진 조각을 잇는 번호),
+      //     함대(선택 — 주면 가라앉은 배 이름 자리에 '찾음'과 그 배의 소리. 가라앉은 뒤라 숨길 것이 없다))
+      set(sunk, fresh, nums, fleet) {
         sunk = sunk || [];
         nums = nums || {};
         items.forEach((it, i) => {
@@ -214,6 +216,11 @@ G.board = (function () {
             it.classList.toggle('is-sunk', on);
             it.replaceChild(shipPic(sizes[i], on), it.querySelector('.sb-pic'));
           }
+          const ship = fleet && fleet[i];
+          const label = on && ship && ship.sounds ? G.text.fill(TEXT.ui.play.shipFound, { sounds: ship.sounds.map(G.text.sound).join(' ') }) : G.text.shipName(sizes[i]);
+          const nameEl = it.querySelector('.sb-ship-name');
+          if (nameEl.textContent !== label) nameEl.textContent = label;
+          it.classList.toggle('has-found', on && !!(ship && ship.sounds));
           const old = it.querySelector('.sb-num');
           const want = on && nums[i] != null ? String(nums[i]) : '';
           if (old && old.textContent !== want) old.remove();
@@ -635,7 +642,7 @@ G.board = (function () {
       });
       if (mode === 'place') placed.forEach((ship, i) => lineSpecs.push({ i, t: 'placed', ids: ship.sounds }));
       lastNums = nums;
-      if (shipList) shipList.set(sunk, undefined, nums);
+      if (shipList) shipList.set(sunk, undefined, nums, view.fleet);
       if (mode === 'place') applyPlaceable();
       fit();
     }
@@ -801,7 +808,7 @@ G.board = (function () {
             if (sh.sound && (sh.kind === 'hit' || sh.kind === 'miss' || sh.kind === 'line')) freshen(anchors.get(sh.sound));
           });
           const nowSunk = sunkList().filter((i) => prevSunk.indexOf(i) < 0);
-          if (shipList && nowSunk.length) shipList.set(sunkList(), nowSunk[nowSunk.length - 1], lastNums);
+          if (shipList && nowSunk.length) shipList.set(sunkList(), nowSunk[nowSunk.length - 1], lastNums, view.fleet);
         }
         return board;
       },
@@ -818,7 +825,7 @@ G.board = (function () {
         if (i == null || i < 0) return board;
         if (extraSunk.indexOf(i) < 0) extraSunk.push(i);
         paint();
-        if (shipList) shipList.set(sunkList(), i, lastNums);
+        if (shipList) shipList.set(sunkList(), i, lastNums, view.fleet);
         return board;
       },
       setPlaceable(groups) { placeable = (groups || []).map((x) => x.slice()); closeChooser(); if (mode === 'place') applyPlaceable(); return board; },

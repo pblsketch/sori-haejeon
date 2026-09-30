@@ -209,6 +209,7 @@
 .sb-ship-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .sb-ship-name { font-size: 15px; font-weight: 600; line-height: 1.2; color: var(--ink); white-space: nowrap; }
 .sb-ship-item.is-sunk .sb-ship-name { color: var(--ink-2); text-decoration: line-through; }
+.sb-ship-item.has-found .sb-ship-name { color: var(--ink); text-decoration: none; } /* '찾음 · /ㄱ/ /ㄲ/ /ㅋ/' */
 .sb-ships.is-compact { gap: 2px var(--s2); align-items: center; }
 .sb-pic { --seg: calc(var(--ship-w, 100px) * .45); position: relative; display: flex; align-items: center; gap: max(2px, calc(var(--seg) * .06)); width: max-content; }
 .sb-ships .sb-pic.is-top { height: auto; } /* 둘레 화면이 옛 옆모습 그림 높이를 정해 두어도 위에서 본 배는 제 비율 */

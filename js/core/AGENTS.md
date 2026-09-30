@@ -19,7 +19,7 @@
 - 함대는 큰 배부터(`LEVELS[..].fleet` 순서), 열린 칸 안의 허용 묶음만, 소리 겹침 없음. `fillFleet`는 되돌아가며 채워 막다른 상태가 없다.
 - 대결: 팀마다 `shots.length ≤ turns`. 발을 다 쓴 팀의 `fireTeam`은 오류. 한 발 뒤 `duelOutcome`: 쏜 팀이 다 찾음 → 즉시 승 / 두 팀 발 소진 → 맞힌 칸 비교, 같으면 무승부.
 - `save.js`와 `audio.js`의 공개 함수는 예외를 던지지 않고 `console.error`를 쓰지 않는다(점검이 페이지 오류로 센다). 저장소가 막혀도 이번 세션 동안은 메모리에 값을 들고 돈다.
-- `saveGame`: `placing` 판은 배치를 버리고 청팀부터 다시 하는 판으로, `over` 판은 저장하지 않고 진행 판을 지운다.
+- `saveGame`: `placing` 판은 배치를 버리고 청팀부터 다시 하는 판으로, `over` 판은 저장하지 않고 그 자리에서 `addRecord(makeRecord(판), 판 id)`로 누적 지도에 더한 뒤 진행 판을 지운다(결과 화면 전 멈춤 동안 새로고침해도 끝난 판을 잃지 않게). 뒤이은 `G.app.finishGame`의 더하기는 같은 판이라 무시된다.
 - `addRecord(record, id)`는 같은 판 id(없으면 내용 해시)를 두 번 더하지 않는다. 대결은 `record.hitSoundsAll`(두 팀 합침)을 더한다.
 
 ## 구현 방식

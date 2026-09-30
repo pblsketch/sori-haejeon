@@ -22,7 +22,7 @@
 - '따라 해 보기'는 도움 단계에서 **국어에 있는 조합일 때만**. 없는 조합이면 중립 줄("준비됐으면 발사!").
 - 조작 카드 이름은 모든 단계에서 보인다. 숨기는 단계가 가리는 것은 판 줄 이름과 단면도 자리 이름뿐.
 - 대결: 팀 자리마다 포인터를 `pointerId`별로 따로 받는다. 문서 전체 `preventDefault`나 포인터 하나만 받는 잠금 금지. 한 팀의 애니메이션 동안 그 팀 조작부만 잠근다. 발을 다 쓴 팀(`G.rules.teamInfo(…).outOfShots`)은 조작부를 잠그고 기다림 줄을 띄운다.
-- 판이 끝난 뒤 결과를 기다리는 동안(연습 끝 멈춤, 대결 남은 배 공개)의 '처음으로'는 판을 잃지 않게 `G.app.finishGame(판 상태)`로 보낸다(진행 판은 끝날 때 이미 지워졌다).
+- 판이 끝난 뒤 결과를 기다리는 동안(연습 끝 멈춤, 대결 남은 배 공개)의 '처음으로'는 판을 잃지 않게 `G.app.finishGame(판 상태)`로 보낸다(누적 지도에는 `saveGame`이 끝나는 순간 이미 더했지만, 결과 화면까지 잃지 않게). 끝난 판은 반드시 `G.save.saveGame`을 거친다.
 - 대결은 세로 배치·낮은 가로 화면에서 열지 않는다(안내 한 줄 + '처음으로'). 연습은 세로 배치에서 단면도·바다 반반 + 하단 고정 조작부, 스크롤 없이 한 발.
 - 터치 목표: 가로 64px, 휴대폰 세로 48px, 휴대폰 발사 56px 이상. 가로 스크롤 없음.
 - 색은 `css/base.css` 토큰만: 팀 색은 팀 표시에만, 신호 색(황금·보라·miss·dud)은 결과에만, 청록 `--accent`는 일반 발사·현재 선택. 신호는 색 + `G.util.glyph` 기호.
@@ -34,7 +34,7 @@
 - 새 판: `G.rules.newGame(…)` + `state.id = G.save.newGameId()` → 곧바로 `G.save.saveGame`. 매 발 뒤에도 `saveGame`.
 - 한 발: 발사 → 조작부 잠금 → `G.audio.sfx('fire')` → `await mouth.play(조합)` → `G.rules.fire`/`fireTeam` → `board.update(G.board.viewOf(state, 팀))` → 효과음(`hit`/`sunk`/`dud`/`miss`) → 기록장 → 저장 → 한 줄 문구 → 잠금 풀기.
 - 배치는 `(max-width: 760px), (orientation: portrait)`(세로)·`(orientation: landscape) and (max-height: 500px)`(낮은 가로)로 가른다. 이 값은 `app.js`·`controls.js`·`practice.js`·`duel.js`와 CSS 여러 곳에 같은 값으로 있으니 함께 바꾼다. 방향이 바뀌면 부품만 다시 그리고 판 상태는 그대로.
-- 판 위 배 그림은 `assets/img/top_*.webp`(없으면 코드로 그린 모양). 떨어진 칸의 격침 배는 점선 끌줄 + 두 조각과 남은 배 목록에 같은 번호.
+- 판 위 배 그림은 `assets/img/top_*.webp`(없으면 코드로 그린 모양). 남은 배 목록은 `ships().set(격침 번호, 방금 격침, 번호표, 함대)` — 함대를 넘겨야 가라앉은 배 이름 자리에 '찾음 · 소리'가 붙는다. 떨어진 칸의 격침 배는 점선 끌줄 + 두 조각과 남은 배 목록에 같은 번호.
 - 점검용 통로(게임 화면에 드러내지 않음): `G.practice.debug()`, `G.practice.config`(멈춤 시간), `G.duel.current.debug`, `G.duel.config`(숨기기 시간 등), 단면도 SVG의 `data-*` 상태 값, 뿌리 요소의 `data-screen`. 점검이 이것에 기대므로 이름을 바꾸면 `tests/`를 함께 고친다.
 
 ## 점검(aside, `cd tests && npm test -- <이름>`)

@@ -38,9 +38,9 @@
 1. 학생이 조작부 카드를 누른다 → `G.controls`가 고른 것을 모으고 `G.rules.controls(단계, 고른 것)`으로 세기 카드 흐림·발사 단추 켜짐을 정한다 → `onChange`로 연습 화면에 알림 → 연습 화면이 `G.mouth.select/setManner/setStrength/setLips`로 단면도 모양을 바꾼다(미리 보기).
 2. 발사 → `onFire(조합)` → 연습 화면이 조작부를 잠그고 `G.audio.sfx('fire')`, `await G.mouth.play(조합)`(1.5초 안, 없는 조합도 고른 대로 재생).
 3. `G.rules.fire(판 상태, 조합)` → `{ state, outcome }`. 턴을 쓰지 않는 결과(`notInSea`·`already`)면 상태는 그대로이고 한 줄 문구만 바뀐다.
-4. 턴을 쓴 발이면 `G.board.update(G.board.viewOf(state, 'player'))`가 늘어난 발만 짧게 강조해 그린다 → 효과음(명중/격침/불발/물보라) → `G.controls.log(발)` → `G.save.saveGame(state)` → 한 줄 문구(`G.text.signal(kind)` 또는 격침 줄).
+4. 턴을 쓴 발이면 `G.board.update(G.board.viewOf(state, 'player'))`가 늘어난 발만 짧게 강조해 그린다 → 효과음(명중/격침/불발/물보라) → `G.controls.log(발)` → `G.save.saveGame(state)`(끝난 판이면 이 순간 누적 지도에 더하고 진행 판을 지움) → 한 줄 문구(`G.text.signal(kind)` 또는 격침 줄).
 5. `outcome.over`면 끝: 실패 판은 `G.board.revealFleet`로 남은 배 공개 → 잠깐 뒤 `G.app.finishGame(state)`.
-6. `G.app.finishGame`: `G.rules.makeRecord(state)` → `G.save.addRecord(기록, state.id)`(한 판은 한 번만) → `G.save.clearGame()` → 결과 화면(`go('result', { record })`).
+6. `G.app.finishGame`: `G.rules.makeRecord(state)` → `G.save.addRecord(기록, state.id)`(5단계에서 이미 더했으면 같은 판이라 무시) → `G.save.clearGame()` → 결과 화면(`go('result', { record })`).
 
 대결의 한 발은 3단계가 `G.rules.fireTeam(state, 팀, 조합)`으로 바뀌고, 그 팀 자리의 단면도·조작부만 잠긴다. 두 팀의 발은 서로 기다리지 않으며 각 발은 **그 순간의** 판 상태로 채점된다.
 

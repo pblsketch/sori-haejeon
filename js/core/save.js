@@ -23,7 +23,8 @@
 //   - phase 'placing'(숨기기 시간 배치 중): 배치는 저장하지 않는다. 두 팀 함대를 비우고 청팀 배치부터 다시 하는
 //     판(G.rules.restartPlacing과 같은 모양)으로 저장한다 → 새로고침하면 숨기기 단계를 처음(청팀)부터 다시 한다.
 //     (옛 진행 판은 이때 버려진다 — 새 판을 시작했으므로.)
-//   - phase 'over': 저장하지 않고 진행 판을 지운다(끝난 판은 누적 지도로만 남는다).
+//   - phase 'over': 저장하지 않고, 그 판을 곧바로 누적 지도에 더한 뒤(addRecord, 한 판 한 번) 진행 판을 지운다.
+//     그래서 결과 화면으로 넘어가기 전 멈춤 동안 새로고침해도 끝난 판이 사라지지 않는다.
 //   loadGame()은 판 형식 버전(state.v === 1, rules.js 머리 주석의 GameState)·모드·바다·단계·단계(phase)·팀 모양을
 //   확인하고, 맞지 않거나 JSON이 망가졌으면 저장된 값을 지우고 null을 돌려준다.
 //   대결(실시간 — 차례 없음)은 두 팀의 쏜 수가 달라도 된다. 팀마다 쏜 수가 단계의 제한 턴(= 팀마다 발 수)을 넘으면
@@ -305,7 +306,14 @@ G.save = (function () {
   // 매 발 부른다. 저장했으면(이번 세션 메모리 포함) true
   function saveGame(state) {
     if (!isObj(state)) return false;
-    if (state.phase === 'over') { clearGame(); return false; }
+    if (state.phase === 'over') {
+      // 끝난 판은 이 순간 누적 소리 지도에 더한다 — 남은 배 공개·결과 화면 전 멈춤 동안 새로고침·꺼짐이 나도 잃지 않게.
+      //   G.app.finishGame이 뒤이어 같은 판을 더하려 해도 같은 id(없으면 같은 내용 해시)라 아무것도 하지 않는다.
+      if (G.rules && typeof G.rules.makeRecord === 'function') {
+        try { addRecord(G.rules.makeRecord(state), state.id); } catch (e) { /* 기록을 못 만들면 finishGame이 다시 해 본다 */ }
+      }
+      clearGame(); return false;
+    }
     let st;
     try { st = copy(state); } catch (e) { return false; }
     if (st.phase === 'placing') st = restartPlacing(st);
