@@ -1,15 +1,23 @@
 /* 바다(판) — js/game/board.js
-   판은 체계표 그 자체: 머리글(줄·열 이름) · 칸(칸 안 세기 자리) · 쏜 칸 표시 · 강조 흔적 · 배를 잇는 선.
+   판은 체계표 그 자체이고, 그 밑에 하나로 이어진 '섬과 암초 바다 지도'가 깔린다(spec 3.3, 선생님 결정 — 시안 C).
+   머리글(줄·열 이름) · 바다 지도 한 장(.sb-sea) · 얇은 격자선의 칸 · 소리 표지 · 물속에 드러난 것(배 조각·물보라·암초) ·
+   강조 흔적 · 떨어진 배 조각을 잇는 점선 끌줄과 번호.
    크기(--sb-cw 칸 너비, --sb-fs 소리 표기 글씨, --sb-hf/--sb-rf 머리글 글씨)는 board.js가 담긴 상자에 맞춰 정한다.
-   색 역할(css/base.css): 칸 바탕 --cell, 소리는 언제나 기본 잉크, 신호 색은 결과에만.
+   색은 다섯 역할만: 바다 파랑(지도) · 잉크(글씨·격자·배 테두리) · 황금(명중) · 보라(같은 줄 범위) · 돌 회색(암초).
+   (팀 색은 배치 화면의 놓은 배 표지에만, 청록은 '현재 선택' 머리글에만 — css/base.css의 역할 규칙 그대로.)
    신호는 색 + 벡터 기호(배지) + 글씨로 구분한다(흑백·색각 이상에서도):
-     명중 = 황금 채움 + 과녁 · 같은 줄 = 보라 윤곽(돌려받은 범위에만) + ↔/↕/겹친 네모 · 빗나감 = × · 없는 소리 = ∅.
-   '최근 결과'(.is-latest)는 굵은 테두리와 큰 배지, '이전 결과'는 같은 기호의 작은 배지.
-   점선·줄무늬·이중 테두리·불꽃·계속 움직이는 장식은 쓰지 않는다. 판 위에 그림을 깔지 않는다. */
+     명중 = 황금 표지 + 칸 황금 테두리 + 과녁 · 같은 줄 = 보라 윤곽(돌려받은 범위에만) + ↔/↕/겹친 네모 ·
+     빗나감 = 물보라 고리 + × · 없는 소리 = 암초 + ∅.
+   '최근 결과'(.is-latest)는 공통 잉크 테두리, '이전 결과'는 같은 기호의 배지. 불꽃·계속 움직이는 장식은 쓰지 않는다. */
 .sb {
-  --sb-trace: rgba(103, 70, 165, .07);
-  --sb-trace-edge: rgba(103, 70, 165, .5);
+  --sb-trace: rgba(103, 70, 165, .10);
+  --sb-trace-edge: rgba(103, 70, 165, .75);
   --sb-team: var(--accent);
+  --sb-grid: rgba(24, 53, 64, .28);      /* 격자선(해도의 가는 선) */
+  --sb-plate: #FFFFFF;                    /* 소리 표지 바탕 */
+  --sb-plate-edge: rgba(24, 53, 64, .55);
+  --sb-rock: #7D8A8F;                     /* 암초 돌(유일한 돌 색) */
+  --sb-badge: clamp(20px, calc(var(--sb-cw, 60px) * .18), 30px);
   position: relative;
   display: grid;
   justify-content: center;
@@ -22,10 +30,17 @@
 .sb-team-blue { --sb-team: var(--blue); }
 .sb-team-red { --sb-team: var(--red); }
 
+/* 바다 지도 한 장: 격자 영역 전체 밑(칸 밖이라 숨긴 단계의 칸들은 모두 같은 모양 그대로).
+   절대 위치 + grid-row/column → 그 격자 영역을 틀로 삼고, 칸의 자동 배치에는 끼지 않는다 */
+.sb-sea {
+  position: absolute; inset: 0; z-index: 0; border-radius: 10px; background-color: #BDE0EA; background-size: 100% 100%; background-repeat: no-repeat;
+  box-shadow: inset 0 0 0 1.5px rgba(24, 53, 64, .45);
+}
+
 /* 머리글(축 이름): 뒷자리에서도 읽히게 크고 또렷하게 */
 .sb-ch, .sb-rh { display: flex; color: var(--ink); font-weight: 600; line-height: 1.2; min-width: 0; border-radius: 6px; }
-.sb-ch { align-items: flex-end; justify-content: center; text-align: center; font-size: var(--sb-hf, 16px); padding: 0 2px 6px; white-space: nowrap; }
-.sb-rh { align-items: center; justify-content: flex-end; text-align: right; font-size: var(--sb-rf, 16px); padding-right: 8px; word-break: keep-all; }
+.sb-ch { align-items: flex-end; justify-content: center; text-align: center; font-size: var(--sb-hf, 16px); padding: 0 2px 8px; white-space: nowrap; }
+.sb-rh { align-items: center; justify-content: flex-end; text-align: right; font-size: var(--sb-rf, 16px); padding-right: 10px; word-break: keep-all; }
 /* 현재 선택(자리·방법)과 이어진 줄·열 머리: 청록 + 체크 */
 .sb-ch.is-picked, .sb-rh.is-picked { color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); }
 .sb-rh.is-picked { box-shadow: inset -3px 0 0 var(--accent); }
@@ -33,62 +48,114 @@
 .sb-rh .sb-pick { align-self: center; margin-bottom: 0; }
 .sb-ch.is-picked { flex-wrap: nowrap; }
 
-/* 칸: 옅은 바탕, 얇은 구분선, 반경 8 */
+/* 칸: 바다 위의 얇은 격자선(칸마다 틀·바탕 없음) */
 .sb-cell {
-  position: relative; overflow: hidden; min-width: 0; margin: 0; padding: 0;
-  border-radius: var(--r-cell); background: var(--cell); border: 1px solid var(--divider);
+  position: relative; z-index: 1; overflow: hidden; min-width: 0; margin: 0; padding: 0;
+  background: transparent; border: 0; border-radius: 0;
+  box-shadow: inset -1px -1px 0 var(--sb-grid);
   font: inherit; color: inherit; text-align: center;
 }
 .sb-stack { position: absolute; inset: 0; display: flex; flex-direction: column; }
-.sb-k-empty { background: transparent; border-color: var(--divider); }   /* 국어에 없는 소리: 빈 틀 */
-.sb-k-closed { background: var(--cell-off); border-color: #DCE3E7; }    /* 이번 단계에서 뺀 칸: 옅은 바탕 + 잠금 */
-.sb-lock { position: absolute; left: 50%; top: 50%; width: 30%; max-width: 26px; aspect-ratio: 1; transform: translate(-50%, -50%); color: #8A9BA3; pointer-events: none; }
+.sb-k-empty { background: transparent; }                                   /* 국어에 없는 소리: 아무 표지 없는 바다 */
+.sb-k-closed { background: rgba(255, 255, 255, .55); }                     /* 이번 단계에서 뺀 칸: 옅은 안개 + 잠금 */
+.sb-lock { position: absolute; left: 50%; top: 50%; width: 30%; max-width: 26px; aspect-ratio: 1; transform: translate(-50%, -50%); color: var(--ink-2); pointer-events: none; }
+.sb-cell.has-hit { box-shadow: inset -1px -1px 0 var(--sb-grid), inset 0 0 0 3px var(--hit); }
 
-/* 칸 안 소리 자리(보이는 단계·배치·소리 지도) — 소리는 언제나 기본 잉크, 한 판 안에서 같은 크기 */
-.sb-slot { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: center; }
-.sb-slot.sb-sub { border-top: 1px solid rgba(24, 53, 64, .1); }
+/* 칸 안 소리 자리(보이는 단계·배치·소리 지도) — 위: 표지, 아래: 물속에 드러난 것 */
+.sb-slot { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.sb-slot.sb-sub { box-shadow: inset 0 1px 0 rgba(24, 53, 64, .12); }
+/* 소리 표지(바다 표지): 흰 판 + 잉크 글씨(12.9:1). 쏜 결과에 따라 판 색만 바뀐다 */
 .sb-snd, .sb-stamp {
-  position: relative; z-index: 2; /* 강조 흔적·선보다 위: 소리 표기가 가려지지 않게 */
+  position: relative; z-index: 3; /* 강조 흔적·선·배 조각보다 위: 소리 표기가 가려지지 않게 */
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
   font-family: var(--font-sound); font-weight: 700; line-height: 1; white-space: nowrap;
-  color: var(--ink);
+  color: var(--ink); background: var(--sb-plate); border: 1.5px solid var(--sb-plate-edge); border-radius: 6px;
+  padding: .1em .16em .12em; box-shadow: 0 1px 0 rgba(24, 53, 64, .16);
 }
+.sb-narrow .sb-snd, .sb-narrow .sb-stamp { padding: .08em .06em .1em; border-radius: 5px; }
 .sb-snd { font-size: var(--sb-fs, 28px); }
 .sb-stamp { font-size: min(var(--sb-fs, 28px), calc(var(--h, 40px) * .64)); }
 .sb-measure { position: absolute !important; visibility: hidden; left: 0; top: 0; font-size: 100px !important; }
-.sb-lab { position: relative; z-index: 2; font-size: max(11px, min(calc(var(--h, 40px) * .4), calc(var(--sb-cw, 60px) * .22))); font-weight: 600; line-height: 1; color: var(--dud); }
+.sb-lab { position: relative; z-index: 3; font-size: max(12px, min(calc(var(--h, 40px) * .32), calc(var(--sb-cw, 60px) * .2))); font-weight: 700; line-height: 1.1; color: var(--ink); background: var(--sb-plate); border-radius: 4px; padding: 0 .25em; margin-top: 28%; }
+
+.sb-mark.k-hit > .sb-snd, .sb-mark.k-hit > .sb-stamp { background: var(--hit); border-color: var(--hit-ink); }
+.sb-mark.k-line > .sb-snd, .sb-mark.k-line > .sb-stamp { background: var(--line-soft); border-color: var(--line); }
+.sb-mark.k-miss > .sb-snd, .sb-mark.k-miss > .sb-stamp { background: var(--miss-soft); border-color: var(--miss); }
+.sb-mark.k-reveal > .sb-snd, .sb-mark.k-reveal > .sb-stamp { background: var(--sb-plate); border: 2px dashed var(--ink-2); }
+
+/* 물속에 드러난 것(.sb-obj): 넉넉한 자리에서는 표지 아래, 낮은 자리(.is-row)에서는 표지 뒤 왼쪽 아래에 작게 */
+.sb-obj { position: relative; z-index: 2; flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.sb-slot.has-obj, .sb-item.has-obj { justify-content: flex-start; padding-top: max(2px, calc(var(--h, 40px) * .05)); }
+.is-row > .sb-obj { position: absolute; left: 2px; bottom: 2px; width: 46%; height: 46%; flex: none; justify-content: flex-start; }
+.sb-slot.has-obj.is-row, .sb-item.has-obj.is-row { justify-content: center; padding-top: 0; }
+.sb-top { display: block; max-width: 94%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.sb-piece { filter: drop-shadow(0 1.5px 0 rgba(24, 53, 64, .25)); }
+.sb-piece[data-piece="bow"] { width: 90%; } .sb-piece[data-piece="stern"] { width: 81%; }
+.sb-piece[data-piece="mid"] { width: 73%; } .sb-piece[data-piece="boat1"] { width: 92%; } .sb-piece[data-piece="hit"] { width: 94%; }
+.sb-top-svg .sb-hull { fill: #C9D3D8; stroke: var(--ink); stroke-width: 6; }
+.sb-top-svg.is-burnt .sb-hull { fill: #8E8782; }
+/* 떨어진 조각의 격침 배: 두 조각에 같은 번호 */
+.sb-num {
+  position: absolute; z-index: 5; left: 3px; bottom: 3px; min-width: 1.5em; height: 1.5em; padding: 0 .3em; border-radius: 999px;
+  background: var(--ink); color: #FFFFFF; font: 700 max(12px, calc(var(--sb-badge) * .72)) / 1.5em var(--font-body); text-align: center;
+  box-shadow: 0 0 0 2px #FFFFFF;
+}
+/* 빗나감 물보라 고리 */
+.sb-ripple { display: block; width: 86%; height: 100%; max-height: 64px; overflow: visible; }
+.sb-ripple .r1 { fill: none; stroke: #FFFFFF; stroke-width: 4; }
+.sb-ripple .r2 { fill: none; stroke: #FFFFFF; stroke-width: 3; opacity: .85; }
+.sb-ripple .r3 { fill: none; stroke: #5E8EA3; stroke-width: 2; opacity: .55; }
+.sb-ripple .rd { fill: #FFFFFF; }
+/* 없는 소리: 그 칸에 암초(쏜 뒤에만) */
+.sb-reef { position: absolute; left: 50%; top: 50%; width: 92%; height: 88%; max-height: 110px; transform: translate(-50%, -50%); z-index: 1; overflow: visible; }
+.sb-reef .rf-foam { fill: none; stroke: #FFFFFF; stroke-width: 6; opacity: .9; }
+.sb-reef .rf-rock { fill: var(--sb-rock); stroke: var(--ink); stroke-width: 4; stroke-linejoin: round; }
+.sb-reef .rf-crack { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; opacity: .7; }
+.sb-reef .rf-lit { fill: #A9B4B8; }
+/* 한 칸 안의 배(세기만 다른 소리들): 칸 왼쪽에 뱃머리를 위로 세운 한 척. 표지는 오른쪽으로 비킨다 */
+.sb-vship { position: absolute; z-index: 2; left: 2px; top: 4px; bottom: 4px; width: 28%; pointer-events: none; }
+.sb-vship-in { position: absolute; left: 50%; top: 50%; width: var(--vh, 100px); height: auto; display: flex; align-items: center; transform: translate(-50%, -50%) rotate(-90deg); }
+.sb-vship-in .sb-top { flex: 1 1 0; min-width: 0; max-width: none; width: 100%; height: auto; }
+.sb-vship-in .p-bow { flex-grow: 1.11; } .sb-vship-in .p-stern { flex-grow: 1; } .sb-vship-in .p-mid { flex-grow: .9; }
+.has-vship > .sb-stack, .has-vship > .sb-slot { left: 30%; }
 
 /* 쏜 칸 표시: 칸 안에 차례로 쌓인다(숨김 단계 — 명중이 가장 크게) */
-.sb-item { position: relative; flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
-.sb-item + .sb-item { border-top: 1px solid rgba(255, 255, 255, .9); }
+.sb-item { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.sb-item + .sb-item { border-top: 1px solid rgba(24, 53, 64, .18); }
 .sb-item.k-hit { flex-grow: 2; }
+.sb-item.k-dud { justify-content: center; }
 
 .sb-mark { --mk: var(--ink-2); z-index: 2; } /* 쏜 칸 표시는 같은 줄 범위(옅은 보라)보다 위: 명중 황금이 물들지 않게 */
-.sb-mark.k-hit { --mk: var(--hit-ink); background: var(--hit); }
-.sb-mark.k-line { --mk: var(--line); background: var(--line-soft); }
-.sb-mark.k-miss { --mk: var(--miss); background: var(--miss-soft); }
-.sb-mark.k-dud { --mk: var(--dud); background: var(--dud-soft); }
-.sb-mark.k-reveal { --mk: var(--ink-2); background: var(--surface); box-shadow: inset 0 0 0 2px var(--ink-2); }
+.sb-mark.k-hit { --mk: var(--hit-ink); }
+.sb-mark.k-line { --mk: var(--line); }
+.sb-mark.k-miss { --mk: var(--miss); }
+.sb-mark.k-dud { --mk: var(--dud); }
+.sb-mark.k-reveal { --mk: var(--ink-2); }
 /* 최근 1발: 신호와 상관없이 공통 잉크 테두리(신호 색과 '마지막 발' 강조를 섞지 않음, 2차 검수) */
 .sb-mark.is-latest { box-shadow: inset 0 0 0 3px var(--ink); }
-/* 배지(모서리의 신호 기호): 칸마다 오른쪽 위 한 곳, 16~18px로 통일 */
+/* 배지(모서리의 신호 기호): 칸마다 오른쪽 위 한 곳, 20~30px(휴대폰 20px 이상) */
 .sb-badge {
-  position: absolute; z-index: 3; right: 4px; top: 4px; pointer-events: none; color: var(--mk);
-  width: clamp(12px, calc(var(--h, 40px) * .3), 18px); height: auto; aspect-ratio: 1;
+  position: absolute; z-index: 4; right: 3px; top: 3px; pointer-events: none; color: var(--mk);
+  width: var(--sb-badge); height: var(--sb-badge); padding: 3px; box-sizing: border-box;
+  background: #FFFFFF; border: 2px solid currentColor; border-radius: 50%;
 }
-/* 없는 소리(빈칸): 칸 가운데 ∅(세기를 고른 불발이면 옆에 세기 이름) */
-.sb-item.k-dud { gap: 4px; }
-.sb-dudmark { position: relative; flex: none; height: min(62%, calc(var(--sb-cw, 60px) * .45)); width: auto; aspect-ratio: 1; color: var(--dud); z-index: 2; }
+.sb-mark.k-hit > .sb-badge { color: var(--hit-ink); background: var(--hit); }
+.sb-dudmark { color: var(--dud); }
+/* 휴대폰(좁은 판): 배지는 오른쪽 아래 — 칸 위쪽의 소리 표지를 가리지 않게 */
+.sb-narrow .sb-badge { top: auto; bottom: 2px; right: 2px; }
+/* 좁은 판: 배 조각은 왼쪽으로(오른쪽 아래 배지와 겹치지 않게), 번호는 표지를 가리지 않게 배 조각 위 가운데에 작게(검수 2b) */
+.sb-narrow .has-obj:not(.is-row) > .sb-obj { justify-content: flex-start; padding-left: 3px; }
+.sb-narrow .sb-mark > .sb-num { left: calc(3px + 31% - .75em); top: auto; bottom: calc(var(--h, 58px) * .12); font-size: 11px; z-index: 5; }
+.sb-narrow .sb-piece, .sb-narrow .sb-piece[data-piece] { width: 62%; }
 
-/* 배치 화면(대결 숨기기 시간): 누를 수 있는 칸 = 선택 카드 모양, 놓은 배 = 팀 색 */
+/* 배치 화면(대결 숨기기 시간): 누를 수 있는 칸 = 선택 카드 모양, 놓은 배 = 팀 색 표지 + 위에서 본 배 */
 .sb-m-place .sb-cell { cursor: default; }
-.sb-m-place .sb-cell:disabled { background: var(--cell-off); }
-.sb-m-place .sb-cell:disabled .sb-snd { color: var(--ink-2); }
-.sb-m-place .sb-cell.has-placed { background: var(--surface); }
-.sb-m-place .sb-cell.is-can { cursor: pointer; background: var(--surface); border: 2px solid var(--control-line); transition: background-color var(--t-pick), border-color var(--t-pick); }
-.sb-m-place .sb-cell.is-can:hover { background: var(--accent-soft); border-color: var(--accent); }
-.sb-m-place .sb-cell:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.sb-slot.is-placed { background: var(--sb-team); }
-.sb-m-place .sb-cell .sb-slot.is-placed .sb-snd { color: #fff; }
+.sb-m-place .sb-cell:disabled { background: rgba(255, 255, 255, .35); }
+.sb-m-place .sb-cell.has-placed { background: rgba(255, 255, 255, .2); }
+.sb-m-place .sb-cell.is-can { cursor: pointer; background: rgba(255, 255, 255, .55); box-shadow: inset 0 0 0 2px var(--control-line); transition: background-color var(--t-pick), box-shadow var(--t-pick); }
+.sb-m-place .sb-cell.is-can:hover { background: var(--accent-soft); box-shadow: inset 0 0 0 3px var(--accent); }
+.sb-m-place .sb-cell:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.sb-slot.is-placed > .sb-snd { background: var(--sb-team); border-color: var(--sb-team); color: #fff; }
 .sb-chooser {
   position: absolute; z-index: 6; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2);
   background: var(--surface); border-radius: var(--r-btn); box-shadow: var(--shadow-float);
@@ -102,19 +169,19 @@
 /* 같은 줄 범위(쌓임) — 판 위에 겹친 같은 격자. 게임이 돌려준 범위에만 보라 윤곽 + 옅은 바탕 */
 .sb-over { position: absolute; inset: 0; display: grid; justify-content: center; align-content: start; pointer-events: none; z-index: 1; }
 .sb-fit > .sb-over { align-content: center; }
-.sb-trace { position: relative; border-radius: 10px; background: var(--sb-trace); box-shadow: inset 0 0 0 1.5px var(--sb-trace-edge); }
-.sb-trace.is-latest { background: rgba(103, 70, 165, .08); box-shadow: inset 0 0 0 2px var(--line); }
+/* 범위 윤곽은 파선(흑백에서도 명중의 실선 테두리와 구별 — 검수 2b) */
+.sb-trace { position: relative; border-radius: 6px; background: var(--sb-trace); border: 2px dashed var(--sb-trace-edge); }
+.sb-trace.is-latest { background: rgba(103, 70, 165, .12); border: 3px dashed var(--line); }
 /* 범위의 방향 기호: 가로줄은 오른쪽 끝, 세로줄은 아래 끝, 같은 칸은 오른쪽 아래 모서리에 걸쳐 놓인다 */
 .sb-dir {
-  position: absolute; width: clamp(18px, calc(var(--sb-cw, 60px) * .24), 28px); height: auto; aspect-ratio: 1; padding: 3px;
+  position: absolute; z-index: 5; width: var(--sb-badge); height: auto; aspect-ratio: 1; padding: 3px;
   background: var(--surface); color: var(--line); border: 2px solid var(--line); border-radius: 50%;
 }
-.sb-trace:not(.is-latest) .sb-dir { border-width: 1.5px; width: clamp(16px, calc(var(--sb-cw, 60px) * .2), 24px); }
 .sb-trace.o-row .sb-dir { right: 0; top: 50%; transform: translate(55%, -50%); }
 .sb-trace.o-col .sb-dir { bottom: 0; left: 50%; transform: translate(-50%, 55%); }
 .sb-trace.o-cell .sb-dir { right: 0; bottom: 0; transform: translate(45%, 45%); }
 /* 방금 돌려받은 범위: 윤곽이 한 번 짧게 조였다 풀린다(0.3초, 반복 없음) */
-.sb-wave { border-radius: 10px; animation: sb-wave .3s ease-out 1 forwards; }
+.sb-wave { border-radius: 6px; animation: sb-wave .3s ease-out 1 forwards; }
 @keyframes sb-wave {
   from { box-shadow: inset 0 0 0 7px var(--line); background: rgba(103, 70, 165, .22); }
   to { box-shadow: inset 0 0 0 3px rgba(103, 70, 165, 0); background: rgba(103, 70, 165, 0); }
@@ -124,39 +191,32 @@
 .sb-fresh { animation: sb-in var(--t-result) ease-out 1; }
 @keyframes sb-in { from { box-shadow: inset 0 0 0 8px var(--mk); filter: brightness(1.08); } }
 
-/* 배를 잇는 선: 격침(실선) · 공개(가는 선) · 배치 */
-.sb-lines { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1; overflow: visible; } /* 흔적 위, 소리 표기 아래 */
+/* 선: 떨어진 격침 조각의 점선 끌줄 · 공개(가는 점선) · 배치 */
+.sb-lines { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2; overflow: visible; } /* 흔적 위, 소리 표지 아래 */
 .sb-ln { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.sb-ln.t-sunk { stroke: var(--hit-ink); opacity: .75; }
-.sb-ln.t-reveal { stroke: var(--ink-2); opacity: .55; }
-.sb-ln.t-placed { stroke: #fff; opacity: .55; }
+.sb-ln.sb-tow { stroke: var(--ink); stroke-dasharray: 0.1 9; }
+.sb-ln.t-reveal { stroke: var(--ink-2); opacity: .7; stroke-dasharray: 6 6; }
+.sb-ln.t-placed { stroke: #fff; opacity: .7; }
 .sb-dot { stroke: none; }
-.sb-dot.t-sunk { fill: var(--hit-ink); opacity: .75; }
 .sb-dot.t-reveal { fill: var(--ink-2); opacity: .7; }
-.sb-dot.t-placed { fill: #fff; opacity: .6; }
+.sb-dot.t-placed { fill: #fff; opacity: .75; }
+.sb-towbadge rect { fill: #FFFFFF; stroke: var(--ink); stroke-width: 2; }
+.sb-towbadge .sb-tb-hull { fill: #8E8782; stroke: var(--ink); stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
 
-/* 남은 배 목록 · 배 종류 한 줄(판 옆) */
-.sb-ships { --ship-w: 150px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: var(--s1) var(--s4); }
+/* 남은 배 목록 · 배 종류 한 줄(판 옆): 칸 수만큼의 조각을 이은 위에서 본 배(모두 같은 축척: 조각 하나 = --seg) */
+.sb-ships { --ship-w: 100px; --seg: calc(var(--ship-w) * .45); display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: var(--s1) var(--s4); }
 .sb-ships-title { width: 100%; text-align: center; font: 600 17px/1.2 var(--font-body); color: var(--ink-2); }
-.sb-ship-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.sb-ship-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .sb-ship-name { font-size: 15px; font-weight: 600; line-height: 1.2; color: var(--ink); white-space: nowrap; }
 .sb-ship-item.is-sunk .sb-ship-name { color: var(--ink-2); text-decoration: line-through; }
-.sb-ships.is-compact { --ship-w: 60px; gap: 2px var(--s2); align-items: stretch; } /* 한 줄: 칸 높이를 맞추고 배 밑은 아래에 */
-.sb-ships.is-compact .sb-ship-item { justify-content: flex-end; }
-/* 배 그림 크기: 세 칸 > 두 칸 > 한 칸(너비로). 상자는 불탄 그림(연기가 있어 더 높음)에 맞춘 비율이라 바뀔 때 줄이 흔들리지 않고,
-   그림은 상자 아래에 붙인다(배 밑이 가지런하게). */
-.sb-pic { display: block; width: var(--ship-w); aspect-ratio: 1024 / 591; }
-.sb-pic[data-size="2"] { width: calc(var(--ship-w) * .78); aspect-ratio: 1024 / 627; }
-.sb-pic[data-size="1"] { width: calc(var(--ship-w) * .6); aspect-ratio: 1024 / 714; }
-.sb-pic > svg, .sb-pic > img { display: block; width: 100%; height: 100%; }
-.sb-pic > img { object-fit: contain; object-position: 50% 100%; }
-.sb-ship-item.is-sunk .sb-pic { opacity: .8; }
-.sb-ship-svg .sb-hull { fill: #3d5a6b; }
-.sb-ship-svg .sb-deck { fill: #5d7b8c; }
-.sb-ship-svg.is-burnt .sb-hull { fill: #3a3431; }
-.sb-ship-svg.is-burnt .sb-deck { fill: #574e49; }
-.sb-ship-svg .sb-smoke { fill: #8e8782; opacity: .75; }
-.sb-ship-svg .sb-fire { fill: #9a7d63; }
+.sb-ships.is-compact { gap: 2px var(--s2); align-items: center; }
+.sb-pic { --seg: calc(var(--ship-w, 100px) * .45); position: relative; display: flex; align-items: center; gap: max(2px, calc(var(--seg) * .06)); width: max-content; }
+.sb-ships .sb-pic.is-top { height: auto; } /* 둘레 화면이 옛 옆모습 그림 높이를 정해 두어도 위에서 본 배는 제 비율 */
+.sb-pic > .sb-seg { display: block; flex: none; height: auto; max-width: none; max-height: none; }
+.sb-pic > .p-stern { width: calc(var(--seg) * 1.0); } .sb-pic > .p-mid { width: calc(var(--seg) * .9); }
+.sb-pic > .p-bow { width: calc(var(--seg) * 1.11); } .sb-pic > .p-boat1 { width: calc(var(--seg) * 1.3); }
+.sb-pic > .sb-top-svg { height: calc(var(--seg) * .5); }
+.sb-pic .sb-num { left: auto; right: -.7em; bottom: auto; top: -.6em; font-size: 13px; }
 /* 격침: 목록의 배가 한 번 가라앉듯 내려갔다 올라온다(0.4초, 반복 없음) */
 .sb-sinking { animation: sb-sink .4s ease-out 1; }
 @keyframes sb-sink { 40% { transform: translateY(4px); } }
@@ -170,3 +230,10 @@
 @media (prefers-reduced-motion: reduce) {
   .sb *, .sb *::before, .sb-ships * { animation: none !important; }
 }
+
+/* 그림이 들어오기 전에도 자리 크기가 같게(들어올 때 둘레가 흔들리지 않게 — 원본 비율) */
+.sb-top[data-piece="stern"] { aspect-ratio: 484 / 235; }
+.sb-top[data-piece="mid"] { aspect-ratio: 434 / 235; }
+.sb-top[data-piece="bow"] { aspect-ratio: 538 / 235; }
+.sb-top[data-piece="boat1"] { aspect-ratio: 768 / 330; }
+.sb-top[data-piece="hit"] { aspect-ratio: 658 / 235; }
