@@ -183,6 +183,8 @@
 .pr--portrait .pr-example-title { font-size: 17px; }
 .pr--portrait .pr-main { display: flex; flex-direction: column; gap: 0; padding: var(--s2) var(--s4); }
 .pr--portrait .pr-seacol { flex: 1 1 auto; padding: 0; background: transparent; border: 0; }
+/* 세로: 바다를 아래(조작부 쪽)에 붙여 마지막 줄과 안내 사이가 벌어지지 않게, 남는 높이는 위에서 받는다 */
+.pr--portrait .pr-sea .sb.sb-fit, .pr--portrait .pr-sea .sb-fit > .sb-over { align-content: end; }
 .pr--portrait .pr-mouthcard { display: none; }
 .pr--portrait .pr-dockwrap { background: var(--surface); border-top: 1px solid var(--divider); }
 /* 아래에서 올라오는 입안 단면도 패널(위쪽 반경 16, 떠 있는 패널 그림자 한 종류).

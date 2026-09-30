@@ -172,7 +172,10 @@
 .ctl--portrait { gap: 6px; padding: 6px var(--s4) calc(8px + env(safe-area-inset-bottom, 0px)); --ctl-card-fs: 18px; --ctl-combo-fs: 16px; }
 .ctl--portrait .ctl-msg { font-size: 18px; }
 .ctl--portrait .ctl-deck { width: 100%; gap: 6px; }
-.ctl--portrait .ctl-comborow { justify-content: space-between; }
+/* 세로: [위치 단추 | 요약(화면 가운데) | 빈 칸] — 요약 줄이 안내·카드와 같은 중심선에 오게(2차 검수) */
+.ctl--portrait .ctl-comborow { display: grid; grid-template-columns: 1fr auto 1fr; justify-content: stretch; }
+.ctl--portrait .ctl-placebtn { justify-self: start; }
+.ctl--portrait .ctl-combo { justify-self: center; grid-column: 2; }
 .ctl--portrait.ctl--placebtn .ctl-placebtn {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
   min-height: var(--touch); padding: 0 14px 0 10px;
