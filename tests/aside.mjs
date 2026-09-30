@@ -36,9 +36,29 @@ function asideBin() {
   return 'aside';
 }
 
+// 모든 조각 앞에 붙는 머리말: aside의 screenshot()은 가만히 있는 탭에서 가끔 시간 초과가 나므로
+// openTab이 돌려주는 탭의 screenshot을 "화면을 살짝 건드리고 몇 번 다시 찍기"로 감싼다.
+const PRELUDE = `
+const __sori_openTab = openTab;
+openTab = async (...__a) => {
+  const __t = await __sori_openTab(...__a);
+  const __shot = __t.screenshot.bind(__t);
+  __t.screenshot = async (__opts) => {
+    let __err = null;
+    for (let __k = 0; __k < 4; __k++) {
+      try { await __t.evaluate(() => { document.body.style.outline = document.body.style.outline ? '' : '0px solid transparent'; }); } catch (__e) {}
+      await sleep(250);
+      try { return await __shot(Object.assign({ timeout: 10000 }, __opts || {})); } catch (__e) { __err = __e; }
+    }
+    throw __err;
+  };
+  return __t;
+};
+`;
+
 // 코드 한 조각을 aside로 돌린다. { ok, out } 을 돌려준다.
 export function runAside(code, { label = '' } = {}) {
-  const r = spawnSync(asideBin(), ['repl', code], { encoding: 'utf8', timeout: 170000, windowsHide: true });
+  const r = spawnSync(asideBin(), ['repl', PRELUDE + code], { encoding: 'utf8', timeout: 170000, windowsHide: true });
   const out = strip((r.stdout || '') + (r.stderr || ''));
   if (r.error) return { ok: false, out: out + '\n[도우미] aside 실행 실패: ' + r.error.message, label };
   for (const m of out.matchAll(/SHOTFILE:(.+\.png)/g)) {
