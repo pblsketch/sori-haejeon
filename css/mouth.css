@@ -24,7 +24,7 @@
 }
 .mouth-tissue { fill: var(--mouth-tissue); stroke: var(--mouth-tissue-line); stroke-width: 1.5; stroke-linejoin: round; }
 .mouth-air-way { fill: var(--mouth-way); stroke: var(--mouth-tissue-line); stroke-width: 1.5; stroke-linejoin: round; }
-.mouth-tongue { fill: var(--mouth-tongue); stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; transition: d 0.18s ease-out; }
+.mouth-tongue { fill: var(--mouth-tongue); stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; }
 .mouth-teeth { fill: #fff; stroke: var(--ink-3); stroke-width: 1.2; stroke-linejoin: round; }
 .mouth-lip { fill: #E4A79C; stroke: var(--mouth-tongue-line); stroke-width: 1.5; stroke-linejoin: round; }
 .mouth-lip-hole { fill: #5b2f2c; }
@@ -43,6 +43,9 @@
 /* 자리 고리 */
 .mouth-spot { fill: rgba(255, 255, 255, 0.55); stroke: var(--ui); stroke-width: 1.6; stroke-dasharray: 3 3; pointer-events: none; }
 .mouth-spot.is-selected { fill: rgba(31, 111, 107, 0.18); stroke-dasharray: none; stroke-width: 2.6; }
+/* 모음 칸(2×3) */
+.mouth-cell { fill: rgba(255, 255, 255, 0.28); stroke-width: 1.4; }
+.mouth-cell.is-selected { fill: rgba(31, 111, 107, 0.16); }
 
 /* 막음 표시 */
 .mouth-bar { fill: var(--mouth-bar); }

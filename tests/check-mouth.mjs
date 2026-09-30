@@ -2,8 +2,12 @@
 //  1~3) 자음 5자리 × 5방법 × 쓸 수 있는 세기(+ 목청·마찰·세기 없음), 모음 6자리 × 입술 2가지를 모두 재생:
 //       페이지 오류 없음, 1.5초 안에 끝남, 입자가 실제로 그려짐,
 //       막음 표시(규칙·그려진 모양)·콧길 문·목청 조임·입자 수가 spec 5.2 표와 같음
+//  3b) 혀 모양: 자리·방법·모음 칸마다 data-tongue/data-contact와, 실제 혀 윤곽의 가장 높은 곳이 기대한 곳으로 옮겨 갔는지
+//      (잇몸=혀끝, 센입천장=혓몸 앞, 여린입천장=혓몸 뒤가 막음 막대에 닿음, 마찰은 틈만큼 떨어짐, 모음은 앞뒤×높이),
+//      혀가 짧게 움직여 바뀌는지(움직임 줄이기면 바로), 입술 모양(두 입술 닫힘, 원순 내밂)
 //  4) 자리 이름 보이기/숨기기, 학년별 이름, 그림 안 글씨는 이름뿐, 눌러서 고르기, 움직임 줄이기(정지 그림)
-//  5) 크기별(frame.html): 휴대폰 세로 360px 너비에서 누르는 곳이 48px 이상, 칠판 1920×1080에서 64px 이상
+//  5) 크기별(frame.html): 휴대폰 세로 360px 너비에서 누르는 곳이 48px 이상이고 서로 겹치지 않음(자음 5곳·모음 6칸),
+//     칠판 1920×1080에서 64px 이상
 //  6) 캡처: 가로(칠판) 한 장, 휴대폰 세로 한 장 → tests/shots/
 import { step, url, frame } from './aside.mjs';
 
@@ -93,6 +97,105 @@ playStep('자음 재생: 센입천장·여린입천장 (22조합)', PAGE, conson
 playStep('자음 재생: 목청 (12조합)', PAGE, consonantCombos(['glottal']), 'pc');
 playStep('모음 재생: 혀 6자리 × 입술 2 (12조합)', PAGE + '?sea=vowel', vowelCombos, 'pd');
 
+// 혀 모양 점검: 혀 윤곽(path)을 촘촘히 따라가며 가장 높은(y가 가장 작은) 점을 찾는다.
+step('혀 모양: 자리·방법·모음 칸을 따라 바뀜', `{
+const tg = await openTab(${JSON.stringify(PAGE)});
+try {
+  const tr = await tg.evaluate(async () => {
+    const svg = document.querySelector('.mouth-svg'), tongue = svg.querySelector('.mouth-tongue');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const top = () => {
+      const L = tongue.getTotalLength(); let b = { x: 0, y: 1e9 };
+      for (let i = 0; i <= 800; i++) { const q = tongue.getPointAtLength((L * i) / 800); if (q.y < b.y) b = { x: q.x, y: q.y }; }
+      return b;
+    };
+    const bar = () => {
+      const tf0 = svg.querySelector('.mouth-closure').getAttribute('transform') || '';
+      if (!tf0.startsWith('translate(')) return null;
+      const xy = tf0.slice(10).split(')')[0].split(',');
+      return { x: +xy[0], y: +xy[1] };
+    };
+    const read = () => ({ key: svg.dataset.tongue, contact: svg.dataset.contact, tx: +svg.dataset.tongueX, ty: +svg.dataset.tongueY,
+      lip: svg.dataset.lipshape, top: top(), bar: bar(), d: tongue.getAttribute('d') });
+    const out = { cons: {}, vow: {} };
+    // 자음: 자리마다 파열(닿음)·마찰(틈)·유음(닿음)
+    for (const place of ['bilabial', 'alveolar', 'palatal', 'velar', 'glottal']) {
+      for (const manner of ['stop', 'fricative', 'liquid']) {
+        mouth.select(null); mouth.setManner(null); await wait(260);
+        const before = tongue.getAttribute('d');
+        mouth.select(place); mouth.setManner(manner);
+        const right = tongue.getAttribute('d');           // 고른 바로 뒤(아직 움직이는 중)
+        await wait(90); const midD = tongue.getAttribute('d');
+        await wait(260);
+        out.cons[place + '/' + manner] = Object.assign(read(), { before, right, midD });
+      }
+    }
+    // 모음
+    mouth.setSea('vowel');
+    for (const id of ['front-high', 'front-mid', 'front-low', 'back-high', 'back-mid', 'back-low']) {
+      for (const lips of ['unrounded', 'rounded']) {
+        mouth.select(id); mouth.setLips(lips); await wait(280);
+        out.vow[id + '/' + lips] = read();
+      }
+    }
+    // 움직임 줄이기: 바로 바뀐다
+    document.documentElement.classList.add('reduce-motion');
+    const d0 = tongue.getAttribute('d'); mouth.select('back-low'); mouth.select('front-high');
+    out.instant = { changed: tongue.getAttribute('d') !== d0, top: top() };
+    document.documentElement.classList.remove('reduce-motion');
+    mouth.setSea('consonant');
+    out.errs = window.__soriErrors.slice();
+    return out;
+  });
+  const tf = [];
+  const within = (v, a, b) => v >= a && v <= b;
+  // 기대하는 가장 높은 곳(그림 단위)
+  const REGION = { alveolar: { x: [78, 96], y: 129 }, palatal: { x: [150, 170], y: 121 }, velar: { x: [238, 262], y: 131 } };
+  for (const [k, r] of Object.entries(tr.cons)) {
+    const [place, manner] = k.split('/');
+    const lift = REGION[place];
+    const expContact = !lift ? 'none' : manner === 'fricative' ? 'near' : 'touch';
+    if (r.key !== (lift ? place : 'neutral')) tf.push(k + ' data-tongue ' + r.key);
+    if (r.contact !== expContact) tf.push(k + ' data-contact ' + r.contact + ' ≠ ' + expContact);
+    if (Math.hypot(r.top.x - r.tx, r.top.y - r.ty) > 3) tf.push(k + ' 혀의 가장 높은 곳 ' + JSON.stringify(r.top) + '이 data-tongue-x/y(' + r.tx + ',' + r.ty + ')와 다름');
+    if (lift) {
+      const ref = tr.cons[place + '/stop'].top;
+      if (!within(r.top.x, lift.x[0], lift.x[1])) tf.push(k + ' 혀가 닿는 곳의 x ' + r.top.x.toFixed(1) + ' (기대 ' + lift.x + ')');
+      if (manner === 'fricative') {
+        if (!(r.top.y >= ref.y + 4)) tf.push(k + ' 마찰인데 혀가 틈만큼 떨어지지 않음 ' + r.top.y.toFixed(1) + ' vs ' + ref.y.toFixed(1));
+      } else {
+        if (!(r.top.y <= lift.y)) tf.push(k + ' 혀가 입천장까지 안 올라감 y ' + r.top.y.toFixed(1));
+        if (!r.bar || Math.hypot(r.bar.x - r.top.x, r.bar.y - r.top.y) > 6) tf.push(k + ' 막음 막대가 닿는 곳에 있지 않음 ' + JSON.stringify(r.bar) + ' / ' + JSON.stringify(r.top));
+      }
+      if (r.right !== r.before) tf.push(k + ' 혀가 움직임 없이 한 번에 바뀜');
+      if (r.midD === r.d && r.midD === r.right) tf.push(k + ' 혀가 움직이지 않음');
+    } else {
+      if (!(r.top.y >= 145)) tf.push(k + ' 혀가 가만히 있어야 하는데 올라감 y ' + r.top.y.toFixed(1));
+      if (place === 'bilabial' && r.lip !== (manner === 'fricative' ? 'gap' : 'closed')) tf.push(k + ' 입술 모양 ' + r.lip);
+      if (place === 'glottal' && r.lip !== 'open') tf.push(k + ' 입술 모양 ' + r.lip);
+    }
+  }
+  const HT = { high: [110, 134], mid: [164, 180], low: [206, 222] };
+  const ys = {};
+  for (const [k, r] of Object.entries(tr.vow)) {
+    const [id, lips] = k.split('/'), [b, h] = id.split('-');
+    if (r.key !== id) tf.push(k + ' data-tongue ' + r.key);
+    const xr = b === 'front' ? [120, 152] : [218, 250];
+    if (!within(r.top.x, xr[0], xr[1])) tf.push(k + ' 혓몸 가장 높은 곳 x ' + r.top.x.toFixed(1) + ' (기대 ' + xr + ')');
+    if (!within(r.top.y, HT[h][0], HT[h][1])) tf.push(k + ' 혓몸 가장 높은 곳 y ' + r.top.y.toFixed(1) + ' (기대 ' + HT[h] + ')');
+    if (r.lip !== (lips === 'rounded' ? 'rounded' : 'open')) tf.push(k + ' 입술 모양 ' + r.lip);
+    ys[id] = r.top.y;
+  }
+  for (const b of ['front', 'back']) {
+    if (!(ys[b + '-mid'] - ys[b + '-high'] >= 25 && ys[b + '-low'] - ys[b + '-mid'] >= 25)) tf.push(b + ' 높이 차이가 작음 ' + JSON.stringify(ys));
+  }
+  if (!tr.instant.changed || !(tr.instant.top.y <= 134)) tf.push('움직임 줄이기에서 혀가 바로 바뀌지 않음 ' + JSON.stringify(tr.instant));
+  if (tr.errs.length) tf.push('페이지 오류: ' + tr.errs.join(' | '));
+  console.log('자음 ' + Object.keys(tr.cons).length + '·모음 ' + Object.keys(tr.vow).length + '가지 혀 모양 확인');
+  if (tf.length) console.log('FAIL ' + tf.slice(0, 25).join('\\nFAIL ')); else console.log('PASS');
+} finally { await closeTab(tg); }
+}`);
+
 step('이름 보이기·숨기기, 학년별 이름, 누르기, 움직임 줄이기', `{
 const na = await openTab(${JSON.stringify(PAGE + '?names=0')});
 try {
@@ -163,9 +266,10 @@ try {
 } finally { await closeTab(na); }
 }`);
 
-step('크기별: 휴대폰 세로 360px(48px 이상)·칠판 1920×1080(64px 이상)', `{
+step('크기별: 휴대폰 세로 360px(48px 이상·겹침 없음)·칠판 1920×1080(64px 이상)', `{
 const sizes = [[360, 640, 'tests/pages/mouth.html', 48], [360, 640, 'tests/pages/mouth.html?sea=vowel', 48],
-  [360, 780, 'tests/pages/mouth.html?grade=h1', 48], [1920, 1080, 'tests/pages/mouth.html', 64], [1280, 720, 'tests/pages/mouth.html?sea=vowel', 64]];
+  [360, 780, 'tests/pages/mouth.html?grade=h1&sea=vowel', 48], [360, 780, 'tests/pages/mouth.html?grade=h1', 48],
+  [1920, 1080, 'tests/pages/mouth.html', 64], [1280, 720, 'tests/pages/mouth.html?sea=vowel', 64]];
 const sf = [];
 for (const [w, h, src, min] of sizes) {
   const fu = ${JSON.stringify(url('tests/pages/frame.html'))} + '?w=' + w + '&h=' + h + '&src=' + encodeURIComponent(src);
@@ -176,13 +280,25 @@ for (const [w, h, src, min] of sizes) {
       await new Promise((r) => setTimeout(r, 300));
       const W = window.frameWin(), d = W.document;
       const svg = d.querySelector('.mouth-svg'), sr = svg.getBoundingClientRect();
-      return { hits: [...d.querySelectorAll('.mouth-hit')].map((c) => { const b = c.getBoundingClientRect(); return Math.min(b.width, b.height); }),
+      const rs = [...d.querySelectorAll('.mouth-hit')].map((c) => { const b = c.getBoundingClientRect(); return { l: b.left, t: b.top, w: b.width, h: b.height, round: c.tagName === 'circle' }; });
+      // 겹침: 동그라미는 가운데 거리 < 반지름 합, 네모는 겹친 넓이가 있음(0.5px 여유)
+      let overlaps = 0;
+      for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
+        const a = rs[i], b = rs[j];
+        if (a.round && b.round) { if (Math.hypot(a.l + a.w / 2 - b.l - b.w / 2, a.t + a.h / 2 - b.t - b.h / 2) < a.w / 2 + b.w / 2 - 0.5) overlaps++; }
+        else {
+          const ox = Math.min(a.l + a.w, b.l + b.w) - Math.max(a.l, b.l), oy = Math.min(a.t + a.h, b.t + b.h) - Math.max(a.t, b.t);
+          if (ox > 0.5 && oy > 0.5) overlaps++;
+        }
+      }
+      return { hits: rs.map((b) => Math.min(b.w, b.h)), overlaps,
         svgW: sr.width, svgH: sr.height, scrollW: d.documentElement.scrollWidth, innerW: W.innerWidth,
         touch: W.getComputedStyle(d.documentElement).getPropertyValue('--touch').trim(), errs: W.__soriErrors.slice() };
     });
     const tag = w + 'x' + h + ' ' + src;
     console.log(tag + ' 누르는 곳 ' + fr.hits.map((x) => Math.round(x)).join(',') + 'px, 그림 ' + Math.round(fr.svgW) + 'x' + Math.round(fr.svgH) + ', --touch ' + fr.touch);
-    if (fr.hits.length < 5 || fr.hits.some((x) => x < min)) sf.push(tag + ' 누르는 곳이 ' + min + 'px보다 작음');
+    if (fr.hits.length < (src.includes('vowel') ? 6 : 5) || fr.hits.some((x) => x < min)) sf.push(tag + ' 누르는 곳이 ' + min + 'px보다 작음');
+    if (min === 48 && fr.overlaps) sf.push(tag + ' 누르는 곳이 ' + fr.overlaps + '쌍 겹침');
     if (fr.scrollW > fr.innerW) sf.push(tag + ' 가로로 넘침');
     if (fr.svgW < 100) sf.push(tag + ' 그림이 너무 작음');
     if (fr.errs.length) sf.push(tag + ' 페이지 오류: ' + fr.errs.join(' | '));

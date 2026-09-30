@@ -15,8 +15,14 @@
 //        없는 조합도 고른 대로 재생한다. '움직임 줄이기'면 정지 그림을 보여 주고 곧바로 끝난다.
 //   m.setShowNames(bool) · m.setGrade('m3'|'h1') · m.setSea(sea) · m.state() · m.destroy()
 //
+// 혀 모양은 고른 것을 따른다(바뀔 때 TONGUE_MS 동안 움직임, 움직임 줄이기면 바로):
+//   두 입술·목청 = 혀는 가만히(입술이 닫히거나 목청에서 막음) · 잇몸 = 혀끝이 잇몸에 닿음
+//   센입천장 = 혓몸 앞쪽이 센입천장에 닿음 · 여린입천장 = 혓몸 뒤쪽이 여린입천장에 닿음
+//   (마찰음·파찰음의 풀림은 닿는 곳에서 조금 떨어져 좁은 틈) · 모음 = 혓몸 가장 높은 곳이 고른 앞뒤×높이로 옮겨 감
 // 점검용으로 그림(svg.mouth-svg)에 지금 상태를 data- 값으로 적어 둔다:
-//   data-sea, data-place, data-tongue, data-manner, data-strength, data-lips,
+//   data-sea, data-place, data-vowel(고른 모음 칸), data-manner, data-strength, data-lips,
+//   data-tongue(혀 모양: neutral|alveolar|palatal|velar|front-high…back-low), data-contact(touch|near|none),
+//   data-tongue-x, data-tongue-y(혀의 가장 높은 곳 = 닿는 곳, 그림 단위),
 //   data-closure(full|full-to-gap|gap|dotted|none|''), data-nasal(open|closed), data-glottis(tight|normal),
 //   data-flow, data-particles(마지막 재생의 입자 수), data-playing(1|0), data-static(1=정지 그림), data-names(shown|hidden)
 //   막음 표시 g.mouth-closure 에는 data-kind(규칙)와 data-shape(지금 그려진 모양)가 있다.
@@ -50,12 +56,13 @@ G.mouth = (function () {
     return { x: a[0] + (b[0] - a[0]) * k, y: a[1] + (b[1] - a[1]) * k, nx: -dy, ny: dx };
   }
 
-  // 혀 모양: 혀끝(tip)과 혓몸 가장 높은 곳(peak)으로 그린다
+  // 혀 모양: 혀끝(tip)과 혓몸 가장 높은 곳(peak)으로 그린다. 둘 중 더 높은 쪽이 혀의 가장 높은 곳이 된다.
   function tonguePath(tip, peak) {
     const [tx, ty] = tip, [px, py] = peak;
-    const backY = Math.max(py + 24, 176);
-    return `M${tx},${ty} C${tx + 12},${ty - 8} ${px - 52},${py} ${px},${py} ` +
-      `C${px + 56},${py} 291,${py + 4} 291,${backY + 30} C291,240 290,258 278,266 ` +
+    const up = Math.min(8, Math.max(0, ty - py - 4));            // 혀끝이 혓몸보다 위로 솟지 않게
+    const k = Math.min(56, (291 - px) * 0.55), bY = Math.max(py + 40, 170);
+    return `M${tx},${ty} C${tx + 12},${ty - up} ${px - 52},${py} ${px},${py} ` +
+      `C${px + k},${py} 291,${bY - 30} 291,${bY} C291,${(bY + 266) / 2} 290,262 278,266 ` +
       `C230,262 150,248 100,236 C76,230 60,222 ${tx - 4},${ty + 14} Z`;
   }
   // 입천장 아래 선의 높이(대략) — 모음 공기 길 계산용
@@ -78,8 +85,8 @@ G.mouth = (function () {
     return { route: r, sC: lengthAt(r, idx) };
   }
   // 모음 공기 길: 혀 위, 입천장 아래 가운데로
-  function vowelRoute(spot) {
-    const peakY = spot.y + 8;
+  function vowelRoute(hump) {
+    const spot = { x: hump[0], y: hump[1] }, peakY = spot.y;
     const tongueY = (x) => peakY + Math.pow(Math.abs(x - spot.x) / 100, 2) * 46;
     const mid = (x) => Math.max(roofY(x) + 7, (roofY(x) + tongueY(x)) / 2);
     const R = D().route.oral;
@@ -103,6 +110,8 @@ G.mouth = (function () {
     };
     const onPick = typeof opts.onPick === 'function' ? opts.onPick : null;
     let raf = 0, tk = 0, timer = 0, pendingResolve = null, destroyed = false;
+    const tw = { raf: 0, tk: 0 };            // 혀 모양 바뀜(짧은 움직임)
+    let tCur = { tip: M.neutralTongue.tip.slice(), peak: M.neutralTongue.peak.slice() }, tInfo = null;
 
     container.classList.add('mouth');
     const svg = U.svg('svg', { class: 'mouth-svg', viewBox: `0 0 ${M.VIEW.w} ${M.VIEW.h}`,
@@ -114,7 +123,7 @@ G.mouth = (function () {
     path(M.shape.head, 'mouth-tissue');
     path(M.shape.nasal, 'mouth-air-way');
     path(M.shape.oral, 'mouth-air-way');
-    const tongueEl = path(tonguePath(M.neutralTongue.tip, M.neutralTongue.peak), 'mouth-tongue');
+    const tongueEl = path(tonguePath(tCur.tip, tCur.peak), 'mouth-tongue');
     path(M.shape.upperTeeth, 'mouth-teeth');
     path(M.shape.lowerTeeth, 'mouth-teeth');
     const lipU = path(M.shape.lips.open.upper, 'mouth-lip');
@@ -160,17 +169,22 @@ G.mouth = (function () {
     container.appendChild(svg);
 
     // ── 자리(자음 5곳 / 모음 6곳) ─────────────────────────────
-    let targets = []; // { id, x, y, ring, hit }
+    let targets = []; // { id, x, y, ring, hit } — 자음: 동그란 누르는 곳, 모음: 2×3 칸
     function targetList() {
-      if (st.sea === 'vowel') return M.tongueOrder.map((id) => ({ id, x: M.tongueSpots[id].x, y: M.tongueSpots[id].y }));
-      return M.placeOrder.map((id) => ({ id, x: M.places[id].x, y: M.places[id].y }));
+      if (st.sea === 'vowel') return M.tongueOrder.map((id) => ({ id, x: M.vowelCells[id].x, y: M.vowelCells[id].y }));
+      return M.placeOrder.map((id) => ({ id, x: M.places[id].tap[0], y: M.places[id].tap[1] }));
     }
     function buildTargets() {
       spotsG.textContent = ''; hitsG.textContent = '';
+      const vowel = st.sea === 'vowel';
       targets = targetList().map((t, i) => {
-        const ring = U.svg('circle', { cx: t.x, cy: t.y, r: st.sea === 'vowel' ? 7 : 10, class: 'mouth-spot', 'data-id': t.id });
+        const ring = vowel
+          ? U.svg('rect', { x: t.x - M.cellDrawW / 2, y: t.y - M.cellDrawH / 2, width: M.cellDrawW, height: M.cellDrawH, rx: 8, class: 'mouth-spot mouth-cell', 'data-id': t.id })
+          : U.svg('circle', { cx: t.x, cy: t.y, r: 9, class: 'mouth-spot', 'data-id': t.id });
         spotsG.appendChild(ring);
-        const hit = U.svg('circle', { cx: t.x, cy: t.y, r: 10, class: 'mouth-hit', 'data-id': t.id, tabindex: 0, role: 'button' });
+        const hit = vowel
+          ? U.svg('rect', { class: 'mouth-hit', 'data-id': t.id, tabindex: 0, role: 'button' })
+          : U.svg('circle', { cx: t.x, cy: t.y, r: 10, class: 'mouth-hit', 'data-id': t.id, tabindex: 0, role: 'button' });
         hit.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(t.id); }
         });
@@ -180,14 +194,23 @@ G.mouth = (function () {
       sizeHits();
     }
 
-    // 실제 화면에서 누르는 곳이 --touch보다 작지 않게 반지름을 맞춘다
+    // 실제 화면에서 누르는 곳이 --touch보다 작지 않게 크기를 맞춘다
     function sizeHits() {
-      const r0 = st.sea === 'vowel' ? M.HIT_R_VOWEL : M.HIT_R;
       const rect = svg.getBoundingClientRect();
       const scale = Math.min(rect.width / M.VIEW.w, rect.height / M.VIEW.h);
       const touch = parseFloat(getComputedStyle(container).getPropertyValue('--touch')) || 48;
-      const r = scale > 0 ? Math.max(r0, touch / 2 / scale + 0.5) : r0;
-      targets.forEach((t) => { t.hit.setAttribute('r', r.toFixed(1)); t.r = r; });
+      const need = scale > 0 ? touch / scale + 1 : 0; // 그림 단위로 본 --touch
+      if (st.sea === 'vowel') {
+        const w = Math.max(M.cellW, need), h = Math.max(M.cellH, need);
+        targets.forEach((t) => {
+          t.w = w; t.h = h;
+          t.hit.setAttribute('x', (t.x - w / 2).toFixed(1)); t.hit.setAttribute('y', (t.y - h / 2).toFixed(1));
+          t.hit.setAttribute('width', w.toFixed(1)); t.hit.setAttribute('height', h.toFixed(1));
+        });
+      } else {
+        const r = Math.max(M.HIT_R, need / 2);
+        targets.forEach((t) => { t.hit.setAttribute('r', r.toFixed(1)); t.r = r; });
+      }
     }
     let ro = null;
     if (window.ResizeObserver) { ro = new ResizeObserver(sizeHits); ro.observe(svg); }
@@ -201,7 +224,11 @@ G.mouth = (function () {
       const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
       const q = pt.matrixTransform(ctm.inverse());
       let best = null, bd = Infinity;
-      targets.forEach((t) => { const d = Math.hypot(t.x - q.x, t.y - q.y); if (d <= t.r && d < bd) { bd = d; best = t; } });
+      targets.forEach((t) => {
+        const inside = st.sea === 'vowel' ? Math.abs(t.x - q.x) <= t.w / 2 && Math.abs(t.y - q.y) <= t.h / 2 : Math.hypot(t.x - q.x, t.y - q.y) <= t.r;
+        const d = Math.hypot(t.x - q.x, t.y - q.y);
+        if (inside && d < bd) { bd = d; best = t; }
+      });
       if (best) { e.preventDefault(); pick(best.id); }
     }
     svg.addEventListener('pointerdown', onPointer);
@@ -230,7 +257,7 @@ G.mouth = (function () {
         const V = M.vowelLabels;
         ['front', 'back'].forEach((b) => text(V.backness[b].x, V.backness[b].y, G.text.short(st.grade, 'backness', b)));
         ['high', 'mid', 'low'].forEach((h) => {
-          const y = M.tongueSpots['front-' + h].y + 4;
+          const y = M.vowelCells['front-' + h].y + 5;
           text(V.heightX, y, G.text.short(st.grade, 'height', h), 'mouth-label');
         });
       }
@@ -255,12 +282,13 @@ G.mouth = (function () {
       closureG.setAttribute('data-kind', kind || '');
       closureG.setAttribute('data-shape', shape || '');
       if (!shape || st.sea !== 'consonant' || !st.place) return;
-      const p = M.places[st.place], L = p.len, W = 7, h = L / 2;
-      closureG.setAttribute('transform', `translate(${p.x},${p.y}) rotate(${p.deg})`);
+      const p = M.places[st.place], L = p.len, W = 8, h = L / 2;
+      const off = shape === 'gap' && p.tongue ? M.NEAR / 2 : 0; // 틈 소리: 혀가 NEAR만큼 떨어진 틈의 가운데
+      closureG.setAttribute('transform', `translate(${p.x},${p.y + off}) rotate(${p.deg})`);
       const rect = (x, w, cls) => closureG.appendChild(U.svg('rect', { x, y: -W / 2, width: w, height: W, rx: 2, class: cls }));
       if (shape === 'full') rect(-h, L, 'mouth-bar');
       else if (shape === 'pending') rect(-h, L, 'mouth-bar mouth-bar-pending');
-      else if (shape === 'gap') { const gp = 4.5; rect(-h, h - gp, 'mouth-bar'); rect(gp, h - gp, 'mouth-bar'); }
+      else if (shape === 'gap') { const gp = 3; rect(-h, h - gp, 'mouth-bar'); rect(gp, h - gp, 'mouth-bar'); }
       else if (shape === 'dotted') closureG.appendChild(U.svg('line', { x1: -h, y1: 0, x2: h, y2: 0, class: 'mouth-bar-dotted' }));
     }
     function lipShape(key) {
@@ -268,18 +296,52 @@ G.mouth = (function () {
       lipU.setAttribute('d', s.upper); lipL.setAttribute('d', s.lower);
       svg.setAttribute('data-lipshape', key);
     }
+    // 지금 고른 것에 맞는 혀 모양. key: 점검용 이름, hx/hy: 혀의 가장 높은 곳(닿는 곳)
     function tongueFor(contact) {
+      const N = M.neutralTongue, neutral = { tip: N.tip, peak: N.peak, key: 'neutral', contact: 'none', hx: N.peak[0], hy: N.peak[1] };
       if (st.sea === 'vowel') {
-        if (!st.tongue) return M.neutralTongue;
-        const sp = M.tongueSpots[st.tongue], py = sp.y + 8;
-        return { tip: [66, Math.max(186, py - 22)], peak: [sp.x, py] };
+        if (!st.tongue) return neutral;
+        const [hx, hy] = M.tongueHumps[st.tongue];
+        const tipY = hy >= 200 ? hy + 6 : hy >= 160 ? 190 : 186; // 낮은 모음은 혀 전체가 내려간다
+        return { tip: [66, tipY], peak: [hx, hy], key: st.tongue, contact: 'none', hx, hy };
       }
       const p = st.place && M.places[st.place];
-      if (!p || !p.tongue) return M.neutralTongue;
-      const dy = contact === 'near' ? 7 : 0, t = p.tongue;
-      return { tip: [t.tip[0], t.tip[1] + (st.place === 'alveolar' ? dy : 0)], peak: [t.peak[0], t.peak[1] + (st.place === 'alveolar' ? 0 : dy)] };
+      if (!p || !p.tongue) return neutral;
+      const t = p.tongue, dy = contact === 'near' ? M.NEAR : 0;
+      const tip = [t.tip[0], t.tip[1] + (t.lift === 'tip' ? dy : 0)], peak = [t.peak[0], t.peak[1] + (t.lift === 'peak' ? dy : 0)];
+      const hi = t.lift === 'tip' ? tip : peak;
+      return { tip, peak, key: st.place, contact: contact === 'near' ? 'near' : 'touch', hx: hi[0], hy: hi[1] };
     }
-    function setTongue(contact) { const t = tongueFor(contact); tongueEl.setAttribute('d', tonguePath(t.tip, t.peak)); }
+    function drawTongue() { tongueEl.setAttribute('d', tonguePath(tCur.tip, tCur.peak)); }
+    function stopTween() {
+      if (tw.raf) cancelAnimationFrame(tw.raf);
+      if (tw.tk) clearTimeout(tw.tk);
+      tw.raf = tw.tk = 0;
+    }
+    // 혀 모양 바꾸기: TONGUE_MS 동안 부드럽게(움직임 줄이기면 바로)
+    function setTongue(contact) {
+      const t = tongueFor(contact);
+      tInfo = t;
+      stopTween();
+      const to = { tip: t.tip.slice(), peak: t.peak.slice() }, from = { tip: tCur.tip.slice(), peak: tCur.peak.slice() };
+      const a = from.tip.concat(from.peak), b = to.tip.concat(to.peak);
+      const same = a.every((v, i) => Math.abs(v - b[i]) < 0.01);
+      if (same || U.reducedMotion() || !(M.TONGUE_MS > 0)) { tCur = to; drawTongue(); return; }
+      const start = performance.now();
+      const lerp = (p, q, k) => [p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k];
+      const stepT = () => {
+        tw.raf = tw.tk = 0;
+        const k = Math.min(1, (performance.now() - start) / M.TONGUE_MS), e = 1 - Math.pow(1 - k, 3);
+        tCur = k >= 1 ? to : { tip: lerp(from.tip, to.tip, e), peak: lerp(from.peak, to.peak, e) };
+        drawTongue();
+        if (k < 1) sched();
+      };
+      const sched = () => {
+        tw.raf = requestAnimationFrame(() => { clearTimeout(tw.tk); stepT(); });
+        tw.tk = setTimeout(() => { cancelAnimationFrame(tw.raf); stepT(); }, 40);
+      };
+      sched();
+    }
     function setDoor(open) {
       st.nasal = open ? 'open' : 'closed';
       doorG.setAttribute('transform', `translate(${dr.x},${dr.y}) rotate(${open ? dr.openDeg : dr.closedDeg})`);
@@ -333,7 +395,9 @@ G.mouth = (function () {
       writeData();
     }
     function writeData() {
-      const a = { sea: st.sea, place: st.place || '', tongue: st.tongue || '', manner: st.manner || '', strength: st.strength || '',
+      const ti = tInfo || { key: 'neutral', contact: 'none', hx: '', hy: '' };
+      const a = { sea: st.sea, place: st.place || '', vowel: st.tongue || '', tongue: ti.key, contact: ti.contact, 'tongue-x': ti.hx, 'tongue-y': ti.hy,
+        manner: st.manner || '', strength: st.strength || '',
         lips: st.lips || '', closure: st.closure, nasal: st.nasal, glottis: st.glottis, flow: st.flow,
         particles: st.particles, playing: st.playing ? 1 : 0, static: st.isStatic ? 1 : 0 };
       for (const k in a) svg.setAttribute('data-' + k, a[k]);
@@ -352,7 +416,7 @@ G.mouth = (function () {
     function makePlan() {
       const dur = M.DURATION / 1000;
       if (st.sea === 'vowel') {
-        const { route } = vowelRoute(M.tongueSpots[st.tongue]);
+        const { route } = vowelRoute(M.tongueHumps[st.tongue]);
         const n = M.PARTICLES;
         return { n, dur, key: null, at(i, t) {
           const ts = (i / n) * 0.75, s = t == null ? (i + 0.5) / n * route.len : (t - ts) * 380;
@@ -445,9 +509,12 @@ G.mouth = (function () {
       // 파찰음: 쌓인 뒤 막대가 틈으로 바뀐다
       if (st.closure === 'full-to-gap') {
         const shape = plan.tr != null && t >= plan.tr ? 'gap' : 'full';
-        if (closureG.getAttribute('data-shape') !== shape) drawClosure(st.closure, shape);
-        setTongue(shape === 'gap' ? 'near' : 'contact');
-        if (st.place === 'bilabial') lipShape(shape === 'gap' ? 'gap' : 'closed');
+        if (closureG.getAttribute('data-shape') !== shape) {
+          drawClosure(st.closure, shape);
+          setTongue(shape === 'gap' ? 'near' : 'contact');
+          if (st.place === 'bilabial') lipShape(shape === 'gap' ? 'gap' : 'closed');
+          writeData();
+        }
       }
     }
 
@@ -455,7 +522,7 @@ G.mouth = (function () {
     const api = {
       el: svg,
       select(id) {
-        if (st.sea === 'vowel') st.tongue = id && M.tongueSpots[id] ? id : null;
+        if (st.sea === 'vowel') st.tongue = id && M.tongueHumps[id] ? id : null;
         else st.place = id && M.places[id] ? id : null;
         preview();
       },
@@ -480,7 +547,7 @@ G.mouth = (function () {
         stopAnim(true);
         if (st.sea === 'vowel') {
           let id = c.tongue || (c.backness && c.height ? c.backness + '-' + c.height : st.tongue);
-          if (!M.tongueSpots[id]) id = 'front-high';
+          if (!M.tongueHumps[id]) id = 'front-high';
           st.tongue = id;
           if (c.lips !== undefined) st.lips = c.lips === 'rounded' || c.lips === 'unrounded' ? c.lips : null;
         } else {
@@ -531,6 +598,7 @@ G.mouth = (function () {
       destroy() {
         destroyed = true;
         stopAnim(true);
+        stopTween();
         svg.removeEventListener('pointerdown', onPointer);
         if (ro) ro.disconnect(); else window.removeEventListener('resize', sizeHits);
         svg.remove();
