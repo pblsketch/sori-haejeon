@@ -139,6 +139,7 @@ if (!window.D) {
   D.prShoot = async (x) => {
     const input = D.inp(x), what = D.label(x);
     D.compose(input, null, what);
+    if (D.afterCompose) D.afterCompose(what);
     const fb = D.$('.ctl-fire');
     if (!fb || fb.disabled) { D.bad('발사 단추가 꺼져 있음: ' + what); return null; }
     D.tap(fb, '발사 ' + what);
@@ -233,6 +234,7 @@ if (!window.D) {
     if (xb != null) teams.push(['blue', D.inp(xb)]);
     if (xr != null) teams.push(['red', D.inp(xr)]);
     teams.forEach(([t, input]) => D.compose(input, D.station(t), t + ' ' + JSON.stringify(input)));
+    if (D.afterCompose) D.afterCompose('두 팀 고름');
     const pts = teams.map(([t], i) => {
       const b = D.$('.ctl-fire', D.station(t));
       if (!b || b.disabled) { D.bad(t + ' 발사 단추가 꺼져 있음'); return null; }
@@ -304,6 +306,28 @@ if (!window.D) {
     });
     return out;
   };
+  // 화면 문자열 규칙(spec 1 · 3 · 7, handoff 관문 1·2): 소리를 '글자'라 부르지 않음, 금지 내용 없음, 자모는 빗금 표기 /ㄱ/
+  D.FORBID = ['글자', '훈민정음', '해례', '제자 원리', '제자원리', '상형', '가획', '중세', '판옥선', '협선', '척후선', '조선', '게임오버', '게임 오버'];
+  D.checkLines = (where, lines) => {
+    lines.forEach((s) => {
+      D.FORBID.forEach((w) => { if (s.indexOf(w) >= 0) D.bad(where + ": 금지 낱말 '" + w + "' — " + s); });
+      const rest = s.replace(/\/[ㄱ-ㆎ]+\//g, '');
+      if (/[ㄱ-ㆎ]/.test(rest)) D.bad(where + ': 빗금 없이 쓴 소리 — ' + s);
+    });
+  };
+  // 지금 화면의 글을 모으고 규칙·한 줄 문구를 확인한다
+  D.texts = [];
+  D.grab = (where) => {
+    const lines = D.visibleText();
+    lines.push(D.d().title);
+    D.texts.push({ where, lines });
+    D.checkLines(where, lines);
+    D.msgSlots().forEach((m) => { if (m.lines > 1) D.bad(where + ': 문구 자리의 글이 ' + m.lines + '줄 — ' + m.text); });
+    const msgs = D.$$('.ctl-msg').filter(D.visible).filter((m) => D.$('.ctl-msg-text', m) && D.$('.ctl-msg-text', m).textContent.trim());
+    if (D.cur() === 'duel') ['blue', 'red'].forEach((t) => { const n = msgs.filter((m) => m.closest('.station-' + t)).length; if (n > 1) D.bad(where + ': ' + t + ' 자리에 설명 줄이 ' + n + '개'); });
+    else if (msgs.length > 1) D.bad(where + ': 설명 줄이 한꺼번에 ' + msgs.length + '개');
+    return lines.length;
+  };
   // 한 줄 문구 자리: 보이는 문구 자리와 각 자리의 줄 수
   //   줄 수 = 글이 차지한 줄 상자의 수(위치가 3px 넘게 다르면 다른 줄). 조작부 문구 자리는 본문(.ctl-msg-text)으로 센다
   D.lineCount = (n) => {
@@ -314,7 +338,8 @@ if (!window.D) {
     tops.forEach((t) => { if (t - last > 3) { lines++; last = t; } });
     return lines;
   };
-  D.msgSlots = () => D.$$('.ctl-msg, .duel-line, .app-notice.is-on').filter(D.visible).map((m) => {
+  //   (시작 화면의 대결 안내 .app-notice는 판 도중 설명 자리가 아니라 한 문장 안내라 좁은 휴대폰에서는 두 줄로 접혀도 된다)
+  D.msgSlots = () => D.$$('.ctl-msg, .duel-line').filter(D.visible).map((m) => {
     const body = m.classList.contains('ctl-msg') ? D.$('.ctl-msg-text', m) : m;
     return { cls: m.className, text: m.textContent.trim(), lines: D.lineCount(body) };
   });
