@@ -17,6 +17,7 @@
 <script src="../../js/data/levels.js"></script>
 <script src="../../js/data/text.js"></script>
 <script src="../../js/core/rules.js"></script>
+<script src="board-concepts-c2.js"></script>
 <script>
 (function () {
   const Q = new URLSearchParams(location.search);
@@ -302,7 +303,12 @@
     host.appendChild(box);
   }
 
-  const NAMES = { a: 'A 맑은 바다 해도', b: 'B 깊은 바다', c: 'C 섬과 암초 지도' };
+  const NAMES = { a: 'A 맑은 바다 해도', b: 'B 깊은 바다', c: 'C 섬과 암초 지도', c2: 'C 섬과 암초 지도(2차)' };
+  // 2차 C(선생님 선택): 다른 그리기 함수(board-concepts-c2.js). tow=dotted|badges
+  const TOW = Q.get('tow') || 'dotted';
+  const C2 = CON === 'c2' ? window.makeBC2({ S, U, short, slash, el, glyphSvg, badge, SVGNS }) : null;
+  const drawBoard = (h, sc, sz, o) => (C2 ? C2.board(h, sc, sz, Object.assign({ tow: TOW }, o || {})) : board(h, sc, sz, o));
+  const drawFleet = (h, sc, compact) => (C2 ? C2.fleetPanel(h, sc, compact, { tow: TOW }) : fleetPanel(h, sc, compact));
 
   // ── 장면 쪽 ─────────────────────────────────────────────
   function wide(scene, hidden) {
@@ -312,15 +318,15 @@
       '<span class="bc-turns">남은 턴 <b>' + (scene.lv.turns - scene.shots.length) + '</b></span>';
     scr.appendChild(top);
     const panel = el('div', 'bc-panel');
-    board(panel, scene, 'wide');
+    drawBoard(panel, scene, 'wide');
     scr.appendChild(panel);
     const right = el('div', 'bc-right');
-    fleetPanel(right, scene, false);
+    drawFleet(right, scene, false);
     if (hidden) {
       const bf = el('div', 'bc-before');
       bf.innerHTML = '<h3>쏘기 전의 2단계 판</h3><p>25칸이 모두 같은 바다 — 소리·빈칸·세기 자리가 보이지 않는다</p>';
       const p2 = el('div', 'bc-panel');
-      board(p2, scene, 'mini', { noShots: true });
+      drawBoard(p2, scene, 'mini', { noShots: true });
       bf.appendChild(p2);
       right.appendChild(bf);
     } else {
@@ -339,11 +345,11 @@
     const top = el('div', 'bc-ptop');
     top.innerHTML = '<span class="bc-btn">처음으로</span><span class="bc-title">자음 바다 · ' + scene.level + '단계</span><span class="bc-turns">남은 턴 <b>' + (scene.lv.turns - scene.shots.length) + '</b></span>';
     scr.appendChild(top);
-    fleetPanel(scr, scene, true);
+    drawFleet(scr, scene, true);
     const m = el('div', 'bc-mouth'); m.appendChild(el('span', 'bc-note', '단면도 자리'));
     scr.appendChild(m);
     const panel = el('div', 'bc-panel');
-    board(panel, scene, 'phone');
+    drawBoard(panel, scene, 'phone');
     scr.appendChild(panel);
     scr.appendChild(el('div', 'bc-pline', '/ㄹ/ 명중! 한 칸 배를 찾았어요'));
     scr.appendChild(el('div', 'bc-pctl'));
@@ -358,7 +364,7 @@
     // 목차: 세 시안 × 세 장면
     const ix = el('div', 'bc-index');
     ix.innerHTML = '<h1>판 다시 그리기 — 시안 세 가지</h1><p>그림을 누르면 크게 봅니다(가로 1920×1080 · 휴대폰 390×844 · 숨긴 2단계).</p>';
-    ['a', 'b', 'c'].forEach((c) => {
+    ['c2', 'a', 'b', 'c'].forEach((c) => {
       ix.appendChild(el('h2', '', NAMES[c]));
       const row = el('div', 'row');
       [['wide', 1920, 1080, 0.3], ['hidden', 1920, 1080, 0.3], ['phone', 390, 844, 0.384]].forEach(([v, w, h, k]) => {
