@@ -58,18 +58,18 @@ window.MOUTH = {
 
   // ── 자음 다섯 자리 ─────────────────────────────────────────
   // x,y: 막는 곳(혀나 입술이 닿는 곳 = 막음 막대의 가운데) · deg: 막대 방향(0=가로) · len: 막대 길이
-  // tap: 누르는 곳의 가운데(이름과 겹치지 않게 막는 곳에서 조금 아래) · label: 이름 자리(anchor: start|middle|end)
+  // tap: 누르는 곳의 가운데(이름과 겹치지 않고, 고른 뒤에도 막음 표시를 가리지 않게 막는 곳에서 조금 비켜 둠) · label: 이름 자리(anchor: start|middle|end)
   // tongue: 막을 때 혀 모양(tip 혀끝, peak 혓몸 가장 높은 곳). 가장 높은 곳이 막는 곳에 닿는다.
   //         lift: 'tip'이면 혀끝이, 'peak'이면 혓몸이 올라간다. 마찰·파찰(틈)은 NEAR만큼 떨어진다.
   places: {
-    bilabial: { x: 32, y: 166, deg: 90, len: 24, tap: [30, 168], label: { x: 4, y: 232, anchor: 'start' }, tongue: null },
-    alveolar: { x: 86, y: 125, deg: 80, len: 20, tap: [84, 136], label: { x: 96, y: 93, anchor: 'middle' },
+    bilabial: { x: 32, y: 166, deg: 90, len: 24, tap: [22, 196], label: { x: 4, y: 232, anchor: 'start' }, tongue: null },
+    alveolar: { x: 86, y: 125, deg: 80, len: 20, tap: [84, 146], label: { x: 96, y: 93, anchor: 'middle' },
       tongue: { lift: 'tip', tip: [86, 125], peak: [150, 150] } },
-    palatal: { x: 160, y: 117, deg: 90, len: 20, tap: [160, 132], label: { x: 160, y: 93, anchor: 'middle' },
+    palatal: { x: 160, y: 117, deg: 90, len: 20, tap: [160, 142], label: { x: 160, y: 93, anchor: 'middle' },
       tongue: { lift: 'peak', tip: [70, 182], peak: [160, 117] } },
-    velar: { x: 250, y: 127, deg: 64, len: 20, tap: [248, 140], label: { x: 244, y: 93, anchor: 'middle' },
+    velar: { x: 250, y: 127, deg: 64, len: 20, tap: [246, 150], label: { x: 244, y: 93, anchor: 'middle' },
       tongue: { lift: 'peak', tip: [66, 186], peak: [250, 127] } },
-    glottal: { x: 306, y: 312, deg: 0, len: 28, tap: [306, 312], label: { x: 288, y: 318, anchor: 'end' }, tongue: null },
+    glottal: { x: 306, y: 312, deg: 0, len: 28, tap: [306, 288], label: { x: 288, y: 318, anchor: 'end' }, tongue: null },
   },
   placeOrder: ['bilabial', 'alveolar', 'palatal', 'velar', 'glottal'],
   neutralTongue: { tip: [66, 186], peak: [176, 150] },

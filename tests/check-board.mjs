@@ -5,8 +5,10 @@
 //   3) 숨기기(배치) 화면: 단계와 상관없이 소리·줄 이름이 보이고, 놓을 수 있는 묶음의 칸만 누를 수 있음
 //   4) 크기별: 휴대폰 세로 360×740에서 칸 48px 이상·가로 스크롤 없음·소리 표기 글씨 크기 ≥ 칸(자리) 높이 60%,
 //      칠판 1920×1080에서 칸 64px 이상. 캡처를 tests/shots/에 남긴다.
-//   5) 그림 입히기(T13): 명중 연출(불꽃 + 소리, 2초 안에 사라짐, 누르면 건너뜀), 물보라 스프라이트, 바다 질감,
-//      격침된 배의 불탄 그림, 배 그림 크기(세 칸 > 두 칸 > 한 칸), 되살리기·움직임 줄이기에서는 연출 없음
+//   5) 신호 표시(T17 디자인 개편 — 선생님 결정: 불꽃 없이 황금 채움 + 과녁): 명중 = 황금 바탕 + 과녁 배지(불꽃 요소 없음),
+//      0.2초 안팎의 강조 한 번, 빗나감 ×, 없는 소리 ∅, 같은 줄 범위에 ↔/↕/겹친 네모 기호, 최근 발만 .is-latest,
+//      판 위에 바다 그림을 깔지 않음, 격침된 배의 불탄 그림, 배 그림 크기(세 칸 > 두 칸 > 한 칸), 되살리기·움직임 줄이기에서는 강조 없음
+//   6) 크기별 판: 소리 표기 글씨가 한 판 안에서 모두 같은 크기, 모든 소리 표기(맞히지 않은 소리 포함)의 명암비 4.5 이상
 //   모든 단계에서 window.__soriErrors가 비어 있어야 한다.
 import { step, url, frame } from './aside.mjs';
 
@@ -122,6 +124,17 @@ try {
     if (marks(1, 2, 'miss').length !== 1) F('빗나감 표시 없음');
     if (marks(3, 0, 'line').length !== 1) F('같은 줄 표시 없음');
     if (marks(0, 0, 'hit').length !== 3) F('/ㅂ/ /ㅃ/ /ㅍ/ 명중 3개가 아님');
+    // 신호 기호(벡터): 명중 과녁 · 같은 줄 방향(같은 칸 = 겹친 네모, 세로+가로 = 두 방향) · 빗나감 × · 없는 소리 ∅
+    const glyphOf = (m) => { const e = m && m.querySelector('.sb-badge'); return e ? e.getAttribute('data-glyph') : null; };
+    if ([...marks(0, 0, 'hit')].some((m) => glyphOf(m) !== 'hit')) F('명중 표시에 과녁 기호가 없음');
+    if (glyphOf(marks(0, 3, 'line')[0]) !== 'cell') F('같은 칸 신호의 기호가 겹친 네모가 아님: ' + glyphOf(marks(0, 3, 'line')[0]));
+    if (glyphOf(marks(3, 0, 'line')[0]) !== 'hv') F('세로+가로 신호의 기호가 두 방향이 아님: ' + glyphOf(marks(3, 0, 'line')[0]));
+    if (glyphOf(marks(1, 2, 'miss')[0]) !== 'miss') F('빗나감 기호(×) 없음');
+    if (![...marks(0, 2, 'dud')].every((m) => m.querySelector('.sb-dudmark[data-glyph="dud"]'))) F('없는 소리 기호(∅) 없음');
+    if (root.querySelector('.sb-burst, .sb-burst-fire, .sb-splash, .sb-seabed')) F('불꽃·물보라·바다 그림 요소가 판에 있음');
+    // 최근 발만 굵게: 마지막 발(/ㅍ/ 명중)만 .is-latest
+    const lat = [...root.querySelectorAll('.sb-mark.is-latest')];
+    if (lat.length !== 1 || !lat[0].textContent.includes('/ㅍ/')) F('최근 발 표시: ' + lat.map((e) => e.textContent).join(','));
     // 강조 흔적: 칸(0,3) / 세로줄 0 / 가로줄 3
     const tr = [...root.querySelectorAll('.sb-trace')].map((e) => e.dataset.o + ':' + (e.dataset.r || '') + ':' + (e.dataset.c || '')).sort();
     if (J(tr) !== J(['cell:0:3', 'col::0', 'row:3:'])) F('강조 흔적: ' + J(tr));
@@ -131,6 +144,9 @@ try {
     if (colT && !(inside(ctr(cell(0, 0)), colT) && inside(ctr(cell(4, 0)), colT) && !inside(ctr(cell(0, 1)), colT))) F('세로줄 강조 자리가 틀림');
     if (rowT && !(inside(ctr(cell(3, 0)), rowT) && inside(ctr(cell(3, 4)), rowT) && !inside(ctr(cell(2, 0)), rowT))) F('가로줄 강조 자리가 틀림');
     if (cellT && !(inside(ctr(cell(0, 3)), cellT) && !inside(ctr(cell(0, 2)), cellT) && !inside(ctr(cell(1, 3)), cellT))) F('칸 강조 자리가 틀림');
+    // 범위마다 방향 기호: 세로줄 ↕ · 가로줄 ↔ · 같은 칸 겹친 네모
+    const dirOf = (e) => { const d = e && e.querySelector('.sb-dir'); return d ? d.getAttribute('data-glyph') : null; };
+    if (dirOf(colT) !== 'v' || dirOf(rowT) !== 'h' || dirOf(cellT) !== 'cell') F('범위 방향 기호: ' + [dirOf(colT), dirOf(rowT), dirOf(cellT)].join(','));
     // 격침 선: 배 0(/ㅂ/ /ㅃ/ /ㅍ/)의 점이 모두 (0,0) 칸 안
     const rootQ = root.getBoundingClientRect();
     const ptsOf = (e) => (e.getAttribute('points') || '').trim().split(/\\s+/).filter(Boolean).map((p) => p.split(',').map(Number)).map(([x, y]) => [x + rootQ.left, y + rootQ.top]);
@@ -214,7 +230,7 @@ try {
 } finally { await closeTab(t2); }
 `);
 
-step('그림 입히기: 명중 연출(2초 안, 누르면 건너뜀) · 물보라 · 바다 질감 · 배 그림 크기', `
+step('신호 표시: 명중 황금 + 과녁(불꽃 없음) · 0.2초 강조 · 빗나감 × · 최근 발 · 배 그림 크기', `
 const t5 = await openTab(${JSON.stringify(PAGE)});
 try {
   const r5 = await t5.evaluate(async () => {
@@ -228,44 +244,62 @@ try {
     const shipsEl = document.createElement('div'); document.body.appendChild(shipsEl);
     const b = G.board.create(host, { sea: 'consonant', level: 2, grade: 'm3', mode: 'play', shipsEl });
     b.render({ shots: [], fleet: g.state.teams.enemy.fleet });
-    // 바다 질감: 쏘는 바다의 칸 밑에 깔림(그림 주소가 CSS에서 옴)
-    const bed = b.el.querySelector('.sb-under .sb-seabed');
-    if (!bed || !/sea_tile\.webp/.test(getComputedStyle(bed).backgroundImage)) F('바다 질감 없음');
-    // 명중: 큰 불꽃 + 쏜 소리, 2초 안에 사라짐
+    // 판 위에는 그림을 깔지 않는다(바다 질감은 시작 화면에만)
+    if ([b.el, ...b.el.querySelectorAll('*')].some((e) => /\\.webp/.test(getComputedStyle(e).backgroundImage))) F('판 위에 그림이 깔려 있음');
+    // 명중: 황금 바탕 + 과녁 배지 + 소리 표기, 불꽃 요소 없음, 0.2초 안팎 강조 한 번
     b.update({ shots: shots.slice(0, 1), fleet: g.state.teams.enemy.fleet });
-    let bu = b.el.querySelector('.sb-burst');
-    if (!bu || !bu.querySelector('.sb-burst-fire') || bu.textContent.trim() !== '/ㄹ/') F('명중 연출(불꽃 + /ㄹ/) 없음');
-    const t0 = Date.now();
-    while (b.el.querySelector('.sb-burst') && Date.now() - t0 < 3000) await wait(50);
-    const took = Date.now() - t0;
-    if (b.el.querySelector('.sb-burst') || took > 2000) F('명중 연출이 2초 안에 안 사라짐 ' + took + 'ms');
-    if (!b.el.querySelector('.sb-mark.k-hit')) F('연출 뒤 명중 도장이 없음');
+    const hit = b.el.querySelector('.sb-mark.k-hit');
+    if (!hit) F('명중 표시 없음');
+    else {
+      if (getComputedStyle(hit).backgroundColor !== 'rgb(246, 190, 72)') F('명중 바탕이 황금색이 아님: ' + getComputedStyle(hit).backgroundColor);
+      if (!hit.querySelector('.sb-badge[data-glyph="hit"]')) F('명중 과녁 배지 없음');
+      if (!hit.textContent.includes('/ㄹ/')) F('명중 칸에 /ㄹ/ 없음');
+      if (!hit.classList.contains('is-latest')) F('방금 명중이 최근 발 표시가 아님');
+      if (!hit.classList.contains('sb-fresh')) F('방금 명중에 짧은 강조가 없음');
+      const ms = parseFloat(getComputedStyle(hit).animationDuration) * 1000;
+      if (!(ms >= 100 && ms <= 220)) F('명중 강조 길이 ' + ms + 'ms(150–200ms 안팎이 아님)');
+      if (getComputedStyle(hit).animationIterationCount !== '1') F('명중 강조가 반복됨');
+      const snd = hit.querySelector('.sb-stamp, .sb-snd');
+      if (snd && getComputedStyle(snd).color !== 'rgb(24, 53, 64)') F('명중 칸 소리 글씨가 기본 잉크가 아님');
+    }
+    if (document.querySelector('.sb-burst, .sb-burst-fire, [class*="flame"]')) F('불꽃 요소가 있음');
+    await wait(400);
+    if (b.el.querySelector('.sb-fresh')) F('강조가 0.4초 뒤에도 남음');
+    if (!b.el.querySelector('.sb-mark.k-hit')) F('강조 뒤 명중 표시가 없음');
     // 격침 → 목록의 배가 불탄 그림으로
     await wait(300);
     const sunkPic = shipsEl.querySelectorAll('.sb-ship-item')[2].querySelector('.sb-pic');
     if (!sunkPic.classList.contains('is-burnt')) F('격침된 배가 불탄 그림이 아님');
     const im = sunkPic.querySelector('img');
-    if (!im || !/ship1_burnt\.webp$/.test(im.getAttribute('src'))) F('불탄 배 그림 파일이 아님: ' + (im && im.getAttribute('src')));
+    if (!im || !/ship1_burnt\\.webp$/.test(im.getAttribute('src'))) F('불탄 배 그림 파일이 아님: ' + (im && im.getAttribute('src')));
     // 배 그림 크기: 세 칸 > 두 칸 > 한 칸
     const ws = [...shipsEl.querySelectorAll('.sb-pic')].map((e) => e.getBoundingClientRect().width);
     if (!(ws[0] > ws[1] && ws[1] > ws[2])) F('배 그림 크기 순서가 아님: ' + ws.map(Math.round).join(','));
-    // 빗나감: 물보라 스프라이트가 한 번 튄다
+    // 빗나감: 회색 바탕 + ×, 최근 발은 이것 하나
     b.update({ shots: shots.slice(0, 2), fleet: g.state.teams.enemy.fleet });
-    const sp = b.el.querySelector('.sb-mark.k-miss .sb-splash');
-    if (!sp || !/splash\.webp/.test(getComputedStyle(sp).backgroundImage)) F('물보라 그림 없음');
-    else if (!sp.classList.contains('is-fresh')) F('방금 빗나간 물보라가 움직이지 않음');
-    // 명중 연출은 누르면 곧바로 사라짐
+    const miss = b.el.querySelector('.sb-mark.k-miss');
+    if (!miss || !miss.querySelector('.sb-badge[data-glyph="miss"]')) F('빗나감 × 없음');
+    if (b.el.querySelectorAll('.is-latest').length !== 1 || !miss || !miss.classList.contains('is-latest')) F('최근 발 표시가 하나(빗나감)가 아님');
+    if (b.el.querySelector('.sb-mark.k-hit').classList.contains('is-latest')) F('이전 명중이 최근 발로 남음');
+    // 최근 1발은 신호와 상관없는 공통 잉크 테두리, 이전 결과는 테두리 없이 같은 기호(2차 검수)
     b.update({ shots: shots.slice(0, 3), fleet: g.state.teams.enemy.fleet });
-    if (!b.el.querySelector('.sb-burst')) F('두 번째 명중 연출 없음');
-    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-    if (b.el.querySelector('.sb-burst')) F('눌렀는데 명중 연출이 안 사라짐');
-    // 되살리기(render)와 움직임 줄이기: 연출 없음, 물보라는 멈춘 그림
+    await wait(350); // 0.18초 강조가 끝난 뒤
+    const hs = [...b.el.querySelectorAll('.sb-mark.k-hit')];
+    const oldH = hs.find((m) => !m.classList.contains('is-latest')), newH = hs.find((m) => m.classList.contains('is-latest'));
+    const ring = (m) => getComputedStyle(m).boxShadow;
+    if (!oldH || !newH) F('최근·이전 명중 표시가 없음');
+    else {
+      if (!ring(newH).includes('rgb(24, 53, 64)')) F('최근 발 테두리가 기본 잉크가 아님: ' + ring(newH));
+      if (ring(oldH) !== 'none') F('이전 결과에 최근 발 테두리가 남음: ' + ring(oldH));
+      if (!oldH.querySelector('.sb-badge[data-glyph="hit"]')) F('이전 명중의 과녁 배지가 없음');
+    }
+    // 되살리기(render)와 움직임 줄이기: 강조 없음
     b.render({ shots, fleet: g.state.teams.enemy.fleet });
-    if (b.el.querySelector('.sb-burst') || b.el.querySelector('.sb-splash.is-fresh')) F('render()가 연출을 틀었음');
+    if (b.el.querySelector('.sb-fresh')) F('render()가 강조를 틀었음');
     document.documentElement.classList.add('reduce-motion');
     b.render({ shots: shots.slice(0, 1), fleet: g.state.teams.enemy.fleet });
     b.update({ shots, fleet: g.state.teams.enemy.fleet });
-    if (b.el.querySelector('.sb-burst') || b.el.querySelector('.sb-splash.is-fresh')) F('움직임 줄이기인데 연출이 나옴');
+    if (b.el.querySelector('.sb-fresh')) F('움직임 줄이기인데 강조가 나옴');
     document.documentElement.classList.remove('reduce-motion');
     b.destroy(); host.remove(); shipsEl.remove();
     return { fails, errs: window.__soriErrors.slice() };
@@ -355,9 +389,25 @@ const measure = (w, h, src, shot, minTouch) => `
         const unit = +((e.closest('[data-u]') || {}).dataset || {}).u || 1;
         if (fs < 0.6 * box.height / unit - 0.5) bad.push(e.textContent + ' ' + fs.toFixed(1) + '/' + (box.height / unit).toFixed(1));
         const ff = fw.getComputedStyle(e).fontFamily;
-        if (!/Sori|Hahmlet/.test(ff)) bad.push('글꼴 ' + ff);
+        if (!/SoriUI/.test(ff)) bad.push('글꼴 ' + ff);
       }
       if (bad.length) fails.push('소리 표기 작음: ' + bad.slice(0, 4).join(', '));
+      // 소리 표기(.sb-snd)는 한 판 안에서 모두 같은 크기(비음·유음만 커지지 않음)
+      for (const bd of d.querySelectorAll('.sb')) {
+        const sizes = new Set([...bd.querySelectorAll('.sb-snd')].map((e) => fw.getComputedStyle(e).fontSize));
+        if (sizes.size > 1) fails.push('소리 표기 크기가 제각각: ' + [...sizes].join(','));
+      }
+      // 명암비: 모든 소리 표기 글씨 ≥ 4.5 : 1(맞히지 않은 소리도 흐리게 하지 않음)
+      const rgb = (c) => (c.match(/[\\d.]+/g) || []).map(Number);
+      const lum = (c) => { const v = rgb(c).slice(0, 3).map((x) => x / 255).map((x) => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4))); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+      const bgOf = (e) => { for (let n = e; n; n = n.parentElement) { const c = fw.getComputedStyle(n).backgroundColor; const a = rgb(c); if (a.length && (a.length < 4 || a[3] > 0.5)) return c; } return 'rgb(255, 255, 255)'; };
+      const low = [];
+      for (const e of d.querySelectorAll('.sb-snd, .sb-stamp')) {
+        const f = lum(fw.getComputedStyle(e).color), bgl = lum(bgOf(e));
+        const cr = (Math.max(f, bgl) + 0.05) / (Math.min(f, bgl) + 0.05);
+        if (cr < 4.5) low.push(e.textContent + ' ' + cr.toFixed(2));
+      }
+      if (low.length) fails.push('소리 표기 명암비 4.5 미만: ' + low.slice(0, 5).join(', '));
       // 판이 담긴 상자를 넘지 않음
       for (const bd of d.querySelectorAll('.sb')) {
         const q = bd.getBoundingClientRect(), p = bd.parentElement.getBoundingClientRect();

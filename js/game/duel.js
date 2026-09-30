@@ -20,7 +20,8 @@
 //   배치: 그 팀의 바다만(소리·줄 이름 보임), 큰 배부터, 놓을 수 있는 묶음만 누름. 다 놓으면 저절로 다음,
 //         '다 놓았어요'나 30초가 지나면 남은 배는 G.rules.finishPlacing이 채운다.
 //         배치 도중 새로고침하면 G.save가 배치를 버리고 청팀 배치부터 다시 하는 판으로 저장해 두었으므로 처음부터.
-//   대결(실시간 — 차례·라운드·'준비' 없음, spec 6.3): 화면 왼쪽 절반 = 청팀 자리, 오른쪽 절반 = 홍팀 자리(거울 배치).
+//   대결(실시간 — 차례·라운드·'준비' 없음, spec 6.3): 화면 왼쪽 절반 = 청팀 자리, 오른쪽 절반 = 홍팀 자리.
+//         두 자리의 안쪽 배치는 똑같다(디자인 검수): 위 4px 팀색 띠 · [쏘는 바다 | '1 위치' 단면도] · 아래 조작부 두 줄.
 //         자리마다 쏘는 바다(상대 팀 바다, 판 위 이름표 TEXT.duel.target) · 단면도 · 조작부(발사 단추 포함) · 한 줄 문구가 따로 있다.
 //         각 팀은 준비되는 대로 쏘고 또 쏜다: 소리 빚기 → 발사 → 그 팀 단면도의 공기 흐름(그동안 그 팀 조작부만 잠김) →
 //         G.rules.fireTeam(그 순간의 판) → 그 팀이 쏘는 바다·신호 줄·효과음 → 저장. 한 팀의 발은 다른 팀을 막거나
@@ -310,7 +311,12 @@ G.duel = (function () {
         const nameEl = el('div', { class: 'duel-sea-name name-' + t }, T.duel.target[t]);
         const sea = el('section', { class: 'duel-sea' }, [boardEl]);
         const mouthEl = el('div', { class: 'duel-mouth' });
-        const body = el('div', { class: 'duel-st-body' }, t === 'blue' ? [sea, mouthEl] : [mouthEl, sea]);
+        // 두 팀 자리의 안쪽 배치는 똑같다(디자인 검수): [쏘는 바다 | '1 위치' 단면도]
+        const mouthCol = el('div', { class: 'duel-mouthcol' }, [
+          el('div', { class: 'duel-stepcap' }, [el('span', { class: 'ctl-step', 'aria-hidden': 'true' }, '1'), el('span', null, vowel ? T.ui.play.step.tongue : T.ui.play.step.place)]),
+          mouthEl,
+        ]);
+        const body = el('div', { class: 'duel-st-body' }, [sea, mouthCol]);
         const dock = el('div', { class: 'duel-st-dock' });
         const node = el('section', { class: 'duel-station station-' + t, 'data-team': t, 'aria-label': T.teams[t] }, [body, dock]);
         const s = { team: t, el: node, busy: false, pending: Promise.resolve(), outLine: null };
@@ -384,6 +390,7 @@ G.duel = (function () {
           s.mouth.setManner(sel.manner || null);
           s.mouth.setStrength(cs.strengthCards && !cs.strengthDisabled ? sel.strength || null : null);
         }
+        s.board.setSelection(sel); // 고른 자리·방법의 줄·열 머리를 '현재 선택'으로
       }
       // 그 팀 자리의 잠김 · 모양(발 소진이면 잠그고 기다림 줄)
       function drawStation(s) {

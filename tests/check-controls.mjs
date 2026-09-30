@@ -288,6 +288,37 @@ try {
         btns.forEach((b) => { if (!touchOk(b, 64)) bad(tag + ': 64px 미만이거나 가려짐: ' + b.textContent + ' ' + JSON.stringify(box(b))); });
         info.layout[tag] = { tops: tops[0], left: L, right: Rr };
       }
+      // ── 조합 요약 줄(T17): 발사 단추 바로 위 한 줄, 없는 조합도 그대로(상태 줄), 안 고른 칸은 묶음 이름 ──
+      c = fw.mount({ sea: 'consonant', level: 2 });
+      const cmb = () => $('.ctl-combo').textContent;
+      const sn = (g, id) => G.text.short('m3', g, id);
+      const ch = (w) => G.text.fill(TX.ui.play.choose, { what: w });
+      if (cmb() !== [ch(TX.ui.play.step.place), ch(sn('axis', 'manner')), ch(sn('axis', 'strength'))].join(' · ')) bad('빈 요약 줄: ' + cmb());
+      c.setPlace('bilabial'); card('manner', 'stop').click(); card('strength', 'plain').click();
+      if (cmb() !== TX.mouthParts.bilabial + ' · ' + sn('manner', 'stop') + ' · ' + sn('strength', 'plain')) bad('요약 줄(두 입술·파열·예사): ' + cmb());
+      const cb = box($('.ctl-combo')), fbb = box(fireBtn());
+      // 요약 줄은 카드 줄 바로 위, 조작부와 같은 중심선(2차 검수)
+      const barB = box($('.ctl-bar'));
+      if (!(cb.bottom <= fbb.top + 1 && cb.bottom <= barB.top + 1 && barB.top - cb.bottom < 20 && Math.abs((cb.left + cb.right) / 2 - (barB.left + barB.right) / 2) < 3)) bad('요약 줄이 카드 줄 바로 위 가운데가 아님 ' + JSON.stringify([cb.left, cb.right, cb.bottom, barB.left, barB.right, barB.top]));
+      c.reset(); c.setPlace('glottal'); card('manner', 'stop').click(); card('strength', 'tense').click();
+      if (cmb() !== TX.mouthParts.glottal + ' · ' + sn('manner', 'stop') + ' · ' + sn('strength', 'tense')) bad('없는 조합 요약 줄: ' + cmb());
+      if (fireBtn().disabled) bad('없는 조합인데 발사가 막힘');
+      c.reset(); c.setPlace('alveolar'); card('manner', 'nasal').click();
+      if (cmb() !== TX.mouthParts.alveolar + ' · ' + sn('manner', 'nasal') + ' · ' + sn('strength', 'none')) bad('비음 요약 줄: ' + cmb());
+      // 자리 이름을 숨기는 단계(자음 3단계)에서는 자리를 이름으로 드러내지 않는다
+      c = fw.mount({ sea: 'consonant', level: 3 });
+      c.setPlace('velar'); card('manner', 'stop').click();
+      if (cmb().indexOf(TX.ui.play.placeChosen) !== 0 || /여린|연구개/.test(cmb())) bad('3단계 요약 줄이 자리를 드러냄: ' + cmb());
+      // 단계 번호: 방법 2 · 세기 3(세기가 없는 1단계에는 3이 없음)
+      const steps = () => $$('.ctl-group .ctl-step').map((e) => e.textContent).join(',');
+      if (steps() !== '2,3') bad('단계 번호: ' + steps());
+      c = fw.mount({ sea: 'consonant', level: 1 });
+      if (steps() !== '2') bad('1단계 단계 번호: ' + steps());
+      // 신호 기록장의 기호(명중 과녁 · 같은 줄 방향 · 없는 소리 ∅)
+      c.log({ sound: 'ㄱ', kind: 'line', targets: [{ place: 'velar' }] }); c.log({ sound: 'ㅇ', kind: 'hit' }); c.log({ sound: null, input: { place: 'palatal', manner: 'stop' }, kind: 'none' });
+      const gl = $$('.ctl-log-item .ctl-log-ico').map((e) => e.getAttribute('data-glyph')).join(',');
+      if (gl !== 'v,hit,dud') bad('기록장 기호: ' + gl);
+
       // 캡처용 상태: 자음 2단계, 기록 몇 줄, 고르는 중
       c = fw.mount({ sea: 'consonant', level: 2 });
       c.log({ sound: 'ㄱ', kind: 'line' }); c.log({ sound: null, input: { place: 'glottal', manner: 'stop', strength: 'plain' }, kind: 'none' }); c.log({ sound: 'ㄲ', kind: 'hit' });

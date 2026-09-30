@@ -1,32 +1,42 @@
 /* 앱 뼈대 — js/game/app.js
    시작 · 설정 · 이 기기의 소리 지도 · 만든 사람·출처 · 결과 화면과 '세로로 돌려 주세요' 덮개.
+   디자인 검수(.dryforge/design-review-1.md): 흰 패널(반경 16) 위 단정한 조작, 주 단추 = 청록 채움, 보조 단추 = 흰 바탕 + 경계선.
+   글씨 크기는 화면 너비로 정한다(container app): 휴대폰 · 태블릿/노트북 · 칠판(1600 이상).
    세로 배치 기준은 base.css와 같다: (max-width: 760px), (orientation: portrait).
    --app-h: 화면 하나의 높이(보통 창 높이). 점검 페이지는 정해진 크기의 상자로 바꿔 쓴다. */
 :root { --app-h: 100vh; --app-pad: clamp(16px, 3vw, 48px); }
 @supports (height: 100dvh) { :root { --app-h: 100dvh; } }
 
-.app-screen { position: relative; min-height: var(--app-h); }
-.app-h1 { font-family: var(--font-title); font-weight: 700; font-size: clamp(30px, 3.2vw, 52px); line-height: 1.15; margin: 0; color: var(--sea); letter-spacing: -0.01em; }
-.app-h2 { font-family: var(--font-title); font-weight: 700; font-size: clamp(18px, 1.5vw, 24px); line-height: 1.25; margin: 0; color: var(--sea); }
+.app-screen {
+  --app-h1-fs: 32px; --app-h2-fs: 22px; --app-body-fs: 20px; --app-btn-fs: 20px;
+  position: relative; min-height: var(--app-h); container: app / inline-size;
+}
+@container app (min-width: 1600px) {
+  .app-screen > * { --app-h1-fs: 44px; --app-h2-fs: 28px; --app-body-fs: 26px; --app-btn-fs: 22px; }
+}
+.app-h1 { font-size: var(--app-h1-fs); font-weight: 700; line-height: 1.2; margin: 0; color: var(--ink); }
+.app-h2 { font-size: var(--app-h2-fs); font-weight: 700; line-height: 1.25; margin: 0; color: var(--ink); }
 
 /* ── 단추 ── */
 .app-btn {
   min-height: var(--touch); min-width: var(--touch);
-  padding: 0 24px; border-radius: 14px; cursor: pointer;
-  border: 2px solid var(--ui); background: #fff; color: var(--ui);
-  font-family: var(--font-title); font-weight: 700; font-size: clamp(18px, 1.3vw, 24px); line-height: 1.2;
+  padding: 0 24px; border-radius: var(--r-btn); cursor: pointer;
+  border: 2px solid var(--control-line); background: var(--surface); color: var(--ink);
+  font-family: var(--font-body); font-weight: 600; font-size: var(--app-btn-fs, 20px); line-height: 1.2;
   display: inline-flex; align-items: center; justify-content: center; text-align: center;
   word-break: keep-all; touch-action: manipulation;
-  transition: background .15s, color .15s, transform .1s;
+  transition: background-color var(--t-pick), border-color var(--t-pick), color var(--t-pick);
 }
-.app-btn:hover { background: var(--ui-3); }
+.app-btn:hover { background: var(--accent-soft); }
 .app-btn:active { transform: translateY(1px); }
-.app-btn:focus-visible { outline: 3px solid var(--sea); outline-offset: 3px; }
-.app-btn.is-primary { background: var(--ui); color: #fff; }
-.app-btn.is-primary:hover { background: var(--ui-2); border-color: var(--ui-2); }
-.app-btn.is-danger { background: var(--hit); border-color: var(--hit); color: #fff; }
-.app-btn.is-danger-line { border-color: var(--hit); color: var(--hit); }
-.app-btn.is-danger-line:hover { background: #f6e4e1; }
+.app-btn.is-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.app-btn.is-primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+/* 쓸 수 없는 단추(세로 화면의 대결): 흐린 바탕 — 누르면 바로 아래 한 줄이 까닭을 알린다 */
+.app-btn.is-off, .app-btn.is-primary.is-off { background: #DDE5E8; border-color: #DDE5E8; color: #4F646C; cursor: not-allowed; }
+/* 되돌릴 수 없는 일(기록 지우기): 흙색 경계선 — 빨강은 팀·명중에 쓰지 않으므로 오류에도 쓰지 않는다 */
+.app-btn.is-danger { background: var(--dud); border-color: var(--dud); color: #fff; }
+.app-btn.is-danger-line { border-color: var(--dud); color: var(--dud); }
+.app-btn.is-danger-line:hover { background: var(--dud-soft); }
 .app-btn[hidden] { display: none; }
 
 /* ── 시작 화면 ── */
@@ -34,133 +44,160 @@
   display: grid; grid-template-rows: auto 1fr; overflow: hidden;
   background: var(--sea) url('../assets/img/title.webp') center 58% / cover no-repeat;
 }
-.app-title-head { padding: calc(var(--app-h) * 0.07) var(--app-pad) 0; text-align: center; }
+.app-title-head { padding: calc(var(--app-h) * 0.06) var(--app-pad) 0; text-align: center; }
 .app-title-name {
-  margin: 0; font-family: var(--font-title); font-weight: 700; line-height: 1;
-  font-size: clamp(56px, 9vw, 150px); color: #173646; letter-spacing: 0.04em;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, .55), 0 0 24px rgba(255, 255, 255, .45);
+  margin: 0; font-family: var(--font-title); font-weight: 800; line-height: 1;
+  font-size: clamp(56px, 6.6cqw, 96px); color: #0F3346; letter-spacing: 0.02em;
 }
 .app-title-foot {
-  align-self: end; display: flex; flex-direction: column; align-items: center; gap: 12px;
-  padding: 0 var(--app-pad) calc(var(--app-h) * 0.035);
+  align-self: end; display: flex; flex-direction: column; align-items: center;
+  padding: 0 var(--app-pad) calc(var(--app-h) * 0.04);
 }
+/* 메뉴: 불투명 흰 패널 한 장. 주 단추(연습·대결) 크게, 보조 메뉴는 아래 작게 */
 .app-menu {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
-  padding: 12px; border-radius: 20px; background: rgba(238, 240, 234, .88);
-  box-shadow: 0 6px 24px rgba(10, 30, 40, .25); max-width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: var(--s4);
+  padding: var(--s5); border-radius: var(--r-panel); background: var(--surface);
+  box-shadow: var(--shadow-float); max-width: 100%;
 }
-.app-menu .app-btn { min-width: clamp(150px, 12vw, 240px); }
-.app-notice {
-  margin: 0; padding: 10px 18px; border-radius: 12px; max-width: 100%;
-  background: #fff; color: var(--ink); border-left: 6px solid var(--hit);
-  font-size: clamp(16px, 1.2vw, 22px); box-shadow: 0 4px 16px rgba(10, 30, 40, .2);
-  visibility: hidden;
-}
-.app-notice.is-on { visibility: visible; }
+.app-menu-main { display: flex; gap: var(--s5); }
+.app-btn.is-big { min-width: clamp(220px, 15cqw, 300px); min-height: clamp(72px, 4.4cqw, 84px); font-size: clamp(24px, 1.5cqw, 28px); padding: 0 32px; }
+.app-menu-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); }
+.app-btn.is-sub { font-size: clamp(17px, 1.15cqw, 22px); font-weight: 600; padding: 0 20px; color: var(--ink); }
+.app-notice { display: none; margin: 0; max-width: 34em; font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--ink-2); text-align: center; word-break: keep-all; text-wrap: balance; }
+.app-notice.is-on { display: block; }
 
 /* 하던 판 묻기 */
-.app-dialog { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 35, 45, .45); }
+.app-dialog { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: var(--s4); background: rgba(15, 35, 45, .45); }
 .app-title.has-dialog .app-menu { visibility: hidden; }
-.app-dialog-card { background: var(--paper); border-radius: 20px; padding: 28px; width: min(560px, 100%); box-shadow: 0 10px 40px rgba(0, 0, 0, .35); text-align: center; }
-.app-dialog-ask { margin: 0; font-family: var(--font-title); font-weight: 700; font-size: clamp(22px, 1.8vw, 32px); color: var(--sea); }
-.app-dialog-what { margin: 6px 0 20px; color: var(--ink-2); }
-.app-dialog-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-.app-dialog-note { margin: 12px 0 0; min-height: 1.5em; color: var(--hit); }
+.app-dialog-card { background: var(--surface); border-radius: var(--r-panel); padding: var(--s5); width: min(560px, 100%); box-shadow: var(--shadow-float); text-align: center; }
+.app-dialog-ask { margin: 0; font-size: 28px; font-weight: 700; color: var(--ink); }
+.app-dialog-what { margin: 6px 0 var(--s5); color: var(--ink-2); font-weight: 500; }
+.app-dialog-btns { display: flex; flex-wrap: wrap; gap: var(--s3); justify-content: center; }
+.app-dialog-note { margin: var(--s3) 0 0; min-height: 1.4em; color: var(--ink-2); font-weight: 600; }
 
-/* ── 설정·소리 지도·출처(종이 바탕 쪽) ── */
-.app-page {
-  padding: var(--app-pad);
-  /* 결과 배경 그림을 아주 옅게(아래쪽 잔잔한 바다만 비침) — 넓은 화면에서 빈 종이만 보이지 않게 */
-  background: linear-gradient(rgba(238, 240, 234, .8), rgba(238, 240, 234, .8)), var(--paper) url('../assets/img/result_bg.webp') center bottom / cover no-repeat;
-}
-.app-page-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-.app-page-wide { max-width: 1500px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-.app-page-foot { display: flex; justify-content: center; padding-top: 8px; }
+/* ── 설정·소리 지도·출처 ── */
+.app-page { padding: var(--app-pad); background: var(--bg); }
+.app-page-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s4); }
+.app-page-wide { max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s4); }
+.app-page-foot { display: flex; justify-content: center; padding-top: var(--s2); }
+.app-page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); min-height: 64px; }
+.app-home-top { font-size: 18px; } /* 높이는 터치 목표(가로 64px · 휴대폰 48px, spec 2) */
 .app-back { min-width: 180px; }
 
 .app-set-row {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 16px 20px; background: #fff; border-radius: 16px; border: 1px solid var(--line);
+  display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
+  padding: var(--s4) var(--s5); background: var(--surface); border-radius: var(--r-panel); border: 1px solid var(--divider);
 }
-.app-set-name { flex: 0 0 9em; font-family: var(--font-title); font-weight: 700; font-size: clamp(18px, 1.4vw, 24px); }
-.app-set-ctl { flex: 1 1 280px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.app-seg { display: inline-flex; border: 2px solid var(--ui); border-radius: 14px; overflow: hidden; }
+.app-set-name { flex: 0 0 9em; font-size: var(--app-h2-fs); font-weight: 700; }
+.app-set-ctl { flex: 1 1 280px; display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
+.app-seg { display: inline-flex; border: 2px solid var(--control-line); border-radius: var(--r-btn); overflow: hidden; }
 .app-seg .app-btn { border: 0; border-radius: 0; min-width: 96px; padding: 0 18px; }
-.app-seg .app-btn + .app-btn { border-left: 2px solid var(--ui); }
-.app-seg .app-btn[aria-pressed="true"] { background: var(--ui); color: #fff; }
-.app-vol { flex: 1 1 200px; display: flex; align-items: center; gap: 12px; min-height: var(--touch); }
-.app-vol-name { color: var(--ink-2); white-space: nowrap; }
-.app-range { flex: 1; min-width: 0; height: var(--touch); accent-color: var(--ui); cursor: pointer; }
+.app-seg .app-btn + .app-btn { border-left: 2px solid var(--control-line); }
+.app-seg .app-btn[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 700; }
+.app-vol { flex: 1 1 200px; display: flex; align-items: center; gap: var(--s3); min-height: var(--touch); }
+.app-vol-name { color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+.app-range { flex: 1; min-width: 0; height: var(--touch); accent-color: var(--accent); cursor: pointer; }
 .app-set-row.is-off .app-vol { opacity: .45; }
-.app-set-clear { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 8px 4px; }
-.app-confirm { background: #fff; border: 2px solid var(--hit); border-radius: 16px; padding: 16px 20px; width: 100%; }
+.app-set-clear { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); padding: var(--s2) 4px; }
+.app-confirm { background: var(--surface); border: 2px solid var(--dud); border-radius: var(--r-panel); padding: var(--s4) var(--s5); width: 100%; }
 .app-confirm[hidden] { display: none; }
-.app-confirm-ask { margin: 0 0 12px; }
+.app-confirm-ask { margin: 0 0 var(--s3); font-weight: 600; }
 .app-confirm .app-dialog-btns { justify-content: flex-start; }
-.app-clear-msg { margin: 0; min-height: 1.5em; color: var(--ui); }
+.app-clear-msg { margin: 0; min-height: 1.4em; color: var(--accent-2); font-weight: 600; }
 
-.app-maps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 3vw, 48px); align-items: start; }
-.app-map { background: #fff; border-radius: 18px; padding: 18px 20px 20px; border: 1px solid var(--line); min-width: 0; }
-.app-map-count { margin: 2px 0 12px; color: var(--ink-2); }
+/* 소리 지도: 두 바다를 나란히, 행 높이는 내용에 맞춤(판이 정함), 모든 소리는 기본 잉크 */
+.app-maps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); align-items: start; }
+.app-map { background: var(--surface); border-radius: var(--r-panel); padding: var(--s4) var(--s5) var(--s5); border: 1px solid var(--divider); min-width: 0; }
+.app-map .app-h2 { font-size: 24px; }
+.app-map-count { margin: 2px 0 var(--s2); color: var(--ink-2); font-weight: 600; }
+.app-soundmap { padding-top: var(--s4); }
+.app-soundmap .app-page-wide { gap: var(--s3); }
 .app-map-box { min-width: 0; }
 
-.app-cred { background: #fff; border-radius: 16px; padding: 16px 20px; border: 1px solid var(--line); }
+.app-cred { background: var(--surface); border-radius: var(--r-panel); padding: var(--s4) var(--s5); border: 1px solid var(--divider); }
 .app-cred .app-h2 { margin-bottom: 6px; }
-.app-cred-line { margin: 0; overflow-wrap: anywhere; font-size: 17px; }
+.app-cred-line { margin: 0; overflow-wrap: anywhere; font-size: 17px; line-height: 1.45; }
 
-/* ── 결과 화면(캡처해서 내는 화면: 가로에서는 한 화면 안에) ── */
+/* ── 결과 화면(캡처해서 내는 화면: 가로에서는 한 화면 안에) ──
+   맨 위: 결과 제목(가장 크게) + 핵심 수치. 아래: [이번 판 소리 지도 | 알아 두기 · 질문 · 단추] */
 .app-result {
-  background: #eef3f1 url('../assets/img/result_bg.webp') center / cover no-repeat;
-  padding: clamp(14px, 2vw, 32px) var(--app-pad);
-  display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 20px);
+  --res-head-fs: 40px; --res-num-fs: 36px; --res-label-fs: 18px;
+  background: var(--bg) url('../assets/img/result_bg.webp') center bottom / cover no-repeat;
+  padding: clamp(14px, 1.6cqw, 32px) var(--app-pad);
+  display: flex; flex-direction: column; gap: clamp(12px, 1.2cqw, 24px);
   height: var(--app-h); overflow: hidden;
 }
-.app-res-head { display: flex; align-items: baseline; gap: 12px 24px; flex-wrap: wrap; }
-.app-res-meta { margin: 0; font-size: clamp(17px, 1.3vw, 24px); color: var(--ink-2); }
-.app-res-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: clamp(14px, 2vw, 36px); }
-.app-result.is-duel .app-res-body { grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); }
-.app-res-mapsec {
-  min-height: 0; display: flex; flex-direction: column; gap: 10px;
-  background: rgba(255, 255, 255, .82); border-radius: 18px; padding: clamp(12px, 1.2vw, 20px);
+@container app (min-width: 1600px) {
+  .app-result > * { --res-head-fs: 48px; --res-num-fs: 48px; --res-label-fs: 22px; }
 }
-.app-res-maps { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.app-res-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4) var(--s6); flex-wrap: wrap;
+  background: var(--surface); border-radius: var(--r-panel); padding: var(--s4) var(--s5); border: 1px solid var(--divider);
+}
+.app-res-titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.app-res-eyebrow { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s3); font-size: var(--res-label-fs); font-weight: 600; color: var(--ink-2); }
+.app-res-title { font-weight: 700; color: var(--ink); }
+.app-res-meta { font-weight: 500; }
+.app-res-headline { margin: 0; font-size: var(--res-head-fs); font-weight: 700; line-height: 1.15; color: var(--ink); }
+.app-res-winner.team-blue { color: var(--blue); }
+.app-res-winner.team-red { color: var(--red); }
+.app-res-statrow { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s6); }
+.app-res-stats { margin: 0; display: flex; align-items: flex-end; gap: var(--s5); }
+.app-res-stat { display: flex; flex-direction: column; gap: 2px; }
+.app-res-stats dt { font-size: var(--res-label-fs); font-weight: 600; color: var(--ink-2); }
+.app-res-stats dd { margin: 0; font-size: var(--res-num-fs); font-weight: 700; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; }
+.app-res-team { align-self: center; font-size: calc(var(--res-num-fs) * .6); font-weight: 700; min-width: 2.6em; }
+.app-res-stats.team-blue .app-res-team, .team-blue .app-res-maplabel { color: var(--blue); }
+.app-res-stats.team-red .app-res-team, .team-red .app-res-maplabel { color: var(--red); }
+.app-res-statrow.is-duel .app-res-stats { padding-left: var(--s3); border-left: 4px solid var(--divider); }
+.app-res-statrow.is-duel .team-blue { border-left-color: var(--blue); }
+.app-res-statrow.is-duel .team-red { border-left-color: var(--red); }
+
+.app-res-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(340px, 1fr); gap: clamp(14px, 1.4cqw, 28px); }
+.app-result.is-duel .app-res-body { grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr); }
+.app-res-mapsec {
+  min-height: 0; display: flex; flex-direction: column; gap: var(--s2);
+  background: var(--surface); border-radius: var(--r-panel); padding: var(--s4) var(--s5); border: 1px solid var(--divider);
+}
+.app-res-maps { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
 .app-res-maps.is-duel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .app-res-map { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .app-res-map .app-map-box { flex: 1 1 auto; min-height: 0; }
 .app-res-map .sb.sb-fit { align-content: start; } /* 이름표 바로 아래에 판 */
-.app-res-maplabel { margin: 0; font-family: var(--font-title); font-weight: 700; font-size: clamp(17px, 1.3vw, 22px); }
-.team-blue .app-res-maplabel, .app-res-winner.team-blue, .app-res-stats.team-blue .app-res-team { color: #2a5db0; }
-.team-red .app-res-maplabel, .app-res-winner.team-red, .app-res-stats.team-red .app-res-team { color: #b23a3a; }
-.app-res-side { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: clamp(10px, 1.2vw, 18px); }
-.app-res-side > section { background: rgba(255, 255, 255, .88); border-radius: 18px; padding: clamp(12px, 1.2vw, 20px); }
-.app-res-winner { margin: 6px 0 4px; font-family: var(--font-title); font-weight: 700; font-size: clamp(26px, 2.4vw, 40px); color: var(--sea); }
-.app-res-done { margin: 6px 0 2px; font-weight: 700; color: var(--ui); }
-.app-res-stats { margin: 8px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; font-size: clamp(17px, 1.3vw, 22px); }
-.app-res-stats > div { display: flex; gap: 8px; align-items: baseline; }
-.app-res-stats dt { color: var(--ink-2); }
-.app-res-stats dd { margin: 0; font-weight: 700; }
-.app-res-team { font-family: var(--font-title); font-weight: 700; min-width: 3em; }
-.app-res-note { margin: 6px 0 0; padding-left: 14px; border-left: 4px solid var(--air); font-size: clamp(16px, 1.15vw, 20px); }
-.app-res-question { margin: 6px 0 0; font-size: clamp(17px, 1.25vw, 22px); }
-.app-res-btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: auto; }
+.app-res-maplabel { margin: 0; font-size: var(--app-h2-fs); font-weight: 700; }
+.app-res-side { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: clamp(12px, 1.2cqw, 20px); }
+.app-res-card { background: var(--surface); border-radius: var(--r-panel); padding: var(--s5); border: 1px solid var(--divider); display: flex; flex-direction: column; gap: var(--s2); }
+.app-res-note { margin: 0; font-size: var(--app-body-fs); font-weight: 500; line-height: 1.45; }
+.app-res-question { margin: 0; font-size: var(--app-body-fs); font-weight: 500; line-height: 1.45; word-break: keep-all; }
+.app-res-btns { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: auto; }
 .app-res-btns .app-btn { flex: 1 1 160px; }
 
 /* ── 세로 배치(휴대폰·세로로 둔 태블릿) ── */
 @media (max-width: 760px), (orientation: portrait) {
-  .app-title { background-position: 62% center; }
+  .app-title { background-image: url('../assets/img/title_phone.webp'); background-position: center 45%; }
   .app-title-head { padding-top: calc(var(--app-h) * 0.08); }
-  .app-title-name { font-size: clamp(52px, 17vw, 120px); }
-  .app-menu { flex-direction: column; align-items: stretch; width: min(420px, 100%); }
-  .app-menu .app-btn { min-width: 0; width: 100%; }
-  .app-dialog-card { padding: 22px 18px; }
+  .app-title-name { font-size: clamp(48px, 14cqw, 56px); }
+  .app-title-foot { padding: 0 var(--s4) calc(var(--s4) + env(safe-area-inset-bottom, 0px)); }
+  .app-menu { width: min(420px, 100%); padding: var(--s3); gap: var(--s3); align-items: stretch; }
+  .app-menu-main { gap: var(--s3); }
+  .app-menu-main .app-btn { flex: 1 1 0; min-width: 0; min-height: 56px; font-size: 20px; padding: 0 12px; }
+  .app-menu-sub { gap: var(--s3); }
+  .app-menu-sub .app-btn { flex: 1 1 auto; font-size: 16px; padding: 0 12px; }
+  .app-notice { font-size: 15px; }
+  .app-dialog-card { padding: var(--s5) var(--s4); }
   .app-dialog-btns .app-btn { flex: 1 1 100%; }
   .app-set-name { flex-basis: 100%; }
   .app-seg .app-btn { min-width: 80px; }
   .app-maps { grid-template-columns: minmax(0, 1fr); }
-  .app-map { padding: 14px 12px 16px; }
-  .app-result { height: auto; overflow: visible; }
+  .app-map { padding: var(--s3) var(--s3) var(--s4); }
+  .app-result { height: auto; overflow: visible; --res-head-fs: 28px; --res-num-fs: 28px; --res-label-fs: 15px; }
+  .app-res-head { padding: var(--s4); }
+  .app-res-stats { gap: var(--s4); }
   .app-res-body, .app-result.is-duel .app-res-body { display: flex; flex-direction: column; }
   .app-res-maps.is-duel { grid-template-columns: minmax(0, 1fr); }
+  .app-res-mapsec { padding: var(--s3); }
+  .app-res-card { padding: var(--s4); }
+  .app-res-note, .app-res-question { font-size: 18px; }
   .app-res-side { overflow: visible; }
   .app-res-btns .app-btn { flex-basis: 100%; }
 }
@@ -168,10 +205,10 @@
 /* ── '세로로 돌려 주세요': 가로로 눕힌 휴대폰처럼 높이가 낮은 화면(조정값 — app.js LOW_Q와 같이) ── */
 .app-rotate {
   display: none; position: fixed; inset: 0; z-index: 1000;
-  flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-  background: var(--sea); color: #fff; text-align: center; padding: 16px;
+  flex-direction: column; align-items: center; justify-content: center; gap: var(--s3);
+  background: var(--sea); color: #fff; text-align: center; padding: var(--s4);
 }
-.app-rotate p { margin: 0; font-family: var(--font-title); font-weight: 700; font-size: 28px; }
+.app-rotate p { margin: 0; font-weight: 700; font-size: 28px; }
 .app-rotate-ico { width: 72px; height: 72px; display: block; }
 .app-rotate-ico svg { width: 100%; height: 100%; }
 @media (orientation: landscape) and (max-height: 500px) {

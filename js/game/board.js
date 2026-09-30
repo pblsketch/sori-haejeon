@@ -19,9 +19,11 @@
 //   b.el                                     판의 뿌리 요소(.sb)
 //   b.render(보기)      조용히 다시 그린다(되살리기·새로고침). 보기 = { shots: Shot[], fleet: 쏘는 바다의 배(선택), reveal: bool }
 //                       또는 Shot[] 또는 판 상태(GameState, opts.shooter 기준). Shot은 G.rules의 기록 그대로.
-//   b.update(보기)      render와 같고, 지난번보다 늘어난 발만 연출한다(같은 줄 물결 한 번, 명중 도장 + 큰 불꽃·소리 표기
-//                       1.4초(아무 데나 누르면 건너뜀), 빗나감 물보라 한 번, 격침 배 흔들림). 움직임 줄이기면 연출 없이 그린다.
-//   b.highlight(강조)   G.rules의 targets를 받아 물결을 한 번 퍼뜨린다 → Promise(끝나면). 흔적은 shots에서 그린다.
+//   b.update(보기)      render와 같고, 지난번보다 늘어난 발만 짧게(0.2초 안팎) 강조한다(같은 줄 범위 윤곽 한 번,
+//                       명중 칸 황금 채움 강조, 격침 배 흔들림). 움직임 줄이기면 강조 없이 그린다. 불꽃·물보라 연출은 없다.
+//   b.highlight(강조)   G.rules의 targets를 받아 그 범위의 윤곽을 한 번 짧게 강조한다 → Promise(끝나면). 흔적은 shots에서 그린다.
+//   b.setSelection(고른것)  지금 고른 자리·방법(자음 { place, manner } / 모음 { backness, height, lips })의 줄·열 머리를
+//                       '현재 선택'(청록 + 체크)으로 표시한다. 줄 이름을 숨기는 단계에서는 아무것도 표시하지 않는다.
 //   b.revealFleet(배?)  끝날 때 남은 배 공개: 아직 안 맞힌 칸에 소리를 찍고 배마다 점선으로 잇는다.
 //   b.markSunk(번호)    그 배를 격침으로 표시(선 잇기 + 목록 불탄 그림 + 흔들림). 보통은 shots의 sunkShip으로 저절로 된다.
 //   b.setPlaceable(묶음들)  place: 누를 수 있는 묶음(G.rules.placeableGroups). 그 묶음의 칸만 눌린다.
@@ -38,7 +40,12 @@
 //   G.board.soundMap(요소, { sea, grade, hitSounds })  → 판 객체(map 모드)  결과 화면·누적 소리 지도
 //   G.board.viewOf(판상태, 쏘는팀)                      → { shots, fleet, reveal:false }
 //   G.board.setImageBase('assets/img/')                 배 그림 폴더(ship3.webp, ship3_burnt.webp …). 그림이 없으면 코드로 그린 모양.
-//   · 바다 질감(sea_tile.webp)·물보라(splash.webp)는 css/board.css가 CSS 파일 기준 주소로 불러온다(그림이 없어도 색으로 보임).
+//   · 판 위에는 그림을 깔지 않는다(바다 질감은 시작 화면 그림으로만). 신호는 색 + 벡터 기호(G.util.glyph) + 글씨.
+//
+// ── 신호 표시(디자인 검수 · spec 8.1) ─────────────────────────────────
+//   명중 = 황금 채움 + 과녁 배지 · 같은 줄 = 보라 윤곽·옅은 바탕(게임이 돌려준 범위에만) + ↔/↕/겹친 네모 기호
+//   빗나감 = 회색 × · 없는 소리 = ∅. 최근 발(.is-latest)은 굵은 테두리와 큰 배지, 이전 발은 같은 기호의 작은 배지.
+//   맞히지 않은 소리는 언제나 기본 잉크(흐리게 하지 않음). 소리 표기는 한 판 안에서 모두 같은 크기(--sb-fs).
 //
 // ── 숨김(단계, spec 4) ─────────────────────────────────────────────────
 //   칸 안 소리를 숨기는 단계에서는 25칸(12칸)을 모두 같은 모양으로 그린다: 빈칸·세기 자리·소리가 DOM 속성·글·aria
@@ -65,27 +72,11 @@ G.board = (function () {
   }
   const reduced = () => U.reducedMotion();
 
-  // ── 그림 조각(SVG, 코드로 그림) ─────────────────────────────
-  const FLAME = 'M50 6c6 16 22 24 22 44a22 22 0 0 1-44 0c0-9 4-15 9-20 0 8 3 13 8 15-2-14 1-27 5-39z';
-  const BURST_MS = 1400; // 명중 연출 길이(2초 이내, css/board.css의 sb-burst와 같이)
-  const ICON = {
-    // 명중: 불꽃
-    hit: '<path d="' + FLAME + '" fill="currentColor"/>',
-    // 같은 줄: 번지는 물결 고리
-    line: '<circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="50" cy="50" r="26" fill="none" stroke="currentColor" stroke-width="5" opacity=".7"/>',
-    // 빗나감: 물보라
-    miss: '<path d="M50 20c7 12 12 19 12 27a12 12 0 0 1-24 0c0-8 5-15 12-27z" fill="currentColor"/><circle cx="22" cy="44" r="7" fill="currentColor"/><circle cx="78" cy="44" r="7" fill="currentColor"/><circle cx="30" cy="74" r="6" fill="currentColor"/><circle cx="70" cy="74" r="6" fill="currentColor"/><circle cx="50" cy="84" r="5" fill="currentColor"/>',
-    // 없는 소리: 불발 연기
-    dud: '<g fill="currentColor"><circle cx="34" cy="58" r="18"/><circle cx="54" cy="44" r="22"/><circle cx="70" cy="62" r="16"/><rect x="26" y="58" width="52" height="20" rx="10"/></g>',
-    reveal: '',
-  };
-  function icon(kind) {
-    // 빗나감: 물보라 그림(assets/img/splash.webp, 8칸 스프라이트 — css/board.css). 방금 쏜 발만 한 번 튀고 마지막 칸에 멈춘다
-    if (kind === 'miss') return U.el('span', { class: 'sb-splash', 'aria-hidden': 'true' });
-    if (!ICON[kind]) return null;
-    const s = U.svg('svg', { class: 'sb-ico', viewBox: '0 0 100 100', 'aria-hidden': 'true', focusable: 'false', preserveAspectRatio: 'xMidYMid meet' });
-    s.innerHTML = ICON[kind];
-    return s;
+  // ── 신호 기호 ─────────────────────────────────────────────
+  // 칸 모서리 배지(벡터). kind: hit | line | miss | dud, dir: 같은 줄의 방향(G.util.lineDir)
+  function badge(kind, dir) {
+    const name = kind === 'line' ? dir || 'eq' : kind === 'hit' ? 'hit' : kind === 'miss' ? 'miss' : kind === 'dud' ? 'dud' : null;
+    return name ? U.glyph(name, 'sb-badge') : null;
   }
   // 배 모양(그림 파일이 없을 때 대신)
   function shipSvg(size, burnt) {
@@ -208,15 +199,22 @@ G.board = (function () {
       role: 'group', 'aria-label': TEXT.seaNames[sea],
     });
     const over = U.el('div', { class: 'sb-over', 'aria-hidden': 'true' });
-    // 칸 밑에 까는 바다 질감(assets/img/sea_tile.webp): 판과 같은 격자에서 칸 자리 전체를 덮는다(쏘는 바다만)
-    const under = U.el('div', { class: 'sb-under', 'aria-hidden': 'true' }, mode === 'play' ? U.el('div', { class: 'sb-seabed', style: 'grid-row:2 / span ' + R + ';grid-column:2 / span ' + C }) : null);
     const lines = U.svg('svg', { class: 'sb-lines', 'aria-hidden': 'true', focusable: 'false' });
-    root.appendChild(under);
+    // 쏘는 바다: 같은 줄 범위의 방향 기호가 판 오른쪽·아래 가장자리에 걸쳐 놓이므로 그만큼 여백을 둔다
+    let PAD = mode === 'play' ? 12 : 0; // 좁은 판(휴대폰)은 layout()이 8로 줄인다
+    if (PAD) for (const e of [root, over]) { e.style.paddingRight = PAD + 'px'; e.style.paddingBottom = PAD + 'px'; }
     root.appendChild(U.el('div', { class: 'sb-corner' }));
-    g.cols.forEach((k) => root.appendChild(U.el('div', { class: 'sb-ch' }, disp.names ? G.text.short(grade, g.cg, k) : '')));
+    const colHeads = g.cols.map((k) => {
+      const e = U.el('div', { class: 'sb-ch' }, disp.names ? G.text.short(grade, g.cg, k) : '');
+      root.appendChild(e);
+      return e;
+    });
+    const rowHeads = [];
     const cellEls = [];
     for (let r = 0; r < R; r++) {
-      root.appendChild(U.el('div', { class: 'sb-rh' }, disp.names ? G.text.short(grade, g.rg, g.rows[r]) : ''));
+      const rh = U.el('div', { class: 'sb-rh' }, disp.names ? G.text.short(grade, g.rg, g.rows[r]) : '');
+      root.appendChild(rh);
+      rowHeads.push(rh);
       cellEls.push([]);
       for (let c = 0; c < C; c++) {
         const ci = cellInfo[r][c];
@@ -225,6 +223,8 @@ G.board = (function () {
         const e = U.el(mode === 'place' ? 'button' : 'div', mode === 'place'
           ? { class: cls, 'data-r': r, 'data-c': c, type: 'button', disabled: true }
           : { class: cls, 'data-r': r, 'data-c': c });
+        // 이번 단계에서 뺀 칸(자음 1단계의 /ㅎ/ 칸): 옅은 바탕 + 잠금 기호(보이는 단계에서만)
+        if ((disp.sounds || disp.empty) && ci.kind === 'closed') e.appendChild(U.glyph('lock', 'sb-lock'));
         root.appendChild(e);
         cellEls[r].push(e);
       }
@@ -256,45 +256,87 @@ G.board = (function () {
       m.remove();
       return k > 0.5 && k < 4 ? k : 1.8;
     }
+    // 긴 열 이름은 두 줄로 나눈다(용어는 줄이지 않는다): '여린입천장' → 여린 / 입천장, '앞·둥글게' → 앞· / 둥글게
+    function headHTML(name, two) {
+      if (!two || name.length < 4) return null;
+      let i = name.indexOf('·') + 1;
+      if (i <= 0) { const j = name.indexOf('입천장'); i = j > 0 ? j : Math.floor(name.length / 2); }
+      return [name.slice(0, i), name.slice(i)];
+    }
+    // 크기: 한 판 안에서 소리 표기(--sb-fs)는 모두 같은 크기. 줄 높이는 내용에 맞춘다
+    //   세기 자리가 셋인 줄(보이는 단계) = 자리마다 1.4 × 글씨, 한 자리 줄·숨김 단계의 줄 = 1.6 × 글씨(터치 목표 이상)
+    //   소리 표기 글씨는 자리 높이의 60% 이상(점검 기준), 칸 너비 안에 들어가게.
     function layout() {
       if (destroyed) return;
       const cs = getComputedStyle(container);
-      const W = container.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
-      if (!(W > 0)) return;
-      const Hc = opts.fitHeight ? container.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) : Infinity;
+      const W0 = container.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      if (!(W0 > 0)) return;
+      if (mode === 'play') {
+        PAD = W0 < 520 ? 8 : 12;
+        for (const e of [root, over]) { e.style.paddingRight = PAD + 'px'; e.style.paddingBottom = PAD + 'px'; }
+      }
+      const W = W0 - PAD;
+      const Hc = opts.fitHeight ? container.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - PAD : Infinity;
       const touch = parseFloat(getComputedStyle(root).getPropertyValue('--touch')) || 48;
       const k = measureK();
       const gap = W < 520 ? 3 : 6;
       const rowNames = disp.names ? g.rows.map((x) => G.text.short(grade, g.rg, x)) : [];
       const colNames = disp.names ? g.cols.map((x) => G.text.short(grade, g.cg, x)) : [];
-      const rLen = Math.max(2, ...rowNames.map((x) => x.length));
+      const rLen = Math.max(0, ...rowNames.map((x) => x.length));
       const cLen = Math.max(2, ...colNames.map((x) => x.length));
-      const hw = Math.round(U.clamp(W * 0.1, 34, 96));
-      const cw = Math.max(touch, Math.min(160, Math.floor((W - hw - gap * C) / C)));
-      // 줄마다 높이: 세기 자리가 셋인 줄(보이는 단계에서만)은 높게, 한 자리 줄은 소리 표기가
-      // 칸 높이의 60% 이상이 되도록 너비에 맞춰 낮게. 숨김 단계는 모든 줄이 같다(구조가 드러나지 않게).
-      const units = multiRow.map((m) => (m && disp.sounds ? 3 : 1));
-      const single = Math.floor((cw - 6) / (k * 0.62));
-      const tall = cw * 1.2;
-      let rowsH = units.map((u) => (u === 3 ? tall : Math.min(cw * (sea === 'vowel' ? 0.8 : 0.85), single)));
-      const hf = U.clamp(Math.min(cw * 0.22, (cw - 4) / cLen), 10, 18);
-      const hh = Math.ceil(hf * 1.5) + 8;
-      if (isFinite(Hc) && Hc > 0) {
-        const avail = Hc - hh - gap * R, sum = rowsH.reduce((a, b) => a + b, 0);
-        if (sum > avail) rowsH = rowsH.map((h) => (h * avail) / sum);
+      // 축 이름 글씨: 칸 너비에 비례(휴대폰 15~16 · 태블릿 20 안팎 · 칠판 28~30)
+      const cw0 = (W * 0.86 - gap * C) / C;
+      const axis = U.clamp(cw0 * 0.22, 15, 30);
+      const hw = disp.names ? Math.round(U.clamp(rLen * axis + 10, 34, W * 0.2)) : Math.round(U.clamp(W * 0.03, 8, 16));
+      const cw = Math.max(touch, Math.min(170, Math.floor((W - hw - gap * C) / C)));
+      const rf = U.clamp(Math.min(axis, (hw - 10) / Math.max(1, rLen)), 12, 30);
+      let hf = U.clamp(Math.min(axis, (cw - 8) / cLen), 11, 30), two = false;
+      if (disp.names && hf < axis * 0.95 && cLen >= 4) { // 한 줄이면 너무 작아짐 → 두 줄
+        two = true;
+        hf = U.clamp(Math.min(axis, (cw - 8) / Math.ceil(cLen / 2 + 0.5)), 11, 30);
       }
-      rowsH = rowsH.map((h) => Math.max(touch, Math.floor(h)));
+      const hh = disp.names ? Math.ceil(hf * 1.2 * (two ? 2 : 1)) + 10 : 12;
+      colHeads.forEach((e, i) => {
+        if (!disp.names) return;
+        const parts = headHTML(colNames[i], two);
+        e.textContent = '';
+        const t = U.el('span', { class: 'sb-hn' });
+        if (parts) { t.appendChild(document.createTextNode(parts[0])); t.appendChild(U.el('br')); t.appendChild(document.createTextNode(parts[1])); }
+        else t.textContent = colNames[i];
+        if (e.classList.contains('is-picked')) e.appendChild(U.glyph('check', 'sb-pick'));
+        e.appendChild(t);
+      });
+      // 소리 표기 글씨(한 판 안에서 같은 크기)
+      const widthCap = (cw - 8) / k;
+      // 소리 지도(체계표 전체)는 행이 많아 한 화면에 들어오게 조금 작게(검수 시작값: 태블릿 36~40)
+      const cap = mode === 'map' ? (W >= 1100 ? 44 : 38) : 56;
+      let F = Math.min(widthCap, cap, Math.max(26, cw * 0.38));
+      const multi = multiRow.map((m) => m && disp.sounds);
+      const rowsFor = (f) => multi.map((m) => (m ? Math.max(touch, Math.round(f * 1.3) * 3) : Math.max(touch, Math.round(f * 1.6))));
+      let rowsH = rowsFor(F);
+      if (isFinite(Hc) && Hc > 0) {
+        const avail = Hc - hh - gap * R;
+        for (let n = 0; n < 4; n++) {
+          const sum = rowsH.reduce((a, b) => a + b, 0);
+          if (sum <= avail) break;
+          F = Math.max(12, F * avail / sum);
+          rowsH = rowsFor(F);
+        }
+      }
+      // 터치 목표 때문에 줄이 글씨보다 크게 남으면 글씨를 그만큼 키운다(자리 높이의 61%까지, 칸 너비 안에서)
+      rowsH.forEach((h, r) => { if (!multi[r]) F = Math.max(F, Math.min(widthCap, h * 0.61)); else F = Math.max(F, Math.min(widthCap, (h / 3) * 0.61)); });
       const ch = Math.min(...rowsH);
-      const rf = U.clamp(Math.min(ch * 0.3, (hw - 6) / rLen), 10, 22);
       const cols = hw + 'px repeat(' + C + ', ' + cw + 'px)';
       const rows = hh + 'px ' + rowsH.map((h) => h + 'px').join(' ');
-      for (const e of [root, over, under]) {
+      for (const e of [root, over]) {
         e.style.gridTemplateColumns = cols; e.style.gridTemplateRows = rows; e.style.gap = gap + 'px';
       }
       root.style.setProperty('--sb-cw', cw + 'px');
       root.style.setProperty('--sb-k', k.toFixed(3));
+      root.style.setProperty('--sb-fs', F.toFixed(1) + 'px');
       root.style.setProperty('--sb-hf', hf.toFixed(1) + 'px');
       root.style.setProperty('--sb-rf', rf.toFixed(1) + 'px');
+      root.classList.toggle('sb-two', two);
       size = { cw, ch, gap };
       fit();
     }
@@ -337,6 +379,9 @@ G.board = (function () {
       anchors = new Map();
       const per = cellEls.map((row) => row.map(() => []));
       const hitSet = new Set();
+      // 최근 발(판에 표시가 남는 마지막 발): 굵은 테두리·큰 배지. 이전 발은 같은 기호의 작은 배지
+      const latest = mode === 'play' ? view.shots.length - 1 : -1;
+      const dirOf = (i) => U.lineDir(view.shots[i] && view.shots[i].targets);
       view.shots.forEach((sh, i) => {
         if (sh.kind === 'hit' && sh.sound) hitSet.add(sh.sound);
         if (sh.kind === 'none') {
@@ -367,6 +412,7 @@ G.board = (function () {
         const cell = cellEls[r][c], ci = cellInfo[r][c];
         const marks = per[r][c].sort((a, b) => a.order - b.order || KIND_RANK[a.kind] - KIND_RANK[b.kind] || a.i - b.i);
         cell.textContent = '';
+        if ((disp.sounds || disp.empty) && ci.kind === 'closed') cell.appendChild(U.glyph('lock', 'sb-lock'));
         if (mode === 'place') cell.classList.toggle('has-placed', ci.on.some((s) => placedIds.has(s.id)));
         const stack = U.el('div', { class: 'sb-stack' });
         cell.appendChild(stack);
@@ -385,7 +431,8 @@ G.board = (function () {
             const mk = marks.find((m) => m.id === s.id);
             if (mk) {
               slot.classList.add('sb-mark', 'k-' + mk.kind);
-              const ic = icon(mk.kind); if (ic) slot.insertBefore(ic, slot.firstChild);
+              if (mk.i === latest) slot.classList.add('is-latest');
+              const ic = badge(mk.kind, mk.kind === 'line' ? dirOf(mk.i) : null); if (ic) slot.appendChild(ic);
               if (mk.kind !== 'reveal') slot.appendChild(U.el('span', { class: 'sb-sr' }, G.text.signalName(mk.kind === 'dud' ? 'none' : mk.kind)));
               mk.el = slot;
             }
@@ -398,11 +445,12 @@ G.board = (function () {
         // 칸 안에 차례로 쌓는 표시(숨김 단계, 빈칸의 불발)
         loose.forEach((m) => {
           const kids = [];
-          const ic = icon(m.kind); if (ic) kids.push(ic);
+          if (m.kind === 'dud') kids.push(U.glyph('dud', 'sb-dudmark')); // 없는 소리: 칸 가운데 ∅
           if (m.id) kids.push(U.el('span', { class: 'sb-stamp' }, slash(m.id)));
           else if (m.strength) kids.push(U.el('span', { class: 'sb-lab' }, G.text.short(grade, 'strength', m.strength)));
           if (m.kind !== 'reveal') kids.push(U.el('span', { class: 'sb-sr' }, G.text.signalName(m.kind === 'dud' ? 'none' : m.kind)));
-          const it = U.el('div', { class: 'sb-mark sb-item k-' + m.kind }, kids);
+          const ic = m.kind !== 'dud' ? badge(m.kind, m.kind === 'line' ? dirOf(m.i) : null) : null; if (ic) kids.push(ic);
+          const it = U.el('div', { class: 'sb-mark sb-item k-' + m.kind + (m.i === latest ? ' is-latest' : '') }, kids);
           stack.appendChild(it);
           m.el = it;
           if (m.id) anchors.set(m.id, it);
@@ -411,8 +459,8 @@ G.board = (function () {
 
       // 강조 흔적(쌓임)
       over.textContent = '';
-      if (mode === 'play') view.shots.forEach((sh) => {
-        if (sh.kind === 'line' && sh.targets) sh.targets.forEach((t) => over.appendChild(areaEl('sb-trace', t)));
+      if (mode === 'play') view.shots.forEach((sh, i) => {
+        if (sh.kind === 'line' && sh.targets) sh.targets.forEach((t) => over.appendChild(areaEl('sb-trace' + (i === latest ? ' is-latest' : ''), t, true)));
       });
 
       // 선: 격침(실선) · 공개(점선) · 놓은 배
@@ -438,13 +486,16 @@ G.board = (function () {
       if (t.height) return { o: 'row', r: S.heights.indexOf(t.height) };
       return null;
     }
-    function areaEl(cls, t) {
+    // mark: 참이면 범위의 방향 기호(가로줄 ↔ · 세로줄 ↕ · 같은 칸 겹친 네모)를 범위 끝 가장자리에 붙인다
+    function areaEl(cls, t, mark) {
       const sp = spot(t);
       if (!sp || (sp.r != null && sp.r < 0) || (sp.c != null && sp.c < 0)) return document.createComment('');
       const style = sp.o === 'cell' ? 'grid-row:' + (sp.r + 2) + ';grid-column:' + (sp.c + 2)
         : sp.o === 'col' ? 'grid-row:2 / span ' + R + ';grid-column:' + (sp.c + 2)
           : 'grid-row:' + (sp.r + 2) + ';grid-column:2 / span ' + C;
-      return U.el('div', { class: cls + ' o-' + sp.o, 'data-o': sp.o, 'data-r': sp.r, 'data-c': sp.c, style });
+      const e = U.el('div', { class: cls + ' o-' + sp.o, 'data-o': sp.o, 'data-r': sp.r, 'data-c': sp.c, style });
+      if (mark) e.appendChild(U.glyph(sp.o === 'cell' ? 'cell' : sp.o === 'col' ? 'v' : 'h', 'sb-dir'));
+      return e;
     }
 
     function drawLines() {
@@ -480,46 +531,15 @@ G.board = (function () {
         els.forEach((e) => {
           const done = () => { if (!e.parentNode) return; e.remove(); if (--left === 0) res(); };
           e.addEventListener('animationend', done, { once: true });
-          timers.push(setTimeout(done, 1500)); // 애니메이션이 꺼져 있어도 남지 않게
+          timers.push(setTimeout(done, 700)); // 애니메이션이 꺼져 있어도 남지 않게
         });
       });
     }
+    // 결과 강조(0.2초 안팎, 한 번): 방금 생긴 표시에 테두리가 한 번 조였다 풀린다. 움직임 줄이기면 없음
     function freshen(e) {
       if (!e || reduced()) return;
-      e.classList.add('sb-fresh');
-      timers.push(setTimeout(() => e.classList.remove('sb-fresh'), 700));
-    }
-    // 물보라: 방금 빗나간 칸의 스프라이트를 한 번(0.7초) 튀게 한다. 움직임 줄이기면 마지막 칸 그대로
-    function splashNow(e) {
-      const sp = e && e.querySelector('.sb-splash');
-      if (!sp || reduced()) return;
-      sp.classList.remove('is-fresh'); void sp.offsetWidth; sp.classList.add('is-fresh');
-    }
-    // 명중 연출(spec 8.1): 그 칸 위에 큰 불꽃 + 소리 표기가 떴다가 1.4초 안에 사라진다. 아무 데나 누르면 곧바로 건너뛴다.
-    // 누름은 막지 않는다(pointer-events 없음) — 누른 단추·카드는 그대로 눌린다. 움직임 줄이기면 띄우지 않는다(칸의 도장만).
-    let burst = null, burstTimer = 0;
-    function endBurst() {
-      clearTimeout(burstTimer);
-      document.removeEventListener('pointerdown', endBurst, true);
-      document.removeEventListener('keydown', endBurst, true);
-      if (burst) { burst.remove(); burst = null; }
-    }
-    function burstAt(e, id) {
-      endBurst();
-      if (!e || destroyed || reduced()) return;
-      const rq = root.getBoundingClientRect(), q = e.getBoundingClientRect();
-      if (!q.width) return;
-      const d = Math.round(Math.max(q.width, q.height, 56) * 1.9);
-      const fl = U.svg('svg', { class: 'sb-burst-fire', viewBox: '0 0 100 100', 'aria-hidden': 'true', focusable: 'false' });
-      fl.innerHTML = '<path class="f-out" d="' + FLAME + '"/><path class="f-in" d="' + FLAME + '" transform="translate(50 62) scale(.58) translate(-50 -62)"/>';
-      burst = U.el('div', {
-        class: 'sb-burst', 'aria-hidden': 'true',
-        style: 'left:' + (q.left - rq.left + q.width / 2 - d / 2).toFixed(1) + 'px;top:' + (q.top - rq.top + q.height / 2 - d / 2).toFixed(1) + 'px;width:' + d + 'px;height:' + d + 'px;--bd:' + d + 'px',
-      }, [fl, U.el('span', { class: 'sb-burst-snd' }, slash(id))]);
-      root.appendChild(burst);
-      document.addEventListener('pointerdown', endBurst, true);
-      document.addEventListener('keydown', endBurst, true);
-      burstTimer = setTimeout(endBurst, BURST_MS);
+      e.classList.remove('sb-fresh'); void e.offsetWidth; e.classList.add('sb-fresh');
+      timers.push(setTimeout(() => e.classList.remove('sb-fresh'), 260));
     }
 
     // ── 배치(place) ──
@@ -577,8 +597,7 @@ G.board = (function () {
         if (view.shots.length > before) {
           view.shots.slice(before).forEach((sh) => {
             if (sh.kind === 'line') highlight(sh.targets);
-            if (sh.sound && (sh.kind === 'hit')) { freshen(anchors.get(sh.sound)); burstAt(anchors.get(sh.sound), sh.sound); }
-            if (sh.sound && (sh.kind === 'miss')) splashNow(anchors.get(sh.sound));
+            if (sh.sound && (sh.kind === 'hit' || sh.kind === 'miss' || sh.kind === 'line')) freshen(anchors.get(sh.sound));
           });
           const nowSunk = sunkList().filter((i) => prevSunk.indexOf(i) < 0);
           if (shipList && nowSunk.length) shipList.set(sunkList(), nowSunk[nowSunk.length - 1]);
@@ -605,12 +624,34 @@ G.board = (function () {
       setPlaced(fleet) { placed = (fleet || []).map((x) => ({ size: x.size, sounds: x.sounds.slice() })); paint(); return board; },
       setHits(ids) { hits = (ids || []).slice(); paint(); return board; },
       setActive(on) { active = !!on; root.classList.toggle('is-active', active); return board; },
+      // 지금 고른 자리·방법의 줄·열 머리 표시(줄 이름을 보이는 단계에서만 — 숨긴 단계에서는 어느 열인지 드러내지 않는다)
+      setSelection(x) {
+        x = x || {};
+        const on = (e, v) => {
+          e.classList.toggle('is-picked', !!v);
+          const had = e.querySelector('.sb-pick');
+          if (v && !had) e.insertBefore(U.glyph('check', 'sb-pick'), e.firstChild);
+          if (!v && had) had.remove();
+        };
+        const colOn = (c) => {
+          if (!disp.names) return false;
+          if (sea === 'vowel') {
+            const col = g.cols[c]; // 'front-unrounded' …
+            if (!x.backness) return false;
+            return col.indexOf(x.backness + '-') === 0 && (!x.lips || col === x.backness + '-' + x.lips);
+          }
+          return !!x.place && g.cols[c] === x.place;
+        };
+        const rowOn = (r) => disp.names && (sea === 'vowel' ? !!x.height && g.rows[r] === x.height : !!x.manner && g.rows[r] === x.manner);
+        colHeads.forEach((e, c) => on(e, colOn(c)));
+        rowHeads.forEach((e, r) => on(e, rowOn(r)));
+        return board;
+      },
       destroy() {
         if (destroyed) return;
         destroyed = true;
         if (ro) ro.disconnect(); else window.removeEventListener('resize', layout);
         document.removeEventListener('pointerdown', onDocDown);
-        endBurst();
         timers.forEach(clearTimeout);
         if (shipList) shipList.destroy();
         root.remove();

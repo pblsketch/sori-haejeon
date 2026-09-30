@@ -1,13 +1,23 @@
-assets/fonts의 body-*.woff2(SoriBody)는 Gowun Batang(SIL Open Font License 1.1)에서
+assets/fonts의 ui-*.woff2(SoriUI)는 Pretendard(SIL Open Font License 1.1)에서
 이 게임에 쓰인 글자만 남긴 수정본이다. OFL 규칙에 따라 글꼴 이름을 바꾸었다.
 아래는 원 글꼴의 저작권 표시와 라이선스 전문(원문 그대로)이다.
 ========================================================================
-Copyright 2021 The Gowun Batang Project Authors (https://github.com/yangheeryu/Gowun-Batang)
+Copyright (c) 2021, Kil Hyung-jin (https://github.com/orioncactus/pretendard),
+with Reserved Font Name 'Pretendard'.
 
+Copyright 2014-2021 Adobe (http://www.adobe.com/),
+with Reserved Font Name 'Source'.
+Source is a trademark of Adobe in the United States and/or other countries.
+
+Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter),
+with Reserved Font Name 'Inter'.
+
+Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS),
+with Reserved Font Name 'M PLUS 1'.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
+https://scripts.sil.org/OFL
 
 
 -----------------------------------------------------------

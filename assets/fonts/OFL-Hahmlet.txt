@@ -1,4 +1,4 @@
-assets/fonts의 title-*.woff2(SoriTitle), sound-*.woff2(SoriSound)는 Hahmlet(SIL Open Font License 1.1)에서
+assets/fonts의 title-*.woff2(SoriTitle)는 Hahmlet(SIL Open Font License 1.1)에서
 이 게임에 쓰인 글자만 남긴 수정본이다. OFL 규칙에 따라 글꼴 이름을 바꾸었다.
 아래는 원 글꼴의 저작권 표시와 라이선스 전문(원문 그대로)이다.
 ========================================================================

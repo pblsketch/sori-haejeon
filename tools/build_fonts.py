@@ -5,9 +5,10 @@
 
 원본 글꼴(모두 SIL Open Font License 1.1)은 tools/fonts_src/에 받아 둔다(저장소에는 올리지 않음).
   - Hahmlet[wght].ttf          https://github.com/google/fonts/tree/main/ofl/hahmlet
-                               (가변 글꼴. 제목·표제 400/700 → SoriTitle, 판 위 소리 표기 가장 굵게 → SoriSound)
-  - GowunBatang-Regular.ttf    https://github.com/google/fonts/tree/main/ofl/gowunbatang  (본문·안내 → SoriBody)
-  - GowunBatang-Bold.ttf       〃 (본문 굵게 → SoriBody 700)
+                               (가변 글꼴. 로고·대제목 800 → SoriTitle)
+  - Pretendard-Medium/SemiBold/Bold.otf   https://github.com/orioncactus/pretendard (packages/pretendard/dist/public/static)
+                               (그 밖의 모든 UI·표·기록·안내와 판 위 소리 표기 500/600/700 → SoriUI)
+  선생님 결정(디자인 검수 반영): Gowun Batang은 쓰지 않는다. 판 위 소리 표기도 Pretendard 700 한 가지.
 글자는 index.html의 글, js/ 아래 모든 .js의 문자열(주석 제외), css/ 아래 content 문자열에서 모으고,
 ASCII 인쇄 문자·자주 쓰는 문장 부호·현대 한글 호환 자모(ㄱ~ㅎ, ㅏ~ㅣ)를 늘 넣는다.
 화면 문구를 고쳐 새 글자가 생겼다면 이 스크립트를 다시 돌리세요(몇 초면 끝나고, 결과는 늘 같다).
@@ -37,16 +38,18 @@ CSS_OUT = os.path.join(ROOT, 'css', 'fonts.css')
 
 GF = 'https://github.com/google/fonts/raw/main/ofl/'
 GF_RAW = 'https://raw.githubusercontent.com/google/fonts/main/ofl/'
+PT_RAW = 'https://raw.githubusercontent.com/orioncactus/pretendard/main/'
 URLS = {
     'Hahmlet[wght].ttf': GF + 'hahmlet/Hahmlet%5Bwght%5D.ttf',
-    'GowunBatang-Regular.ttf': GF + 'gowunbatang/GowunBatang-Regular.ttf',
-    'GowunBatang-Bold.ttf': GF + 'gowunbatang/GowunBatang-Bold.ttf',
     'OFL-Hahmlet.txt': GF_RAW + 'hahmlet/OFL.txt',
-    'OFL-GowunBatang.txt': GF_RAW + 'gowunbatang/OFL.txt',
+    'Pretendard-Medium.otf': PT_RAW + 'packages/pretendard/dist/public/static/Pretendard-Medium.otf',
+    'Pretendard-SemiBold.otf': PT_RAW + 'packages/pretendard/dist/public/static/Pretendard-SemiBold.otf',
+    'Pretendard-Bold.otf': PT_RAW + 'packages/pretendard/dist/public/static/Pretendard-Bold.otf',
+    'OFL-Pretendard.txt': PT_RAW + 'LICENSE',
 }
 
-# 원래 글꼴 이름(수정본의 이름 칸에 남으면 안 되는 말)
-ORIGINAL_NAMES = ('Hahmlet', 'Gowun Batang', 'GowunBatang')
+# 원래 글꼴 이름(수정본의 이름 칸에 남으면 안 되는 말). Pretendard의 예약 글꼴 이름은 Pretendard·Source·Inter·M PLUS 1이다.
+ORIGINAL_NAMES = ('Hahmlet', 'Pretendard')
 
 # 늘 넣는 글자: ASCII 인쇄 문자, 문장 부호·기호, 현대 한글 호환 자모(ㄱ~ㅎ 30자, ㅏ~ㅣ 21자)
 ALWAYS = (
@@ -205,7 +208,7 @@ def rename(font, family, style):
             continue
         s = r.toUnicode()
         if any(o in s for o in ORIGINAL_NAMES):
-            r.string = s.replace('Gowun Batang', family).replace('GowunBatang', family.replace(' ', '')).replace('Hahmlet', family)
+            r.string = s.replace('Pretendard', family).replace('Hahmlet', family)
     if 'CFF ' in font:
         font['CFF '].cff.fontNames = [ps]
 
@@ -240,27 +243,21 @@ def build(src, out_name, unicodes, family, style, weight=None):
     return missing
 
 
-def hahmlet_max_weight():
-    font = TTFont(os.path.join(SRC, 'Hahmlet[wght].ttf'), lazy=True)
-    axis = next(a for a in font['fvar'].axes if a.axisTag == 'wght')
-    return int(axis.maxValue)
-
-
 # (파일, 원본, 새 family, style, 굵기, @font-face의 font-weight 설명자)
-def plan(max_w):
+#   SoriTitle은 로고·대제목에만 쓰므로 굵기 하나(800)로 600~900을 모두 받는다(가짜 굵게 없음).
+def plan():
     return [
-        ('title-400.woff2', 'Hahmlet[wght].ttf', 'SoriTitle', 'Regular', 400, '400'),
-        ('title-700.woff2', 'Hahmlet[wght].ttf', 'SoriTitle', 'Bold', 700, '700'),
-        (f'sound-{max_w}.woff2', 'Hahmlet[wght].ttf', 'SoriSound', 'Black', max_w, '100 900'),
-        ('body-400.woff2', 'GowunBatang-Regular.ttf', 'SoriBody', 'Regular', None, '400'),
-        ('body-700.woff2', 'GowunBatang-Bold.ttf', 'SoriBody', 'Bold', None, '700'),
+        ('title-800.woff2', 'Hahmlet[wght].ttf', 'SoriTitle', 'ExtraBold', 800, '600 900'),
+        ('ui-500.woff2', 'Pretendard-Medium.otf', 'SoriUI', 'Medium', None, '400 500'),
+        ('ui-600.woff2', 'Pretendard-SemiBold.otf', 'SoriUI', 'SemiBold', None, '600'),
+        ('ui-700.woff2', 'Pretendard-Bold.otf', 'SoriUI', 'Bold', None, '700 900'),
     ]
 
 
 def write_licenses():
     notes = {
-        'OFL-Hahmlet.txt': ('Hahmlet', 'title-*.woff2(SoriTitle), sound-*.woff2(SoriSound)'),
-        'OFL-GowunBatang.txt': ('Gowun Batang', 'body-*.woff2(SoriBody)'),
+        'OFL-Hahmlet.txt': ('Hahmlet', 'title-*.woff2(SoriTitle)'),
+        'OFL-Pretendard.txt': ('Pretendard', 'ui-*.woff2(SoriUI)'),
     }
     for name, (orig, files) in notes.items():
         with open(os.path.join(SRC, name), encoding='utf-8') as lic:
@@ -280,18 +277,18 @@ def write_css(rows):
                      f"font-weight: {weight_desc}; font-style: normal; font-display: swap; }}")
     css = (
         '/* 이 파일은 tools/build_fonts.py가 만든다. 손으로 고치지 말고 스크립트를 다시 돌리세요.\n'
-        ' * 글꼴: Hahmlet → SoriTitle(제목·표제 400/700)·SoriSound(판 위 소리 표기, 가장 굵게),\n'
-        ' *       Gowun Batang → SoriBody(본문·안내 400/700). 모두 OFL 1.1, 이름은 OFL 규칙대로 바꿈.\n'
+        ' * 글꼴: Hahmlet → SoriTitle(로고·대제목 800), Pretendard → SoriUI(그 밖의 모든 UI·표·기록·안내와\n'
+        ' *       판 위 소리 표기 500/600/700). 모두 OFL 1.1, 이름은 OFL 규칙대로 바꿈(예약 글꼴 이름을 쓰지 않음).\n'
         ' * 쓰는 법: index.html에서 css/base.css 다음에 이 파일을 불러온다.\n'
-        ' *   base.css의 :root가 --font-title/--font-body/--font-sound를 원래 글꼴 이름으로 먼저 정하고,\n'
+        ' *   base.css의 :root가 --font-title/--font-body/--font-sound를 대체 글꼴로 먼저 정하고,\n'
         ' *   아래 :root가 같은 변수를 덮어써 부분 글꼴로 바꾼다(뒤에 불러온 쪽이 이김).\n'
         ' *   변수의 주인은 base.css다. 여기서는 부분 글꼴 이름을 맨 앞에 더할 뿐이다.\n'
-        ' * SoriSound는 가장 굵은 굵기 하나뿐이라 font-weight 100~900 어느 값이든 이 글꼴을 쓴다(가짜 굵게 없음). */\n'
+        ' * 굵기 설명자를 범위로 두어(예: 700 900) 적힌 굵기 밖의 값에서도 가짜 굵게가 생기지 않게 했다. */\n'
         + '\n'.join(faces) + '\n'
         ':root {\n'
-        "  --font-title: 'SoriTitle', 'Hahmlet', 'Noto Serif KR', serif;\n"
-        "  --font-body: 'SoriBody', 'Gowun Batang', 'Noto Serif KR', serif;\n"
-        "  --font-sound: 'SoriSound', 'Hahmlet', 'Noto Serif KR', serif; /* 판 위 소리 표기 */\n"
+        "  --font-title: 'SoriTitle', 'Noto Serif KR', serif;\n"
+        "  --font-body: 'SoriUI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;\n"
+        "  --font-sound: 'SoriUI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; /* 판 위 소리 표기(700) */\n"
         '}\n'
     )
     with open(CSS_OUT, 'w', encoding='utf-8', newline='\n') as f:
@@ -312,7 +309,7 @@ def main():
         if f.endswith('.woff2'):
             os.remove(os.path.join(OUT, f))
 
-    rows = plan(hahmlet_max_weight())
+    rows = plan()
     missing_all = {}
     for out_name, src, family, style, weight, _ in rows:
         miss = build(os.path.join(SRC, src), out_name, cps, family, style, weight)

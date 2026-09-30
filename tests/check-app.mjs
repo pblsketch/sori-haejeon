@@ -164,7 +164,12 @@ try {
     // 기록
     if (txt('[data-k="turns"]')[0] !== '5턴') F('턴: ' + txt('[data-k="turns"]'));
     if (txt('[data-k="none"]')[0] !== '0번') F('없는 소리: ' + txt('[data-k="none"]'));
-    if (txt('[data-k="hits"]')[0] !== G.text.fill(TEXT.ui.result.hitsN, { n: 4 })) F('맞힌 소리: ' + txt('[data-k="hits"]'));
+    // T17: 핵심 수치는 큰 숫자(이름은 dt '맞힌 소리', 값은 dd '4개')
+    if (txt('[data-k="hits"]')[0] !== G.text.fill(TEXT.ui.result.hitsCount, { n: 4 })) F('맞힌 소리: ' + txt('[data-k="hits"]'));
+    // 결과(제목)와 핵심 수치가 소리 지도보다 위에 먼저 온다
+    const hd = document.querySelector('.app-res-head').getBoundingClientRect(), ms = document.querySelector('.app-res-mapsec').getBoundingClientRect();
+    if (!(hd.bottom <= ms.top + 1)) F('결과·핵심 수치가 소리 지도보다 위가 아님');
+    if (parseFloat(getComputedStyle(document.querySelector('[data-k="turns"]')).fontSize) < 32) F('핵심 수치 글씨가 작음');
     if (!document.querySelector('.app-res-done')) F('모두 찾음 줄 없음');
     // 알아 두기: 나온 것만(짝 /ㄷ/·/ㄴ/, /ㅇ/)
     const notes = txt('.app-res-note');
@@ -231,7 +236,8 @@ try {
     const w = document.querySelector('.app-res-winner');
     if (!w || w.textContent !== TEXT.ui.result.winner.blue || w.dataset.winner !== 'blue') F('승패 줄: ' + (w && w.textContent));
     const stats = [...document.querySelectorAll('.app-res-stats')].map((s) => s.dataset.team + ':' + s.querySelector('[data-k="turns"]').textContent + ':' + s.querySelector('[data-k="none"]').textContent);
-    if (JSON.stringify(stats) !== JSON.stringify(['blue:4턴:0번', 'red:2턴:0번'])) F('두 팀 기록: ' + JSON.stringify(stats));
+    // 대결은 '발'로 센다(T17)
+    if (JSON.stringify(stats) !== JSON.stringify(['blue:4발:0번', 'red:2발:0번'])) F('두 팀 기록: ' + JSON.stringify(stats));
     const notes = txt('.app-res-note');
     if (JSON.stringify(notes) !== JSON.stringify(rec.notes.map((n) => G.text.know(n.id)))) F('대결 알아 두기(두 팀 합침): ' + JSON.stringify(notes));
     if (G.text.debrief('h1', 'consonant').indexOf(txt('.app-res-question')[0]) < 0) F('고1 자음 질문이 아님');
@@ -309,7 +315,7 @@ try {
   await d1.locator('.app-back').click();
   await d1.locator('[data-go="credits"]').click();
   const s7 = await d1.evaluate(() => ({ cur: G.app.current(), text: document.body.textContent }));
-  for (const w of ['Groove Grove', 'Cipher', 'Echoes Of Home', 'Scott Buckley', 'Kevin MacLeod', 'CC0', 'DRFX', 'Kreastricon62', 'qubodup', 'Saltbearer', 'craigsmith', 'Hahmlet', 'Gowun Batang']) {
+  for (const w of ['Groove Grove', 'Cipher', 'Echoes Of Home', 'Scott Buckley', 'Kevin MacLeod', 'CC0', 'DRFX', 'Kreastricon62', 'qubodup', 'Saltbearer', 'craigsmith', 'Hahmlet', 'Pretendard']) {
     if (!s7.text.includes(w)) s1.fails.push('출처에 ' + w + ' 없음');
   }
   if (s7.cur !== 'credits') s1.fails.push('출처 화면이 아님');
@@ -391,7 +397,12 @@ const portrait = (w, h, shot) => `
       }
       if (fw.getComputedStyle(d.querySelector('.app-rotate')).display !== 'none') F('세로 화면에 세로로 돌려 주세요가 뜸');
       noHScroll();
-      // 대결 → 안내 한 줄, 대결은 열지 않음
+      // 대결 → 흐린 단추 + 바로 아래 안내 한 줄(큰 경고 카드 없음), 대결은 열지 않음
+      const dB = d.querySelector('[data-go="duel"]');
+      if (dB.getAttribute('aria-disabled') !== 'true' || !dB.classList.contains('is-off')) F('세로인데 대결 단추가 꺼져 보이지 않음');
+      const n0 = d.querySelector('.app-notice');
+      if (!n0.classList.contains('is-on') || n0.textContent !== fw.TEXT.duel.phoneNotice) F('세로인데 대결 안내 한 줄이 처음부터 없음');
+      if (!(n0.getBoundingClientRect().top - dB.getBoundingClientRect().bottom < 40)) F('대결 안내가 대결 단추 가까이에 있지 않음');
       d.querySelector('[data-go="duel"]').click();
       const n = d.querySelector('.app-notice');
       if (fw.G.app.current() !== 'title' || fw.__calls.some((c) => c.name === 'duel')) F('세로에서 대결이 열림');
