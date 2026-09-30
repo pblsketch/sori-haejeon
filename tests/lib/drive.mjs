@@ -8,8 +8,8 @@
 //     await t.evaluate(async () => { await D.fresh(); … return D.take(); });
 //   D는 바깥 창에 있으므로 틀 안 게임을 새로고침해도(D.reload) 남는다. 게임 창은 늘 D.w()로 새로 얻는다.
 //
-//   누르기는 모두 진짜 조작부로 한다: 단추는 가운데 좌표에 다른 것이 덮여 있지 않은지(elementFromPoint) 확인한 뒤 누르고,
-//   입안 단면도는 그 자리 좌표로 pointerdown을 보낸다(단면도가 좌표로 자리를 고름). 대결의 동시 발사는 서로 다른
+//   누르기는 모두 진짜 조작부로 한다: 카드·단추는 가운데 좌표에 다른 것이 덮여 있지 않은지(elementFromPoint) 확인한 뒤 누른다
+//   (입안 단면도는 보여 주기 전용이라 누르지 않는다). 대결의 동시 발사는 서로 다른
 //   pointerId의 pointerdown/pointerup을 두 팀 발사 단추에 엇갈려 보낸다(여러 손가락).
 //   숨은 함대는 점검 도구만 G.practice.debug() / G.duel.current.debug.state()에서 읽는다(화면에는 드러나지 않음).
 //
@@ -100,31 +100,17 @@ if (!window.D) {
   D.tapSel = (sel, what) => D.tap(D.$(sel), what || sel);
   D.msgOf = (root) => { const m = D.$('.ctl-msg-text', root); return m ? m.textContent : ''; };
 
-  // ── 입안 단면도 · 조작부(연습·대결 공용, root = 그 자리) ──
-  D.sheetOpen = () => { const s = D.$('.pr-sheet'); return !!s && s.classList.contains('is-open'); };
-  D.settleSheet = () => { const s = D.$('.pr-sheet'); if (!s) return; s.style.transition = 'none'; void s.offsetHeight; s.style.transition = ''; };
-  D.pickMouth = (id, root) => {
-    const h = D.$('.mouth-hit[data-id="' + id + '"]', root);
-    if (!h) { D.bad('단면도 자리 없음 ' + id); return; }
-    // 세로(휴대폰): '위치' 단추로 아래 패널을 열어야 단면도를 누를 수 있다
-    const pb = D.$('.ctl-placebtn', root);
-    if (pb && D.visible(pb) && !D.sheetOpen()) {
-      D.tap(pb, '위치 단추');
-      D.settleSheet();
-      if (!D.sheetOpen()) D.bad('위치 단추를 눌러도 패널이 안 열림');
-    }
-    const p = D.tapPoint(h, '단면도 ' + id);
-    h.ownerSVGElement.dispatchEvent(new (D.w().PointerEvent)('pointerdown', { clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }));
-  };
+  // ── 조작부(연습·대결 공용, root = 그 자리). 세 가지 모두 아래 조작부의 카드로 고른다(spec 5.1). 단면도는 보여 주기 전용 ──
   D.card = (g, id, root) => D.$('.ctl-card[data-group="' + g + '"][data-id="' + id + '"]', root);
-  // 소리 빚기: 자음 { place, manner, strength } / 모음 { backness, height, lips }
+  // 소리 빚기: 자음 { place, manner, strength } → ① 자리 ② 방법 ③ 세기 / 모음 { backness, height, lips } → ① 높이 ② 앞뒤 ③ 입술
   D.compose = (input, root, what) => {
     what = what || JSON.stringify(input);
     if (input.backness) {
-      D.pickMouth(input.backness + '-' + input.height, root);
+      D.tap(D.card('height', input.height, root), '높이 카드 ' + what);
+      D.tap(D.card('backness', input.backness, root), '앞뒤 카드 ' + what);
       D.tap(D.card('lips', input.lips, root), '입술 카드 ' + what);
     } else {
-      D.pickMouth(input.place, root);
+      D.tap(D.card('place', input.place, root), '자리 카드 ' + what);
       D.tap(D.card('manner', input.manner, root), '방법 카드 ' + what);
       const sc = D.card('strength', input.strength, root);
       if (input.strength && sc && !sc.disabled) D.tap(sc, '세기 카드 ' + what);
@@ -158,7 +144,6 @@ if (!window.D) {
     D.tap(fb, '발사 ' + what);
     if (!D.pr().busy && D.pr().view === 'play') D.bad('발사했는데 잠기지 않음: ' + what);
     await D.until(() => !D.pr().busy, 9000, '발사 끝 ' + what);
-    if (D.sheetOpen()) D.bad('발사가 끝났는데 아래 패널이 안 닫힘: ' + what);
     return { msg: D.msgOf(), turns: D.turnsLeft() };
   };
   // 한 판의 계획: [{ x: 소리 또는 조합, expect: 'notInSea'|'already'|'none'|'hit'|'any' }]
