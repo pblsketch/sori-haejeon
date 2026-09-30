@@ -6,7 +6,8 @@
 //         파열: 닿음(touch) 뒤 풀리면 조음체가 튕겨 떨어짐(거리 커짐), 막는 동안 모든 입자가 막는 곳보다 목청 쪽(s < 막는 곳)에 쌓임, 터진 뒤 지나감
 //         파찰: 닿음 → 좁은 틈(near) + 막대 → 틈, 마찰: 좁은 틈만(닿지 않음), 비음: 닿은 채 여린입천장이 내려가(콧길 열림) 코로 나가고
 //         입 쪽 입자는 막는 곳을 넘지 않음, 유음: 닿음 + 점선 막대
-//       여린입천장은 비음에서만 내려감, 목청 조임은 된소리에서만, 거센 입김은 거센소리에서만
+//       여린입천장은 비음에서만 내려감, 목청 조임은 된소리에서만(성문을 좁히되 닫지 않음), 거센 입김은 거센소리에서만,
+//       성대 울림(모여 떨림)은 비음·유음·모음에서만 — 성대 여닫힘은 '위에서 본 성대' 작은 그림(2차 검수)
 //  5) 미리 보기(카드를 고른 때의 멈춘 그림)의 해부학 위치: 잇몸 = 혀끝이 잇몸에, 센입천장 = 혀 앞이 센입천장에, 여린입천장 = 혀 뒤가
 //     여린입천장에(내려가도 따라감) 닿음, 마찰은 틈만큼 떨어짐, 두 입술 = 입술이 붙음(마찰은 틈), 목청 = 성대가 붙음(마찰은 좁아짐),
 //     모음 = 혓몸 가장 높은 곳이 앞뒤 × 높이(세 단)로, 입술 둥글게 내밂 / 평평, 혀가 짧게 움직여 바뀜(움직임 줄이기면 바로)
@@ -89,6 +90,10 @@ const PLAY_ALL = `async (combos) => {
       const iT = S.findIndex((s) => s.glottis === 'tight'), iR = S.findIndex((s) => s.phase === 'release');
       if (iR >= 0 && !(iT >= 0 && iT < iR)) bad('된소리인데 풀리기 전에 목청이 조여지지 않음');
     }
+    // 울림: 비음·유음·모음은 성대가 모여 떤다(목청 자리는 성대가 막으므로 제외), 파열·파찰·마찰은 울리지 않는다
+    const voicedSeen = S.some((s) => s.glottis === 'voiced');
+    const wantVoiced = (manner === 'nasal' || manner === 'liquid' || manner === 'vowel') && c.place !== 'glottal';
+    if (voicedSeen !== wantVoiced) bad('성대 울림 ' + voicedSeen + ' (비음·유음·모음일 때만)');
     const puff = S.some((s) => s.puff === '1');
     if (puff !== (c.strength === 'aspirated')) bad('거센 입김 ' + puff + ' (거센소리일 때만)');
     if (manner === 'vowel') {
@@ -238,6 +243,7 @@ try {
       if (place === 'glottal' && r.lip !== 'open') tf.push(k + ' 입술 모양 ' + r.lip);
       if (place === 'glottal' && r.glottis !== (manner === 'fricative' ? 'narrow' : 'closed')) tf.push(k + ' 목청 ' + r.glottis);
     }
+    if (place !== 'glottal' && r.glottis !== (manner === 'nasal' || manner === 'liquid' ? 'voiced' : 'normal')) tf.push(k + ' 성대 ' + r.glottis + '(비음·유음은 울림)');
   }
   // 여린입천장 + 비음: 여린입천장이 내려가도 혀 뒤가 따라 붙어 있음
   const vn = tr.cons['velar/nasal'];
@@ -252,6 +258,7 @@ try {
     if (!within(r.top.y, HT[h][0], HT[h][1])) tf.push(k + ' 혓몸 가장 높은 곳 y ' + r.top.y.toFixed(1) + ' (기대 ' + HT[h] + ')');
     if (r.lip !== (lips === 'rounded' ? 'rounded' : 'spread')) tf.push(k + ' 입술 모양 ' + r.lip);
     if (r.nasal !== 'closed') tf.push(k + ' 모음인데 콧길이 열림');
+    if (r.glottis !== 'voiced') tf.push(k + ' 모음인데 성대가 울리지 않음: ' + r.glottis);
     ys[id] = r.top.y;
   }
   for (const b of ['front', 'back']) {
@@ -270,13 +277,15 @@ try {
   const nr = await na.evaluate(async () => {
     const out = {}, svg = document.querySelector('.mouth-svg');
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    const visText = () => [...svg.querySelectorAll('text')].filter((t) => t.getBoundingClientRect().width > 0 && getComputedStyle(t).visibility !== 'hidden').map((t) => t.textContent);
-    // 작은 그림 이름('앞에서 본 입술')은 모음 바다에서만, 자리 이름이 아니므로 숨김 단계에서도 보인다
+    // 작은 그림 이름('위에서 본 성대', 모음은 '앞에서 본 입술')은 자리 이름이 아니므로 숨김 단계에서도 보인다 — 따로 센다
+    const shown = (t) => t.getBoundingClientRect().width > 0 && getComputedStyle(t).visibility !== 'hidden';
+    const visText = () => [...svg.querySelectorAll('text:not(.mouth-caption)')].filter(shown).map((t) => t.textContent);
+    const caps = () => [...svg.querySelectorAll('text.mouth-caption')].filter(shown).map((t) => t.textContent).join();
     // 보여 주기 전용: 누르는 곳·초점·단추 역할이 없고 포인터를 받지 않는다
     out.interactive = svg.querySelectorAll('[tabindex], [role="button"], .mouth-hit, .mouth-spot, a, button').length;
     out.pe = getComputedStyle(svg).pointerEvents;
     out.role = svg.getAttribute('role');
-    out.hidden = visText();
+    out.hidden = visText(); out.capC = caps();
     out.hiddenAttr = svg.dataset.names;
     mouth.setShowNames(true);
     out.m3 = visText();
@@ -310,7 +319,7 @@ try {
     out.vm3 = visText();
     mouth.setGrade('h1'); out.vh1 = visText();
     for (const id of ['front-high', 'back-low', 'back-high']) { mouth.select(id); mouth.setLips('rounded'); await wait(260); out.overlap = out.overlap.concat(hitAny().map((x) => id + ' ' + x)); }
-    mouth.setShowNames(false); out.vhidden = visText();
+    mouth.setShowNames(false); out.vhidden = visText(); out.capV = caps();
     mouth.setSea('consonant');
     return out;
   });
@@ -327,9 +336,11 @@ try {
   if (nr.sel.join() !== 'velar') nf.push('고른 자리 이름 강조: ' + nr.sel.join());
   if (nr.overlap.length) nf.push('이름이 움직이는 것·다른 이름과 겹침: ' + nr.overlap.slice(0, 6).join(' | '));
   if (nr.h1hidden.length) nf.push('고1 이름 숨김 실패');
-  for (const w of ['혀 앞', '혀 뒤', '높은', '중간', '낮은', '앞에서 본 입술']) if (!nr.vm3.includes(w)) nf.push('모음 중3 이름 없음: ' + w);
+  for (const w of ['혀 앞', '혀 뒤', '높은', '중간', '낮은']) if (!nr.vm3.includes(w)) nf.push('모음 중3 이름 없음: ' + w);
   for (const w of ['전설', '후설', '고모음', '중모음', '저모음']) if (!nr.vh1.includes(w)) nf.push('모음 고1 이름 없음: ' + w);
-  if (nr.vhidden.join() !== '앞에서 본 입술') nf.push('모음 이름 숨김 실패(작은 그림 이름만 남아야 함): ' + nr.vhidden.join());
+  if (nr.vhidden.length) nf.push('모음 이름 숨김 실패: ' + nr.vhidden.join());
+  if (nr.capC !== '위에서 본 성대') nf.push('자음 작은 그림 이름: ' + nr.capC);
+  if (nr.capV !== '앞에서 본 입술,위에서 본 성대') nf.push('모음 작은 그림 이름: ' + nr.capV);
   // 미리 보기(막음 표시·콧길 문·목청)
   const pv = await na.evaluate(() => {
     const svg = document.querySelector('.mouth-svg'), r = {};
@@ -344,7 +355,7 @@ try {
   const pv2 = await na.evaluate(() => { const svg = document.querySelector('.mouth-svg'); mouth.setStrength(null); mouth.select('velar'); mouth.setManner('nasal'); return new Promise((r) => setTimeout(() => r([svg.dataset.nasal, svg.dataset.glottis]), 300)); });
   if (pv.pending !== 'pending') nf.push('자리만 고른 막음 표시 이상: ' + pv.pending);
   if (pv.nasal.join() !== 'full,full') nf.push('비음 미리 보기 막음 이상: ' + pv.nasal.join());
-  if (pv2.join() !== 'open,normal') nf.push('비음 미리 보기(여린입천장 내려감) 이상: ' + pv2.join());
+  if (pv2.join() !== 'open,voiced') nf.push('비음 미리 보기(여린입천장 내려감·성대 울림) 이상: ' + pv2.join());
   if (pv.tense[1] !== 'tight') nf.push('된소리 미리 보기 이상: ' + pv.tense.join());
   if (pv.clear.join() !== ',0') nf.push('지우기 이상: ' + pv.clear.join());
   // 움직임 줄이기: 막음 자세의 정지 그림, 곧바로 끝남

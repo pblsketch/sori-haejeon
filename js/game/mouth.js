@@ -108,11 +108,11 @@ G.mouth = (function () {
   }
   function restPose() {
     const M = D(), L = M.shape.lips.open;
-    return { t: M.restTongue.map((q) => q.slice()), u: L.u, l: L.l, p: L.p, v: M.shape.velum.raisedDeg, g: M.shape.glottis.half.rest, sq: 0, lipKey: 'open' };
+    return { t: M.restTongue.map((q) => q.slice()), u: L.u, l: L.l, p: L.p, v: M.shape.velum.raisedDeg, g: M.shape.glottis.half.rest, sq: 0, vib: 0, lipKey: 'open' };
   }
   function mixPose(a, b, k) {
     return { t: a.t.map((q, i) => [lerp(q[0], b.t[i][0], k), lerp(q[1], b.t[i][1], k)]),
-      u: lerp(a.u, b.u, k), l: lerp(a.l, b.l, k), p: lerp(a.p, b.p, k), v: lerp(a.v, b.v, k), g: lerp(a.g, b.g, k), sq: lerp(a.sq, b.sq, k),
+      u: lerp(a.u, b.u, k), l: lerp(a.l, b.l, k), p: lerp(a.p, b.p, k), v: lerp(a.v, b.v, k), g: lerp(a.g, b.g, k), sq: lerp(a.sq, b.sq, k), vib: lerp(a.vib || 0, b.vib || 0, k),
       lipKey: k < 0.5 ? a.lipKey : b.lipKey };
   }
   // 자음 한 자리의 자세: how = 'rest' | 'touch' | 'near' | 'open'(튕겨 떨어짐). vdeg = 여린입천장 각도
@@ -125,7 +125,7 @@ G.mouth = (function () {
       const tgt = targetOf(placeId, vdeg), aw = awayOf(placeId, vdeg);
       const off = how === 'near' ? M.NEAR : 0;
       const fitted = fitTongue(P.tongue.pose, P.tongue.ci, [tgt[0] + aw[0] * off, tgt[1] + aw[1] * off]);
-      base.t = how === 'open' ? mixPose({ t: fitted, u: 0, l: 0, p: 0, v: 0, g: 0, sq: 0 }, { t: base.t, u: 0, l: 0, p: 0, v: 0, g: 0, sq: 0 }, 0.45).t : fitted;
+      base.t = how === 'open' ? mixPose({ t: fitted, u: 0, l: 0, p: 0, v: 0, g: 0, sq: 0, vib: 0 }, { t: base.t, u: 0, l: 0, p: 0, v: 0, g: 0, sq: 0, vib: 0 }, 0.45).t : fitted;
     } else if (placeId === 'bilabial') {
       const key = how === 'touch' ? 'closed' : how === 'near' ? 'gap' : 'open';
       const L = S.lips[key];
@@ -146,6 +146,14 @@ G.mouth = (function () {
     base.u = L.u; base.l = L.l; base.p = L.p; base.lipKey = key;
     if (id && id.endsWith('-low')) base.l += S.lowJaw;
     return base;
+  }
+
+  // 울림(유성음): 비음·유음·모음은 성대가 가까이 모여 떤다(k = 0~1). 목청 자리는 성대가 조음체라 건드리지 않는다
+  const VOICED = { nasal: 1, liquid: 1 };
+  function voice(ps, k, placeId) {
+    if (placeId === 'glottal' || !(k > 0)) return ps;
+    ps.g = lerp(ps.g, 1.1, k); ps.vib = k;
+    return ps;
   }
 
   // 공기 길: 자음은 기본 길에 막는 곳을 끼워 넣는다
@@ -277,7 +285,14 @@ G.mouth = (function () {
     glottisG.appendChild(U.svg('ellipse', { class: 'mouth-larynx', cx: gi.x, cy: gi.y, rx: gi.w / 2, ry: gi.h / 2 }));
     const gHole = U.svg('path', { class: 'mouth-glottis-hole' });
     const foldF = U.svg('path', { class: 'mouth-fold' }), foldB = U.svg('path', { class: 'mouth-fold' });
-    glottisG.appendChild(gHole); glottisG.appendChild(foldF); glottisG.appendChild(foldB);
+    const gSeam = U.svg('path', { class: 'mouth-glottis-seam' }); // 닫혀도 두 성대의 경계가 보이게
+    glottisG.appendChild(gHole); glottisG.appendChild(foldF); glottisG.appendChild(foldB); glottisG.appendChild(gSeam);
+    // 울림(떨림) 표시: 작은 그림 양옆의 물결
+    const vibG = g('mouth-vib', glottisG);
+    [-1, 1].forEach((dir) => { const x = gi.x + dir * (gi.w / 2 + 5); vibG.appendChild(U.svg('path', { d: `M${x},${gi.y - 9} q${dir * 4},3 0,6 q${-dir * 4},3 0,6 q${dir * 4},3 0,6` })); });
+    const gCap = U.svg('text', { class: 'mouth-caption', x: gi.x, y: gi.y + gi.h / 2 + 12, 'text-anchor': 'middle' });
+    gCap.textContent = window.TEXT.mouthParts.glottisTop;
+    glottisG.appendChild(gCap);
     const tightG = g('mouth-tight', glottisG);
     [[gi.y - gi.h / 2 - 1, 1], [gi.y + gi.h / 2 + 1, -1]].forEach(([y, dir]) => {
       tightG.appendChild(U.svg('path', { d: `M${gi.x - 8},${y - dir * 6} L${gi.x},${y} L${gi.x + 8},${y - dir * 6}` }));
@@ -328,14 +343,17 @@ G.mouth = (function () {
       svg.setAttribute('data-nasal', nasal);
       svg.setAttribute('data-velum', f1(ps.v));
       // 목청(위에서 본 성대): 조이면(sq) 성대가 두꺼워지며 붙는다
-      const gh = ps.g * (1 - ps.sq), gi2 = gl.inset, ax = gi2.x - gi2.w * 0.36, px = gi2.x + gi2.w * 0.3, o = gh * 1.9;
+      // 된소리 조임은 성문을 좁히되(가는 틈) 닫지는 않는다 — 완전히 닫힘은 목청 자리의 막음뿐
+      const gh = ps.g * (1 - 0.75 * ps.sq), gi2 = gl.inset, ax = gi2.x - gi2.w * 0.36, px = gi2.x + gi2.w * 0.3, o = gh * 1.9;
+      gSeam.setAttribute('d', o < 0.6 ? `M${f1(ax)},${gi2.y} L${f1(px)},${gi2.y}` : '');
+      vibG.style.display = (ps.vib || 0) > 0.3 ? '' : 'none';
       foldF.setAttribute('d', `M${f1(ax)},${gi2.y} L${f1(px)},${f1(gi2.y - o)}`);
       foldB.setAttribute('d', `M${f1(ax)},${gi2.y} L${f1(px)},${f1(gi2.y + o)}`);
       foldF.style.strokeWidth = foldB.style.strokeWidth = f1(5 + ps.sq * 2);
       gHole.setAttribute('d', o > 0.3 ? `M${f1(ax + 3)},${gi2.y} L${f1(px)},${f1(gi2.y - o + 2)} L${f1(px)},${f1(gi2.y + o - 2)} Z` : '');
       tightG.style.opacity = ps.sq > 0.02 ? String(Math.min(1, ps.sq * 1.4)) : '0';
       tightG.style.display = ps.sq > 0.02 ? '' : 'none';
-      const glottis = ps.sq > 0.5 ? 'tight' : info.place === 'glottal' && ps.g < 0.4 ? 'closed' : info.place === 'glottal' && ps.g <= gl.half.narrow + 0.6 ? 'narrow' : 'normal';
+      const glottis = ps.sq > 0.5 ? 'tight' : info.place === 'glottal' && ps.g < 0.4 ? 'closed' : info.place === 'glottal' && ps.g <= gl.half.narrow + 0.6 ? 'narrow' : (ps.vib || 0) > 0.5 ? 'voiced' : 'normal';
       svg.setAttribute('data-glottis', glottis);
       glottisG.setAttribute('data-state', glottis);
       svg.setAttribute('data-lipshape', ps.lipKey);
@@ -457,6 +475,8 @@ G.mouth = (function () {
       const lf = labelFs, lh = lf * 1.12, B = M.labelBand;
       insetCap.style.fontSize = f1(lf * 0.72) + 'px';
       insetCap.setAttribute('y', f1(S.lipInset.y + 18 + lf * 0.72));
+      gCap.style.fontSize = f1(Math.min(lf * 0.72, 13)) + 'px';
+      gCap.setAttribute('y', f1(Math.min(M.VIEW.h - 2, gl.inset.y + gl.inset.h / 2 + 9 + Math.min(lf * 0.72, 13))));
       labelRecs.forEach((L) => {
         L.main.style.fontSize = f1(lf) + 'px';
         if (L.vh) { // 모음 높이: 오른쪽 목 뒤 살, 그 높이의 안내선 끝
@@ -466,8 +486,10 @@ G.mouth = (function () {
         if (L.vb) { // 모음 앞뒤: 위 띠 + 입천장으로 연결선
           const x = M.vowelLabels.backness[L.vb];
           L.main.setAttribute('x', x); L.main.setAttribute('y', f1(B[1] - lf * 0.25));
-          L.leadFrom = [x, B[1] + 2];
-          L.to = [x, M.vowelLabels.heights.high - 5]; // 혀 자리 점(높은 줄) 바로 위까지 — 입천장의 구획처럼 보이지 않게
+          L.leadFrom = [M.vowels[L.vb + '-high'].hump[0], B[1] + 2];
+          const hp = M.vowels[L.vb + '-high'].hump;
+          L.to = [hp[0], hp[1] - 4]; // 그 열의 혀 자리 점(높은 줄) 바로 위까지 — 입천장의 구획처럼 보이지 않게
+          L.dot.style.display = 'none';
           placeLead(L);
           return;
         }
@@ -517,12 +539,12 @@ G.mouth = (function () {
     }
     function holdHow() { return st.manner === 'fricative' ? 'near' : 'touch'; }
     function staticPose() {
-      if (st.sea === 'vowel') return st.tongue ? vowelPose(st.tongue, st.lips) : Object.assign(restPose(), vowelLipsOnly());
+      if (st.sea === 'vowel') return st.tongue ? voice(vowelPose(st.tongue, st.lips), 1) : Object.assign(restPose(), vowelLipsOnly());
       const rule = st.manner ? M.manners[st.manner] : null;
       const vdeg = rule && rule.nasal === 'open' ? Vd.loweredDeg : Vd.raisedDeg;
       const ps = consPose(st.place, st.place ? holdHow() : 'rest', vdeg);
       if (st.strength === 'tense') ps.sq = 1;
-      return ps;
+      return voice(ps, VOICED[st.manner] ? 1 : 0, st.place);
     }
     function vowelLipsOnly() {
       const key = st.lips === 'rounded' ? 'rounded' : st.lips === 'unrounded' ? 'spread' : 'open';
@@ -626,7 +648,11 @@ G.mouth = (function () {
         const { route } = vowelRoute(st.tongue);
         const n = M.PARTICLES;
         plan.n = n; plan.key = 0.8;
-        plan.frame = (t) => ({ pose: mixPose(R0, V, ease(t / 0.3)), phase: t < 0.3 ? 'approach' : 'hold', shape: '', puff: 0 });
+        plan.frame = (t) => {
+          const k = ease(t / 0.3), pose = voice(mixPose(R0, V, k), k);
+          if (t > 0.25) pose.g = 1.1 + 0.9 * Math.sin(t * 2 * Math.PI * 11); // 떨림
+          return { pose, phase: t < 0.3 ? 'approach' : 'hold', shape: '', puff: 0 };
+        };
         plan.at = (i, t) => {
           const ts = 0.22 + (i / n) * 0.7;
           if (t < ts) return null;
@@ -675,6 +701,12 @@ G.mouth = (function () {
           pose.sq = Array.isArray(sq) ? lerp(sq[0], sq[1], sq[2]) : sq;
         }
         pose.v = v;
+        // 비음·유음: 막는 동안 성대가 모여 떤다
+        if (VOICED[st.manner] && place !== 'glottal') {
+          const vk = t < A ? ease(t / A) : t < TM.rest ? 1 : 0;
+          voice(pose, vk, place);
+          if (t >= A && t < TM.holdEnd) pose.g = 1.1 + 0.9 * Math.sin(t * 2 * Math.PI * 11);
+        }
         const phase = t < A ? 'approach' : t < relAt ? 'hold' : t < TM.rest ? 'release' : 'rest';
         let shape = '';
         if (rule.closure === 'full') shape = t >= A - 0.02 && t < relAt + (flow === 'nose' ? 0.06 : 0) ? 'full' : '';

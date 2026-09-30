@@ -56,6 +56,8 @@
 .mouth-fold-side { fill: var(--mouth-fold); opacity: .45; stroke: none; }
 .mouth-larynx { fill: var(--mouth-tissue-2); stroke: var(--mouth-line); stroke-width: 1.2px; }
 .mouth-glottis-hole { fill: #5A3431; }
+.mouth-glottis-seam { fill: none; stroke: var(--mouth-line); stroke-width: 1px; }
+.mouth-vib path { fill: none; stroke: var(--mouth-line); stroke-width: 1.4px; stroke-linecap: round; }
 .mouth-svg .mouth-fold { fill: none; stroke: var(--mouth-fold); stroke-linecap: round; vector-effect: none; }
 .mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 2.2px; stroke-linecap: round; stroke-linejoin: round; }
 /* 비음: 콧길로 나가는 길 */
