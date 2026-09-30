@@ -15,6 +15,7 @@
 //     onChange(selection, state), // 고른 것이 바뀔 때마다. state = G.rules.controls 결과
 //     logContainer,            // (생략 가능) 신호 기록장을 넣을 곳. 없으면 조작부 안에 둔다
 //     layout: 'auto'|'landscape'|'portrait', // 기본 'auto' = base.css와 같은 기준 (max-width: 760px), (orientation: portrait)
+//     onPlaceRequest(),        // (생략 가능) 세로 배치의 '위치' 단추를 누름 → 부른 쪽이 입안 단면도 패널을 연다. 없으면 단추를 두지 않는다
 //   });
 //   ctl.setPlace(id)       자음: 위치 id('velar' …) / 모음: 혀의 자리 'front-high'('앞뒤-높이', 순서 무관) 또는 { backness, height }. null이면 지움
 //   ctl.reset()            한 발 뒤: 고른 것을 모두 지우고 잠금을 푼다(문구 자리의 신호 줄은 그대로 둔다)
@@ -34,9 +35,16 @@
 //   기본 줄: 연습 = 다음에 고를 것 안내(TEXT.prompt) / 대결 = "소리 내어 외치고 발사!"
 //   넘치면 글씨를 줄이고(최소 15px) 그래도 넘치면 말줄임 — 줄바꿈은 하지 않는다. 세로 배치에서는 '따라 해 보기' 딱지를 빼고 문장만 둔다.
 //
+// ── 조작 순서와 조합 요약(디자인 검수) ───────────────────────────────────
+//   카드 묶음 이름에 작은 번호: 1 위치(단면도) → 2 방법 → 3 세기(세기 카드가 없는 단계에서는 번호 3이 없다) → 발사.
+//   발사 단추 바로 위에 지금 고른 조합 요약 한 줄(.ctl-combo, 예: '두 입술 · 파열 · 예사'). 아직 안 고른 칸은 묶음 이름
+//   ('방법', '세기')을 옅게 둔다. 없는 조합도 그대로 적는다(상태 줄일 뿐 설명이 아니다). 자리 이름을 숨기는 단계(자음 3단계·
+//   모음 2단계)에서는 자리를 '고른 자리'로만 적는다.
+//
 // ── 배치 ────────────────────────────────────────────────────────────────
-//   가로: 아래 가운데 한 줄 [방법 카드 5][세기 카드 3 또는 입술 카드 2][발사], 터치 목표 64px 이상.
-//   세로(휴대폰): 두 줄 — 방법 카드 / 세기·입술 카드 + 발사 + 기록장 단추, 48px 이상. 신호 기록장은 접어 두고 단추로 편다.
+//   가로: 아래 가운데 한 줄 [2 방법 카드 5][3 세기 카드 3 또는 2 입술 카드 2][발사], 터치 목표 64px 이상. 요약 줄은 그 위 오른쪽(발사 위).
+//   세로(휴대폰): [1 위치 단추 · 요약 줄] / 방법 카드 / 세기·입술 카드 + 발사 + 기록장 단추('기록 N'), 48px 이상.
+//   신호 기록장은 가로에서는 최근 세 발만 보이는 한 줄 띠, 세로에서는 접어 두고 단추로 편다.
 window.G = window.G || {};
 G.controls = (function () {
   const el = (...a) => G.util.el(...a);
@@ -71,6 +79,9 @@ G.controls = (function () {
     const msgLabel = el('span', { class: 'ctl-msg-label' }, T().followLabel);
     const msg = el('div', { class: 'ctl-msg', role: 'status', 'aria-live': 'polite' }, [msgLabel, msgText]);
 
+    const showNames = !!(lv.show && lv.show.placeNames);
+    // 묶음 이름표: 작은 번호 + 이름(예: '2 방법')
+    const stepLabel = (n, name) => el('span', { class: 'ctl-group-label' }, [el('span', { class: 'ctl-step', 'aria-hidden': 'true' }, String(n)), el('span', { class: 'ctl-step-name' }, name)]);
     const mkCard = (group, id) => el('button', {
       type: 'button', class: 'ctl-card', 'data-group': group, 'data-id': id, 'aria-pressed': 'false',
       onclick: () => pick(group, id),
@@ -81,7 +92,7 @@ G.controls = (function () {
     if (!vowel) {
       mannerCards = S.manners.map((m) => mkCard('manner', m));
       groups.push(el('div', { class: 'ctl-group ctl-group--manner', role: 'group', 'aria-label': G.text.short(grade, 'axis', 'manner') }, [
-        el('span', { class: 'ctl-group-label' }, G.text.short(grade, 'axis', 'manner')),
+        stepLabel(2, G.text.short(grade, 'axis', 'manner')),
         el('div', { class: 'ctl-cards' }, mannerCards),
       ]));
     }
@@ -89,7 +100,7 @@ G.controls = (function () {
       const g = vowel ? 'lips' : 'strength';
       secondCards = (vowel ? S.lips : S.strengths).map((id) => mkCard(g, id));
       groups.push(el('div', { class: 'ctl-group ctl-group--' + g, role: 'group', 'aria-label': G.text.short(grade, 'axis', g) }, [
-        el('span', { class: 'ctl-group-label' }, G.text.short(grade, 'axis', g)),
+        stepLabel(vowel ? 2 : 3, G.text.short(grade, 'axis', g)),
         el('div', { class: 'ctl-cards' }, secondCards),
       ]));
     }
@@ -98,8 +109,16 @@ G.controls = (function () {
     const logToggle = el('button', {
       type: 'button', class: 'ctl-logtoggle', 'aria-expanded': 'false', 'aria-label': T().ui.play.logOpen,
       onclick: () => setLogOpen(!logOpen),
-    }, [el('span', { class: 'ctl-logtoggle-name' }, T().ui.play.log), logCount]);
+    }, [el('span', { class: 'ctl-logtoggle-name' }, T().ui.play.logShort), logCount]);
     const bar = el('div', { class: 'ctl-bar' }, groups.concat([fireBtn, logToggle]));
+    // 지금 고른 조합 요약 한 줄(발사 위) + (세로) '1 위치' 단추
+    const combo = el('div', { class: 'ctl-combo' });
+    const placeBtn = typeof opts.onPlaceRequest === 'function' ? el('button', {
+      type: 'button', class: 'ctl-placebtn', 'aria-haspopup': 'dialog',
+      onclick: () => { if (enabled && !locked) opts.onPlaceRequest(); },
+    }, [el('span', { class: 'ctl-step', 'aria-hidden': 'true' }, '1'), el('span', { class: 'ctl-placebtn-name' }, T().ui.play.placeBtn), G.util.glyph('up', 'ctl-placebtn-ico')]) : null;
+    const comboRow = el('div', { class: 'ctl-comborow' }, [placeBtn, combo]);
+    const deck = el('div', { class: 'ctl-deck' }, [comboRow, bar]);
 
     const logList = el('ol', { class: 'ctl-log-list' });
     const logClose = el('button', { type: 'button', class: 'ctl-log-close', onclick: () => setLogOpen(false) }, T().ui.play.logClose);
@@ -107,7 +126,7 @@ G.controls = (function () {
       el('div', { class: 'ctl-log-head' }, [el('span', { class: 'ctl-log-title' }, T().ui.play.log), logClose]),
       logList,
     ]);
-    const root = el('div', { class: 'ctl ctl--' + sea + ' ctl--' + mode + (hasStrength ? ' ctl--strength' : '') }, [msg, bar]);
+    const root = el('div', { class: 'ctl ctl--' + sea + ' ctl--' + mode + (hasStrength ? ' ctl--strength' : '') + (placeBtn ? ' ctl--placebtn' : '') }, [msg, deck]);
     const inRootLog = !opts.logContainer;
     if (inRootLog) { root.insertBefore(logPanel, msg); root.classList.add('ctl--log-inside'); }
     else opts.logContainer.appendChild(logPanel);
@@ -245,8 +264,38 @@ G.controls = (function () {
       });
       fireBtn.disabled = off || !st.fireEnabled;
       fireBtn.classList.toggle('is-ready', !off && st.fireEnabled);
+      if (placeBtn) placeBtn.disabled = off;
       root.classList.toggle('is-disabled', !enabled);
+      renderCombo();
       renderMsg();
+    }
+    // 조합 요약: 고른 것은 이름, 아직 안 고른 것은 묶음 이름(옅게)
+    function comboParts() {
+      const P = T().ui.play;
+      const part = (v, ph) => ({ v: v || '', ph: ph || '' });
+      if (vowel) {
+        const tongue = sel.backness && sel.height
+          ? (showNames ? G.text.short(grade, 'backness', sel.backness) + ' ' + G.text.short(grade, 'height', sel.height) : P.placeChosen) : '';
+        return [part(tongue, P.step.tongue), part(sel.lips ? G.text.short(grade, 'lips', sel.lips) : '', G.text.short(grade, 'axis', 'lips'))];
+      }
+      const placeName = !sel.place ? '' : !showNames ? P.placeChosen
+        : grade === 'h1' ? G.text.short('h1', 'place', sel.place) : T().mouthParts[sel.place];
+      const parts = [part(placeName, P.step.place), part(sel.manner ? G.text.short(grade, 'manner', sel.manner) : '', G.text.short(grade, 'axis', 'manner'))];
+      if (hasStrength) {
+        const st = state();
+        parts.push(st.strengthDisabled ? part(G.text.short(grade, 'strength', 'none'))
+          : part(sel.strength ? G.text.short(grade, 'strength', sel.strength) : '', G.text.short(grade, 'axis', 'strength')));
+      }
+      return parts;
+    }
+    function renderCombo() {
+      combo.textContent = '';
+      const parts = comboParts();
+      combo.classList.toggle('is-empty', !parts.some((p) => p.v));
+      parts.forEach((p, i) => {
+        if (i) combo.appendChild(el('span', { class: 'ctl-combo-dot', 'aria-hidden': 'true' }, ' · '));
+        combo.appendChild(el('span', { class: 'ctl-combo-part' + (p.v ? ' is-set' : '') }, p.v || p.ph));
+      });
     }
 
     // ── 신호 기록장 ──
@@ -261,8 +310,10 @@ G.controls = (function () {
       const what = e.sound ? G.text.sound(e.sound) : comboLabel(e.input);
       const sig = G.text.signalName(kind) || G.text.signal(kind);
       const team = e.team && T().teams[e.team] ? T().teams[e.team] : '';
+      const gl = kind === 'line' ? G.util.lineDir(e.targets) : kind === 'none' ? 'dud' : kind === 'hit' || kind === 'miss' ? kind : null;
       return el('li', { class: 'ctl-log-item k-' + kind + (e.team ? ' t-' + e.team : ''), 'data-kind': kind }, [
         el('span', { class: 'ctl-log-n' }, String(i + 1)),
+        gl ? G.util.glyph(gl, 'ctl-log-ico') : null,
         team ? el('span', { class: 'ctl-log-team' }, team) : null,
         el('span', { class: 'ctl-log-what' + (e.sound ? ' is-sound' : ' is-combo') }, what),
         el('span', { class: 'ctl-log-sig' }, sig),
@@ -323,6 +374,7 @@ G.controls = (function () {
       el: root, logEl: logPanel,
       setPlace, reset, setMessage, showFollow, setEnabled, log, setLog, clearLog, setLayout,
       getSelection, getState: state, setSelection, fire, destroy,
+      comboText: () => combo.textContent,
       layout: currentLayout,
     };
   }

@@ -106,6 +106,8 @@ G.app = (function () {
   }
 
   // ── 시작 화면 ─────────────────────────────────────────
+  // 시작 화면(디자인 검수): 연습·대결 = 큰 주 단추, 소리 지도·설정·출처 = 아래 작은 보조 메뉴. 흰 패널(반경 16) 한 장.
+  //   세로 배치(휴대폰)에서는 대결 단추를 끄고 그 바로 아래에 한 줄 안내(TEXT.duel.phoneNotice)를 늘 보인다.
   screens.title = function (c) {
     audio('practice');
     const notice = el('p', { class: 'app-notice', role: 'status', 'aria-live': 'polite' });
@@ -114,23 +116,40 @@ G.app = (function () {
       notice.textContent = text;
       notice.classList.add('is-on');
       clearTimeout(noticeTimer);
-      noticeTimer = setTimeout(() => notice.classList.remove('is-on'), 6000);
+      if (!isPortrait()) noticeTimer = setTimeout(() => notice.classList.remove('is-on'), 6000);
     }
     function openDuel() {
       if (isPortrait()) say(T.duel.phoneNotice);
       else go('duel');
     }
     const M = T.ui.menu;
+    const duelBtn = btn(M.duel, openDuel, 'is-primary is-big', { 'data-go': 'duel' });
     const menu = el('nav', { class: 'app-menu', 'aria-label': T.ui.title }, [
-      btn(M.practice, () => go('practice'), 'is-primary', { 'data-go': 'practice' }),
-      btn(M.duel, openDuel, 'is-primary', { 'data-go': 'duel' }),
-      btn(M.soundmap, () => go('soundmap'), '', { 'data-go': 'soundmap' }),
-      btn(M.settings, () => go('settings'), '', { 'data-go': 'settings' }),
-      btn(M.credits, () => go('credits'), '', { 'data-go': 'credits' }),
+      el('div', { class: 'app-menu-main' }, [
+        btn(M.practice, () => go('practice'), 'is-primary is-big', { 'data-go': 'practice' }),
+        duelBtn,
+      ]),
+      notice,
+      el('div', { class: 'app-menu-sub' }, [
+        btn(M.soundmap, () => go('soundmap'), 'is-sub', { 'data-go': 'soundmap' }),
+        btn(M.settings, () => go('settings'), 'is-sub', { 'data-go': 'settings' }),
+        btn(M.credits, () => go('credits'), 'is-sub', { 'data-go': 'credits' }),
+      ]),
     ]);
+    // 세로 배치: 대결은 쓸 수 없음(흐린 단추 + 바로 아래 한 줄)
+    const pq = window.matchMedia ? window.matchMedia(PORTRAIT_Q) : null;
+    function syncPortrait() {
+      const p = isPortrait();
+      duelBtn.classList.toggle('is-off', p);
+      duelBtn.setAttribute('aria-disabled', p ? 'true' : 'false');
+      if (p) { notice.textContent = T.duel.phoneNotice; notice.classList.add('is-on'); }
+      else if (notice.textContent === T.duel.phoneNotice) notice.classList.remove('is-on');
+    }
+    syncPortrait();
+    if (pq) (pq.addEventListener ? pq.addEventListener('change', syncPortrait) : pq.addListener(syncPortrait));
     const root = screen('app-title', [
       el('header', { class: 'app-title-head' }, el('h1', { class: 'app-title-name' }, T.ui.title)),
-      el('div', { class: 'app-title-foot' }, [notice, menu]),
+      el('div', { class: 'app-title-foot' }, [menu]),
     ]);
     c.appendChild(root);
 
@@ -156,7 +175,7 @@ G.app = (function () {
       root.classList.add('has-dialog');
       root.appendChild(dialog);
     }
-    return { destroy() { clearTimeout(noticeTimer); } };
+    return { destroy() { clearTimeout(noticeTimer); if (pq) (pq.removeEventListener ? pq.removeEventListener('change', syncPortrait) : pq.removeListener(syncPortrait)); } };
   };
 
   // ── 설정 ─────────────────────────────────────────────
@@ -260,7 +279,7 @@ G.app = (function () {
     ] },
     { head: '효과음', lines: ['Freesound(freesound.org)의 CC0 음원 — DRFX, Kreastricon62, qubodup, Saltbearer, craigsmith'] },
     { head: '글꼴', lines: [
-      'Hahmlet · Gowun Batang — SIL Open Font License 1.1',
+      'Hahmlet · Pretendard — SIL Open Font License 1.1',
       '게임에 쓰는 부분만 남기고 이름을 바꾸어 넣었어요',
     ] },
     { head: '그림', lines: ['이 게임을 위해 새로 만든 그림이에요'] },
@@ -284,6 +303,8 @@ G.app = (function () {
   };
 
   // ── 결과 화면(spec 6.5: 이번 판의 것만) ─────────────────
+  // 디자인 검수: 결과(제목)와 핵심 수치를 맨 위에 크게 → 아래 [이번 판 소리 지도 | 알아 두기 · 생각해 볼 질문 · 단추].
+  //   연습은 '턴', 대결은 '발'로 센다. 소리 지도는 맞힌 소리만 황금 + 과녁, 모든 소리는 기본 잉크로 읽힌다.
   screens.result = function (c, params) {
     audio('result');
     const R = T.ui.result;
@@ -292,44 +313,52 @@ G.app = (function () {
     const sides = duel ? ['blue', 'red'] : ['player'];
     const boards = [];
 
-    // 기록
-    const recEl = el('section', { class: 'app-res-rec' }, [el('h2', { class: 'app-h2' }, R.record)]);
+    // 결과 제목(가장 크게)
+    let headline;
     if (duel) {
       const w = rec.result && rec.result.winner;
-      recEl.appendChild(el('p', { class: 'app-res-winner' + (w ? ' team-' + w : ''), 'data-winner': w || 'draw' }, R.winner[w || 'draw']));
+      headline = el('p', { class: 'app-res-winner app-res-headline' + (w ? ' team-' + w : ''), 'data-winner': w || 'draw' }, R.winner[w || 'draw']);
     } else if (rec.result && rec.result.success) {
-      recEl.appendChild(el('p', { class: 'app-res-done' }, T.ui.play.allFound));
+      headline = el('p', { class: 'app-res-done app-res-headline' }, T.ui.play.allFound);
+    } else {
+      headline = el('p', { class: 'app-res-lost app-res-headline' }, R.notAll);
     }
+    // 핵심 수치(팀마다 한 줄): 턴(대결은 발) · 없는 소리 · 맞힌 소리
+    const stat = (k, label, value) => el('div', { class: 'app-res-stat' }, [el('dt', null, label), el('dd', { 'data-k': k }, value)]);
+    const statsEl = el('div', { class: 'app-res-statrow' + (duel ? ' is-duel' : '') });
     sides.forEach((t) => {
       const s = rec.teams[t];
       if (!s) return;
-      recEl.appendChild(el('dl', { class: 'app-res-stats' + (duel ? ' team-' + t : ''), 'data-team': t }, [
+      statsEl.appendChild(el('dl', { class: 'app-res-stats' + (duel ? ' team-' + t : ''), 'data-team': t }, [
         duel ? el('div', { class: 'app-res-team' }, T.teams[t]) : null,
-        el('div', null, [el('dt', null, R.turns), el('dd', { 'data-k': 'turns' }, fill(R.turnsN, { n: s.turnsUsed }))]),
-        el('div', null, [el('dt', null, R.noneShots), el('dd', { 'data-k': 'none' }, fill(R.timesN, { n: s.dudCount }))]),
-        el('div', null, [el('dd', { 'data-k': 'hits' }, fill(R.hitsN, { n: s.hitSounds.length }))]),
+        stat('turns', duel ? R.shots : R.turns, fill(duel ? R.shotsN : R.turnsN, { n: s.turnsUsed })),
+        stat('none', R.noneShots, fill(R.timesN, { n: s.dudCount })),
+        stat('hits', R.hits, fill(R.hitsCount, { n: s.hitSounds.length })),
       ]));
     });
 
     // 알아 두기: 이번 판에 나온 것만, 없으면 칸을 두지 않는다
     const notes = (rec.notes || []).map((n) => G.text.know(n.id)).filter(Boolean);
     const knowEl = notes.length
-      ? el('section', { class: 'app-res-know' }, [el('h2', { class: 'app-h2' }, R.know), ...notes.map((l) => el('p', { class: 'app-res-note' }, l))])
+      ? el('section', { class: 'app-res-know app-res-card' }, [el('h2', { class: 'app-h2' }, R.know), ...notes.map((l) => el('p', { class: 'app-res-note' }, l))])
       : null;
     // 생각해 볼 질문 하나
     const q = G.text.pickDebrief(rec.grade, rec.sea);
-    const qEl = el('section', { class: 'app-res-q' }, [el('h2', { class: 'app-h2' }, R.question), el('p', { class: 'app-res-question' }, q)]);
+    const qEl = el('section', { class: 'app-res-q app-res-card' }, [el('h2', { class: 'app-h2' }, R.question), el('p', { class: 'app-res-question' }, q)]);
 
     const maps = el('div', { class: 'app-res-maps' + (duel ? ' is-duel' : '') });
     const root = screen('app-result' + (duel ? ' is-duel' : ''), [
       el('header', { class: 'app-res-head' }, [
-        el('h1', { class: 'app-h1' }, R.title),
-        el('p', { class: 'app-res-meta' }, gameLabel(rec)),
+        el('div', { class: 'app-res-titles' }, [
+          el('h1', { class: 'app-res-eyebrow' }, [el('span', { class: 'app-res-title' }, R.title), el('span', { class: 'app-res-meta' }, gameLabel(rec))]),
+          headline,
+        ]),
+        statsEl,
       ]),
       el('div', { class: 'app-res-body' }, [
         el('section', { class: 'app-res-mapsec' }, [el('h2', { class: 'app-h2' }, R.soundmap), maps]),
         el('div', { class: 'app-res-side' }, [
-          recEl, knowEl, qEl,
+          knowEl, qEl,
           el('div', { class: 'app-res-btns' }, [
             btn(R.again, () => go(rec.mode, {}), 'is-primary', { 'data-act': 'again' }),
             btn(R.home, () => go('title'), '', { 'data-act': 'home' }),

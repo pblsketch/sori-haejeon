@@ -1,9 +1,17 @@
-/* 연습 모드 화면(js/game/practice.js). 색·크기 값은 css/base.css의 변수를 쓴다.
- * 가로: 윗줄 / [적 바다 + 남은 배 | 입안 단면도 | 신호 기록장] / 아래 가운데 조작부.
- * 세로(휴대폰): 윗줄(남은 배·남은 턴) → 단면도 → 바다 → 한 줄 문구 → 조작부 두 줄. 한 화면 안에서 스크롤 없이 한 발.
+/* 연습 모드 화면(js/game/practice.js). 색·크기 값은 css/base.css의 토큰을 쓴다.
+ * 가로: 윗줄(처음으로 · 바다와 단계 · 남은 배 · 남은 턴) / [적 바다 | 입안 단면도 '1 위치'] / 아래 가운데 조작부
+ *       (최근 세 발 기록 띠 · 한 줄 문구 · 요약 줄 · 카드 + 발사). 큰 옆 기록장을 없애 바다와 단면도에 폭을 준다.
+ * 세로(휴대폰, spec 6.2): 윗줄 → 적 바다(크게) → 하단 고정 조작부. '위치' 단추로 아래 패널(.pr-sheet)이 올라온다.
+ * 글씨 크기는 이 화면의 크기로 정한다(container pr): 태블릿·노트북 기본, 칠판(1600×900 이상)은 크게.
  * 배치 기준은 조작부와 같은 (max-width: 760px), (orientation: portrait) — practice.js가 .pr--portrait / .pr--landscape를 붙인다. */
 
 .pr {
+  --pr-title-fs: 22px;
+  --pr-turns-fs: 32px;
+  --ctl-card-fs: 22px;
+  --ctl-msg-fs: 22px;
+  --ctl-label-fs: 18px;
+  --ctl-combo-fs: 20px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -11,86 +19,92 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
+  container: pr / size;
+}
+@container pr (min-width: 1600px) and (min-height: 900px) {
+  .pr-play, .pr-setup { --pr-title-fs: 30px; --pr-turns-fs: 44px; --ctl-card-fs: 28px; --ctl-msg-fs: 32px; --ctl-label-fs: 24px; --ctl-combo-fs: 28px; --ctl-log-fs: 24px; --touch: 72px; }
 }
 .pr-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
 /* 공통 단추 */
-.pr-home, .pr-skip, .pr-example-btn, .pr-start, .pr-opt {
+.pr-home, .pr-skip, .pr-example-btn, .pr-start, .pr-opt, .pr-sheet-close {
   min-height: var(--touch);
-  border-radius: var(--radius);
+  border-radius: var(--r-btn);
   cursor: pointer;
   touch-action: manipulation;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-weight: 600;
   line-height: 1.2;
+  transition: background-color var(--t-pick), border-color var(--t-pick);
 }
-.pr-home {
+/* 보조 단추: 흰 바탕 + 진한 잉크 + 경계선 */
+.pr-home, .pr-skip, .pr-example-btn, .pr-sheet-close {
   flex: 0 0 auto;
   min-width: var(--touch);
-  padding: 0 14px;
-  border: 2px solid #A9B3AE;
-  background: #fff;
-  color: var(--ink-2);
-  font-size: 16px;
-  font-weight: 400;
+  padding: 0 16px;
+  border: 2px solid var(--control-line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 17px;
 }
-.pr-home:focus-visible, .pr-skip:focus-visible, .pr-example-btn:focus-visible, .pr-start:focus-visible, .pr-opt:focus-visible {
-  outline: 3px solid var(--sea); outline-offset: 2px;
-}
+@container pr (min-width: 1600px) and (min-height: 900px) { .pr-home { font-size: 22px; padding: 0 20px; } }
+.pr-home:hover, .pr-skip:hover, .pr-example-btn:hover, .pr-sheet-close:hover { background: var(--accent-soft); }
 
 /* ── 준비 화면 ── */
 .pr-setup {
   width: min(100% - 32px, 760px);
   margin: auto;
-  padding: 24px 28px 28px;
-  background: var(--paper-2);
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: 0 10px 30px rgba(20, 50, 64, .12);
+  padding: var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--r-panel);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--s5);
   overflow-y: auto;
   max-height: 100%;
 }
-.pr-setup-head { display: flex; align-items: center; gap: 16px; }
-.pr-setup-title { margin: 0; font-family: var(--font-title); font-size: 34px; font-weight: 700; color: var(--sea); }
-.pr-field { display: flex; flex-direction: column; gap: 8px; }
-.pr-field-label { font-family: var(--font-title); font-size: 18px; font-weight: 700; color: var(--ink-2); }
-.pr-opts { display: flex; gap: 10px; flex-wrap: wrap; }
+.pr-setup-head { display: flex; align-items: center; gap: var(--s4); }
+.pr-setup-title { margin: 0; font-size: 32px; font-weight: 700; color: var(--ink); }
+.pr-field { display: flex; flex-direction: column; gap: var(--s2); }
+.pr-field-label { font-size: 18px; font-weight: 600; color: var(--ink-2); }
+.pr-opts { display: flex; gap: var(--s3); flex-wrap: wrap; }
+/* 선택 카드: 흰 바탕 + 2px 조작 경계선, 고르면 청록 경계 3px + 체크 */
 .pr-opt {
+  position: relative;
   flex: 1 1 0;
   min-width: calc(var(--touch) * 1.5);
   padding: 6px 12px;
   display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  border: 3px solid var(--ui);
-  background: #fff;
-  color: var(--ui);
+  border: 2px solid var(--control-line);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 22px;
 }
-.pr-opt-sub { font-size: 14px; font-weight: 400; color: var(--ink-2); word-break: keep-all; }
-.pr-opt.is-on { background: var(--ui); color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25); }
-.pr-opt.is-on .pr-opt-sub { color: rgba(255, 255, 255, 0.9); }
-.pr-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 6px; }
-.pr-example-btn {
-  padding: 0 20px;
-  border: 3px solid var(--sea);
-  background: #fff;
-  color: var(--sea);
-  font-size: 20px;
+.pr-opt:hover { background: var(--accent-soft); }
+.pr-opt-sub { font-size: 15px; font-weight: 500; color: var(--ink-2); word-break: keep-all; }
+.pr-opt.is-on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); color: var(--accent-2); font-weight: 700; }
+.pr-opt.is-on::after {
+  content: ''; position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M24 52l17 17 36-38' fill='none' stroke='%23fff' stroke-width='14' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
 }
+.pr-actions { display: flex; gap: var(--s3); justify-content: flex-end; margin-top: var(--s1); }
+.pr-example-btn { font-size: 20px; padding: 0 20px; }
 .pr-example-btn[hidden] { display: none; }
+/* 주 단추: 청록 채움 */
 .pr-start {
-  min-width: calc(var(--touch) * 2.2);
-  padding: 0 28px;
-  border: 3px solid var(--hit);
-  background: var(--hit);
+  min-width: calc(var(--touch) * 2.4);
+  padding: 0 32px;
+  border: 0;
+  background: var(--accent);
   color: #fff;
-  font-family: var(--font-title);
-  font-size: 26px;
+  font-size: 24px;
+  font-weight: 700;
 }
+.pr-start:hover { background: var(--accent-2); }
 
 /* ── 판 화면 ── */
 .pr-play { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -98,14 +112,21 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 16px;
+  gap: var(--s4);
+  min-height: 64px;
+  padding: 6px var(--s4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--divider);
 }
-.pr-title { flex: 1 1 auto; min-width: 0; font-family: var(--font-title); font-size: 22px; font-weight: 700; color: var(--sea); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-title { flex: 1 1 auto; min-width: 0; font-size: var(--pr-title-fs); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pr-ships:empty { display: none; }
-.pr-turns { flex: 0 0 auto; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-.pr-turns-label { font-size: 16px; color: var(--ink-2); }
-.pr-turns-n { font-family: var(--font-title); font-size: 30px; font-weight: 700; color: var(--ink); min-width: 1.2em; text-align: right; }
+.pr-ships--top { flex: 0 1 auto; min-width: 0; display: flex; }
+.pr-ships--top .sb-ships { --ship-w: 88px; flex-wrap: nowrap; align-items: flex-end; gap: 2px var(--s4); }
+.pr-ships--top .sb-ships-title { width: auto; align-self: center; margin-right: var(--s1); font-size: 16px; }
+.pr-ships--top .sb-ship-name { font-size: 14px; }
+.pr-turns { flex: 0 0 auto; display: flex; align-items: baseline; gap: var(--s2); white-space: nowrap; padding-left: var(--s4); border-left: 1px solid var(--divider); }
+.pr-turns-label { font-size: 17px; font-weight: 600; color: var(--ink-2); }
+.pr-turns-n { font-size: var(--pr-turns-fs); font-weight: 700; color: var(--ink); min-width: 1.3em; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 풀이 예시 띠 */
 .pr-example-bar {
@@ -113,73 +134,71 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin: 0 16px 6px;
+  gap: var(--s4);
+  margin: var(--s2) var(--s4) 0;
   padding: 4px 8px 4px 16px;
-  border: 2px solid var(--sea);
-  border-radius: var(--radius);
-  background: #fff;
+  border-radius: var(--r-btn);
+  background: var(--accent-soft);
 }
-.pr-example-title { font-family: var(--font-title); font-size: 20px; font-weight: 700; color: var(--sea); }
-.pr-skip { padding: 0 16px; border: 2px solid var(--sea); background: var(--sea-2); color: var(--sea); font-size: 16px; }
+.pr-example-title { font-size: 20px; font-weight: 700; color: var(--accent-2); }
+.pr-skip { font-size: 16px; }
 
-/* 가로: 바다 | 단면도 | 기록장 */
+/* 가로: [바다 | 단면도] — 둘 다 흰 패널 */
 .pr-main {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(180px, 240px);
-  gap: 16px;
-  padding: 0 16px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--s4);
+  padding: var(--s3) var(--s4) 0;
 }
-.pr-seacol { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.pr-seacol, .pr-mouthcard {
+  min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--s2);
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--r-panel); padding: var(--s3) var(--s4);
+}
 .pr-sea { flex: 1 1 auto; min-height: 0; min-width: 0; }
-.pr-ships--side { flex: 0 0 auto; display: flex; justify-content: center; }
-/* 가로: 바다 칸에는 판만(세로 가운데), '남은 배'는 오른쪽 칸 기록장 위의 함대 목록(배 그림 세로로, 크기 차이가 보이게).
-   바다 칸·오른쪽 칸 상자를 풀어(display: contents) .pr-main 격자에 바로 놓는다. */
-.pr--landscape .pr-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(210px, 290px); grid-template-rows: auto minmax(0, 1fr); row-gap: 10px; }
-.pr--landscape .pr-seacol, .pr--landscape .pr-side { display: contents; }
-.pr--landscape .pr-sea { grid-column: 1; grid-row: 1 / span 2; }
-.pr--landscape .pr-mouth { grid-column: 2; grid-row: 1 / span 2; }
-.pr--landscape .pr-ships--side { grid-column: 3; grid-row: 1; display: block; min-width: 0; }
-.pr--landscape .pr-logbox { grid-column: 3; grid-row: 2; }
-.pr--landscape .pr-ships--side .sb-ships {
-  --ship-w: clamp(100px, 8vw, 156px);
-  flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 4px;
-  padding: 4px 10px 10px; background: #fff; border: 2px solid var(--sea-2); border-radius: var(--radius);
-}
-.pr--landscape .pr-ships--side .sb-ships-title { text-align: left; font-size: 18px; color: var(--sea); padding: 2px 0 4px; border-bottom: 1px solid var(--sea-2); }
-.pr--landscape .pr-ships--side .sb-ship-item { display: grid; grid-template-columns: var(--ship-w) minmax(0, 1fr); align-items: end; gap: 10px; }
-.pr--landscape .pr-ships--side .sb-pic { justify-self: center; }
-.pr--landscape .pr-ships--side .sb-ship-name { align-self: center; font-size: 17px; white-space: normal; word-break: keep-all; }
-.pr-mouth { min-width: 0; min-height: 0; overflow: hidden; } /* 그림의 목 뒤 살이 옆 칸(기록장)을 덮지 않게 상자에서 자른다 */
-.pr-side { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.pr-logbox { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.pr-logbox .ctl-log { flex: 1 1 auto; }
+.pr-stepcap { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--ctl-label-fs); font-weight: 600; color: var(--ink-2); }
+.pr-mouth { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; } /* 그림의 목 뒤 살이 옆을 덮지 않게 상자에서 자른다 */
 .pr-dockwrap { position: relative; flex: 0 0 auto; }
 .pr-dock { display: flex; justify-content: center; }
+.pr-sheet { display: none; }
 
-/* ── 세로(휴대폰) ── */
-.pr--portrait .pr-setup { width: calc(100% - 16px); padding: 16px 12px 18px; border-radius: 18px; }
-.pr--portrait .pr-opt { padding: 6px 6px; }
-.pr--portrait .pr-top { gap: 8px; padding: 4px 8px; }
-.pr--portrait .pr-title { display: none; }
-.pr--portrait .pr-ships--top { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; overflow: hidden; }
-.pr--portrait .pr-ships--top .sb-ships { --ship-w: 64px; flex-wrap: nowrap; gap: 2px 6px; }
-.pr--portrait .pr-home { padding: 0 8px; font-size: 15px; }
-.pr--portrait .pr-turns { gap: 4px; }
-.pr--portrait .pr-turns-label { font-size: 13px; }
+/* ── 세로(휴대폰): 바다 중심 + 아래 패널 ── */
+.pr--portrait { --ctl-card-fs: 18px; --ctl-msg-fs: 18px; }
+.pr--portrait .pr-setup { width: calc(100% - 32px); padding: var(--s4); gap: var(--s4); }
+.pr--portrait .pr-setup-title { font-size: 28px; }
+.pr--portrait .pr-opt { padding: 6px 6px; font-size: 20px; }
+.pr--portrait .pr-top { gap: var(--s2); min-height: 56px; padding: 4px var(--s3); }
+.pr--portrait .pr-title { flex: 0 0 auto; font-size: 16px; font-weight: 600; }
+.pr--portrait .pr-ships--top { flex: 1 1 auto; min-width: 0; justify-content: center; overflow: hidden; }
+.pr--portrait .pr-ships--top .sb-ships { --ship-w: 40px; gap: 2px 3px; }
+.pr--portrait .pr-home { padding: 0 10px; font-size: 15px; }
+.pr--portrait .pr-turns { gap: 4px; padding-left: var(--s2); }
+.pr--portrait .pr-turns-label { font-size: 14px; }
 .pr--portrait .pr-turns-n { font-size: 24px; }
-.pr--portrait .pr-example-bar { margin: 0 8px 4px; gap: 10px; }
+.pr--portrait .pr-example-bar { margin: 6px var(--s4) 0; gap: 10px; }
 .pr--portrait .pr-example-title { font-size: 17px; }
-.pr--portrait .pr-main { display: flex; flex-direction: column; gap: 4px; padding: 0 8px; }
-.pr--portrait .pr-mouth { order: 1; flex: 1 1 auto; }
-.pr--portrait .pr-seacol { order: 2; flex: 0 0 auto; }
-.pr--portrait .pr-sea { flex: 0 0 auto; }
-.pr--portrait .pr-side { display: none; }
-/* 기록장: 조작부 위에 떠오른다(판을 밀어내지 않음 → 스크롤 없음). 접혀 있을 때는 조작부의 .ctl-log--portrait가 숨긴다 */
-.pr--portrait .pr-logbox { position: absolute; left: 12px; right: 12px; bottom: 100%; z-index: 5; display: block; pointer-events: none; }
-.pr--portrait .pr-logbox .ctl-log { max-height: 50vh; pointer-events: auto; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18); }
+.pr--portrait .pr-main { display: flex; flex-direction: column; gap: 0; padding: var(--s2) var(--s4); }
+.pr--portrait .pr-seacol { flex: 1 1 auto; padding: 0; background: transparent; border: 0; }
+.pr--portrait .pr-mouthcard { display: none; }
+.pr--portrait .pr-dockwrap { background: var(--surface); border-top: 1px solid var(--divider); }
+/* 아래에서 올라오는 입안 단면도 패널(위쪽 반경 16, 떠 있는 패널 그림자 한 종류) */
+.pr--portrait .pr-sheet {
+  display: flex; flex-direction: column; gap: var(--s2);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+  height: min(66%, 560px);
+  padding: var(--s3) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border-radius: var(--r-panel) var(--r-panel) 0 0; box-shadow: 0 -8px 24px rgba(24, 53, 64, .12);
+  transform: translateY(104%); visibility: hidden; pointer-events: none;
+  transition: transform .2s ease-out, visibility 0s linear .2s;
+}
+.pr--portrait .pr-sheet.is-open { transform: none; visibility: visible; pointer-events: auto; transition: transform .2s ease-out, visibility 0s; }
+.pr--portrait .pr-sheet.is-play { pointer-events: none; }
+.pr--portrait .pr-sheet.is-play .pr-sheet-close { visibility: hidden; }
+.pr-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex: none; }
+.pr-sheet-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.pr-sheet-body .pr-mouth { flex: 1 1 auto; }
+.pr-sheet-close { font-size: 16px; }
 
 /* ── 높이가 너무 낮은 가로 화면(가로로 눕힌 휴대폰): 세로로 돌려 달라고 덮는다 ── */
 .pr-rotate { display: none; }
@@ -192,11 +211,10 @@
     align-items: center;
     justify-content: center;
     padding: 16px;
-    background: var(--paper);
-    font-family: var(--font-title);
+    background: var(--bg);
     font-size: 24px;
     font-weight: 700;
-    color: var(--sea);
+    color: var(--ink);
     text-align: center;
   }
 }

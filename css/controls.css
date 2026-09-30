@@ -1,15 +1,18 @@
-/* 조작부와 신호 기록장(js/game/controls.js). 색·크기 값은 css/base.css의 변수를 쓴다.
- * 가로: 아래 가운데 한 줄, 터치 목표 var(--touch)(64px). 세로(휴대폰): 두 줄, var(--touch)(48px), 기록장은 접어 둔다.
- * 신호는 색만이 아니라 글씨(신호 이름)로도 구분한다. 흐린 카드는 흐림 + 점선 테두리(모양으로도 구분). */
+/* 조작부와 신호 기록장(js/game/controls.js). 색·크기 값은 css/base.css의 토큰을 쓴다.
+ * 가로: 아래 가운데 한 줄 [2 방법][3 세기 또는 2 입술][발사], 그 위 오른쪽(발사 위)에 지금 고른 조합 요약 한 줄.
+ * 세로(휴대폰): [1 위치 단추 · 요약] / 방법 카드 / 세기·입술 카드 + 발사 + '기록 N' — 모두 화면 아래(한 손 조작), 48px 이상.
+ * 선택 카드 = 흰 바탕 + 2px 조작 경계선(반경 12), 고르면 청록 경계 3px + 체크. 발사 = 주 단추(청록 채움, 흰 글씨).
+ * 신호는 색만이 아니라 기호(벡터)와 글씨로도 구분한다. 흐린 카드(쓸 수 없는 세기)는 흐림 + 점선 테두리(모양으로도 구분).
+ * 크기 변수(화면이 정함): --ctl-card-fs 카드 글씨, --ctl-msg-fs 한 줄 문구, --ctl-label-fs 묶음 이름, --ctl-combo-fs 요약 줄 */
 
 .ctl {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   width: 100%;
-  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: var(--s2) var(--s4) calc(var(--s2) + env(safe-area-inset-bottom, 0px));
   font-family: var(--font-body);
   color: var(--ink);
 }
@@ -18,9 +21,10 @@
 .ctl-msg {
   width: 100%;
   max-width: 1100px;
-  min-height: 1.5em;
-  font-size: 22px;
-  line-height: 1.5;
+  min-height: 1.35em;
+  font-size: var(--ctl-msg-fs, 22px);
+  font-weight: 600;
+  line-height: 1.35;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -29,71 +33,101 @@
 .ctl-msg-label {
   display: none;
   margin-right: 0.5em;
-  padding: 0 0.45em;
-  border: 2px solid var(--ui);
-  border-radius: 999px;
-  color: var(--ui);
-  font-size: 0.8em;
+  padding: 0.05em 0.45em;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-2);
+  font-size: 0.78em;
   font-weight: 700;
+  vertical-align: 0.08em;
 }
 .ctl-msg--follow .ctl-msg-label { display: inline; }
 .ctl--portrait .ctl-msg--follow .ctl-msg-label { display: none; } /* 세로: 좁아서 딱지는 빼고 문장만(글씨 15px 이상 유지) */
 .ctl-msg[data-kind="message"] .ctl-msg-text { font-weight: 700; }
-.ctl-msg[data-kind="shout"] .ctl-msg-text { font-family: var(--font-title); font-weight: 700; color: var(--hit); }
+.ctl-msg[data-kind="shout"] .ctl-msg-text { font-weight: 700; }
+
+/* ── 요약 줄 + 카드 줄을 한 덩어리로(요약 줄의 오른쪽 끝 = 발사 단추의 오른쪽 끝) ── */
+.ctl-deck { display: flex; flex-direction: column; align-items: stretch; gap: var(--s2); max-width: 100%; }
+.ctl-comborow { display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); min-width: 0; }
+.ctl-combo {
+  min-width: 0; max-width: 100%;
+  padding: 4px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--divider);
+  font-size: var(--ctl-combo-fs, 20px); font-weight: 600; line-height: 1.3; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctl-combo-part:not(.is-set) { color: var(--ink-2); font-weight: 500; }
+.ctl-combo-dot { color: var(--ink-2); }
+.ctl-placebtn { display: none; }
 
 /* ── 카드 줄 ── */
 .ctl-bar {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 20px;
+  gap: var(--s5);
   max-width: 100%;
 }
-.ctl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
-.ctl-group-label { font-size: 14px; color: var(--ink-2); line-height: 1.2; }
-.ctl-cards { display: flex; gap: 8px; }
+.ctl-group { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.ctl-group-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--ctl-label-fs, 16px); font-weight: 600; color: var(--ink-2); line-height: 1.2; }
+.ctl-step {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 1.35em; height: 1.35em; border-radius: 50%;
+  background: var(--ink); color: #fff; font-size: 0.78em; font-weight: 700; line-height: 1;
+}
+.ctl-cards { display: flex; gap: var(--s2); }
 .ctl-card {
+  position: relative;
   min-width: var(--touch);
   min-height: var(--touch);
-  padding: 4px 16px;
-  border: 3px solid var(--ui);
-  border-radius: var(--radius);
-  background: #fff;
-  color: var(--ui);
-  font-size: 22px;
-  font-weight: 700;
+  padding: 4px 14px;
+  border: 2px solid var(--control-line);
+  border-radius: var(--r-btn);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--ctl-card-fs, 22px);
+  font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
-  transition: background-color 0.12s, color 0.12s, opacity 0.12s;
+  transition: background-color var(--t-pick), border-color var(--t-pick), color var(--t-pick);
 }
-.ctl-card.is-on { background: var(--ui); color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25); }
-.ctl-card.is-dim { opacity: 0.35; border-style: dashed; cursor: not-allowed; }
+.ctl-card:hover:not(:disabled) { background: var(--accent-soft); }
+.ctl-card:active:not(:disabled) { transform: translateY(1px); }
+/* 고른 카드: 청록 경계 3px + 옅은 청록 바탕 + 모서리 체크(글자 없이 그림) */
+.ctl-card.is-on {
+  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--accent-soft); color: var(--accent-2); font-weight: 700;
+}
+.ctl-card.is-on::after {
+  content: ''; position: absolute; top: 4px; right: 4px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M24 52l17 17 36-38' fill='none' stroke='%23fff' stroke-width='14' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+}
+.ctl-card.is-dim { opacity: 0.4; border-style: dashed; background: var(--cell-off); cursor: not-allowed; }
 .ctl-card:disabled:not(.is-dim) { cursor: default; }
-.ctl-card:focus-visible, .ctl-fire:focus-visible, .ctl-logtoggle:focus-visible, .ctl-log-close:focus-visible {
-  outline: 3px solid var(--sea); outline-offset: 2px;
-}
+.ctl.is-disabled .ctl-card:not(.is-on), .ctl-card:disabled:not(.is-dim):not(.is-on) { color: var(--ink-2); }
 
+/* 발사: 주 단추(청록 채움, 흰 글씨). 대결에서는 팀 색(css/duel.css) */
 .ctl-fire {
   min-width: calc(var(--touch) * 1.75);
   min-height: var(--touch);
   padding: 4px 24px;
-  border: 3px solid var(--hit);
-  border-radius: var(--radius);
-  background: var(--hit);
+  border: 0;
+  border-radius: var(--r-btn);
+  background: var(--fire, var(--accent));
   color: #fff;
-  font-family: var(--font-title);
-  font-size: 26px;
+  font-family: var(--font-body);
+  font-size: calc(var(--ctl-card-fs, 22px) + 4px);
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
+  transition: background-color var(--t-pick), filter var(--t-pick);
 }
-.ctl-fire:disabled { background: #fff; color: var(--ink-3); border-color: var(--ink-3); border-style: dashed; cursor: not-allowed; }
-
-.ctl.is-disabled .ctl-bar { opacity: 0.55; }
+.ctl-fire:hover:not(:disabled) { filter: brightness(.9); }
+.ctl-fire:active:not(:disabled) { transform: translateY(1px); }
+.ctl-fire:disabled { background: #DDE5E8; color: #4F646C; cursor: not-allowed; }
 
 /* ── 신호 기록장 ── */
 .ctl-logtoggle { display: none; }
@@ -102,66 +136,79 @@
   flex-direction: column;
   min-height: 0;
   max-height: 100%;
-  background: #fff;
-  border: 2px solid var(--sea-2);
-  border-radius: var(--radius);
-  font-size: 18px;
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--r-btn);
+  font-size: var(--ctl-log-fs, 18px);
 }
-.ctl-log-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--sea-2); }
-.ctl-log-title { font-family: var(--font-title); font-weight: 700; color: var(--sea); }
+.ctl-log-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); padding: 4px 12px; border-bottom: 1px solid var(--divider); }
+.ctl-log-title { font-weight: 600; font-size: 0.9em; color: var(--ink-2); white-space: nowrap; }
 .ctl-log-close { display: none; }
-.ctl-log-list { list-style: none; margin: 0; padding: 4px 6px; overflow: auto; min-height: 0; flex: 1 1 auto; }
-.ctl-log-item { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px; border-left: 4px solid var(--ink-3); margin: 2px 0; white-space: nowrap; }
-.ctl-log-n { color: var(--ink-3); font-size: 0.8em; min-width: 1.4em; text-align: right; }
-.ctl-log-team { font-size: 0.8em; font-weight: 700; }
-.ctl-log-item.t-blue .ctl-log-team { color: #2B5DA8; }
-.ctl-log-item.t-red .ctl-log-team { color: var(--hit); }
-.ctl-log-what.is-sound { font-family: var(--font-sound); font-weight: 900; }
-.ctl-log-what.is-combo { color: var(--ink-2); font-size: 0.9em; }
+.ctl-log-list { list-style: none; margin: 0; padding: 4px 8px; overflow: auto; min-height: 0; flex: 1 1 auto; }
+.ctl-log-item { display: flex; align-items: center; gap: var(--s2); padding: 3px 4px; margin: 1px 0; white-space: nowrap; border-radius: 6px; }
+.ctl-log-n { color: var(--ink-2); font-size: 0.8em; min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums; }
+.ctl-log-ico { width: 1em; height: 1em; flex: none; color: var(--ink-2); }
+.ctl-log-team { font-size: 0.85em; font-weight: 700; }
+.ctl-log-item.t-blue .ctl-log-team { color: var(--blue); }
+.ctl-log-item.t-red .ctl-log-team { color: var(--red); }
+.ctl-log-what.is-sound { font-family: var(--font-sound); font-weight: 700; }
+.ctl-log-what.is-combo { color: var(--ink); font-size: 0.9em; }
 .ctl-log-sig { font-weight: 700; }
-.ctl-log-item.k-hit { border-left-color: var(--hit); }
-.ctl-log-item.k-hit .ctl-log-sig { color: var(--hit); }
-.ctl-log-item.k-line { border-left-color: var(--sea); border-left-style: double; border-left-width: 6px; }
-.ctl-log-item.k-line .ctl-log-sig { color: var(--sea); }
-.ctl-log-item.k-miss { border-left-color: var(--miss); }
-.ctl-log-item.k-miss .ctl-log-sig { color: var(--miss); }
-.ctl-log-item.k-none { border-left-color: var(--ink-3); border-left-style: dotted; }
-.ctl-log-item.k-none .ctl-log-sig { color: var(--ink-2); }
+.ctl-log-item.k-hit { background: rgba(246, 190, 72, .28); }
+.ctl-log-item.k-hit .ctl-log-ico, .ctl-log-item.k-hit .ctl-log-sig { color: var(--hit-ink); }
+.ctl-log-item.k-line .ctl-log-ico, .ctl-log-item.k-line .ctl-log-sig { color: var(--line); }
+.ctl-log-item.k-miss .ctl-log-ico, .ctl-log-item.k-miss .ctl-log-sig { color: var(--miss); }
+.ctl-log-item.k-none .ctl-log-ico, .ctl-log-item.k-none .ctl-log-sig { color: var(--dud); }
 
-/* 가로, 기록장이 조작부 안에 있을 때: 문구 위 한 줄 띠(가로로 쌓이고 새 기록이 오른쪽 끝) */
+/* 가로, 기록장이 조작부 안에 있을 때: 문구 위 한 줄 띠 — 최근 세 발만(새 기록이 오른쪽 끝) */
 .ctl-log--strip { flex-direction: row; align-items: stretch; width: 100%; max-width: 1100px; max-height: none; }
-.ctl-log--strip .ctl-log-head { border-bottom: 0; border-right: 1px solid var(--sea-2); }
-.ctl-log--strip .ctl-log-list { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 4px 8px; }
-.ctl-log--strip .ctl-log-item { margin: 0; flex: 0 0 auto; }
+.ctl-log--strip .ctl-log-head { border-bottom: 0; border-right: 1px solid var(--divider); }
+.ctl-log--strip .ctl-log-list { display: flex; gap: var(--s3); overflow: hidden; padding: 4px 8px; }
+.ctl-log--strip .ctl-log-item { margin: 0; flex: 0 0 auto; padding: 2px 8px; }
+.ctl-log--strip .ctl-log-item:nth-last-child(n+4) { display: none; }
+.ctl-log--strip .ctl-log-list:empty::before { content: '—'; color: var(--ink-2); }
 
-/* ── 세로(휴대폰): 두 줄 — 방법 카드 / 세기·입술 카드 + 발사 + 기록장 단추 ── */
-.ctl--portrait { gap: 6px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px)); }
+/* ── 세로(휴대폰): [1 위치 · 요약] / 방법 카드 / 세기·입술 카드 + 발사 + 기록 ── */
+.ctl--portrait { gap: 6px; padding: 6px var(--s4) calc(8px + env(safe-area-inset-bottom, 0px)); --ctl-card-fs: 18px; --ctl-combo-fs: 16px; }
 .ctl--portrait .ctl-msg { font-size: 18px; }
+.ctl--portrait .ctl-deck { width: 100%; gap: 6px; }
+.ctl--portrait .ctl-comborow { justify-content: space-between; }
+.ctl--portrait.ctl--placebtn .ctl-placebtn {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  min-height: var(--touch); padding: 0 14px 0 10px;
+  border: 2px solid var(--control-line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink);
+  font-size: 18px; font-weight: 700; cursor: pointer; touch-action: manipulation;
+}
+.ctl-placebtn:disabled { color: var(--ink-2); cursor: default; }
+.ctl-placebtn-ico { width: 16px; height: 16px; color: var(--ink-2); }
+.ctl--portrait .ctl-combo { padding: 4px 10px; }
 .ctl--portrait .ctl-bar { flex-wrap: wrap; width: 100%; gap: 6px; align-items: stretch; }
 .ctl--portrait .ctl-group-label { display: none; }
 .ctl--portrait .ctl-group { align-items: stretch; }
 .ctl--portrait .ctl-group--manner { flex: 1 1 100%; }
 .ctl--portrait .ctl-group--strength, .ctl--portrait .ctl-group--lips { flex: 1 1 0; }
-.ctl--portrait .ctl-cards { gap: 6px; }
-.ctl--portrait .ctl-card { flex: 1 1 0; min-width: var(--touch); padding: 2px 4px; font-size: 18px; }
-.ctl--portrait .ctl-fire { flex: 0 0 auto; min-width: calc(var(--touch) * 1.6); padding: 2px 10px; font-size: 20px; }
+.ctl--portrait .ctl-cards { gap: 6px; flex: 1 1 auto; }
+.ctl--portrait .ctl-card { flex: 1 1 0; min-width: var(--touch); padding: 2px 4px; }
+.ctl--portrait .ctl-card.is-on::after { width: 12px; height: 12px; top: 3px; right: 3px; }
+.ctl--portrait .ctl-fire { flex: 0 0 auto; min-width: calc(var(--touch) * 1.75); min-height: 56px; padding: 2px 12px; font-size: 20px; }
 .ctl--portrait:not(.ctl--strength):not(.ctl--vowel) .ctl-fire { flex: 1 1 auto; } /* 자음 1단계: 둘째 줄은 발사뿐 */
 .ctl--portrait .ctl-logtoggle {
-  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 auto;
-  min-width: var(--touch); min-height: var(--touch); padding: 0 6px;
-  border: 2px solid var(--sea); border-radius: var(--radius); background: #fff; color: var(--sea);
-  font-size: 12px; line-height: 1.1; cursor: pointer; touch-action: manipulation;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto;
+  min-width: var(--touch); min-height: var(--touch); padding: 0 10px;
+  border: 2px solid var(--control-line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink);
+  font-size: 16px; font-weight: 600; line-height: 1.1; cursor: pointer; touch-action: manipulation;
 }
-.ctl-logtoggle-count { font-family: var(--font-title); font-size: 18px; font-weight: 700; }
-.ctl--portrait .ctl-logtoggle[aria-expanded="true"] { background: var(--sea); color: #fff; }
+.ctl-logtoggle-count { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ctl--portrait .ctl-logtoggle[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .ctl-log--portrait { display: none; }
 .ctl-log--portrait.is-open { display: flex; }
 .ctl-log--portrait .ctl-log-close {
   display: inline-block; min-height: var(--touch); min-width: var(--touch); padding: 0 12px;
-  border: 2px solid var(--sea); border-radius: var(--radius); background: #fff; color: var(--sea); cursor: pointer;
+  border: 2px solid var(--control-line); border-radius: var(--r-btn); background: var(--surface); color: var(--ink);
+  font-weight: 600; cursor: pointer;
 }
 /* 세로, 조작부 안: 펼치면 조작부 위로 떠오른다(판을 밀어내지 않음 → 스크롤 없음) */
 .ctl--portrait.ctl--log-inside .ctl-log {
-  position: absolute; left: 12px; right: 12px; bottom: 100%; z-index: 5;
-  max-height: 50vh; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+  position: absolute; left: var(--s3); right: var(--s3); bottom: 100%; z-index: 5;
+  max-height: 50vh; box-shadow: var(--shadow-float);
 }

@@ -27,6 +27,8 @@
 //   data-flow, data-particles(마지막 재생의 입자 수), data-playing(1|0), data-static(1=정지 그림), data-names(shown|hidden)
 //   막음 표시 g.mouth-closure 에는 data-kind(규칙)와 data-shape(지금 그려진 모양)가 있다.
 // 그림 안의 글씨는 자리 이름뿐이다(setShowNames로 숨김). 이름은 G.text에서 학년별로 가져온다.
+// 누르는 자리(디자인 검수): 보이는 표식은 화면에서 지름 28~32px의 흰 단추(2px 실선 테두리), 고르면 청록 채움 + 체크.
+//   실제로 누르는 범위(.mouth-hit)는 표식보다 크게 --touch 이상(가로 64px · 휴대폰 48px), 이웃 자리와 겹치지 않게.
 
 window.G = window.G || {};
 G.mouth = (function () {
@@ -179,9 +181,12 @@ G.mouth = (function () {
       const vowel = st.sea === 'vowel';
       targets = targetList().map((t, i) => {
         const ring = vowel
-          ? U.svg('rect', { x: t.x - M.cellDrawW / 2, y: t.y - M.cellDrawH / 2, width: M.cellDrawW, height: M.cellDrawH, rx: 8, class: 'mouth-spot mouth-cell', 'data-id': t.id })
-          : U.svg('circle', { cx: t.x, cy: t.y, r: 9, class: 'mouth-spot', 'data-id': t.id });
+          ? U.svg('rect', { x: t.x - M.cellDrawW / 2, y: t.y - M.cellDrawH / 2, width: M.cellDrawW, height: M.cellDrawH, rx: 8, class: 'mouth-spot mouth-cell', 'data-id': t.id, 'vector-effect': 'non-scaling-stroke' })
+          : U.svg('circle', { cx: t.x, cy: t.y, r: 12, class: 'mouth-spot', 'data-id': t.id, 'vector-effect': 'non-scaling-stroke' });
         spotsG.appendChild(ring);
+        // 고름 표시(체크): 표식 가운데, 표식 크기에 맞춰 sizeHits가 늘이고 줄인다
+        const check = U.svg('path', { class: 'mouth-check', d: 'M-0.5,0.02 L-0.14,0.38 L0.52,-0.34', 'data-for': t.id });
+        spotsG.appendChild(check);
         const hit = vowel
           ? U.svg('rect', { class: 'mouth-hit', 'data-id': t.id, tabindex: 0, role: 'button' })
           : U.svg('circle', { cx: t.x, cy: t.y, r: 10, class: 'mouth-hit', 'data-id': t.id, tabindex: 0, role: 'button' });
@@ -189,7 +194,7 @@ G.mouth = (function () {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(t.id); }
         });
         hitsG.appendChild(hit);
-        return Object.assign({ ring, hit, n: i + 1 }, t);
+        return Object.assign({ ring, check, hit, n: i + 1 }, t);
       });
       sizeHits();
     }
@@ -200,16 +205,23 @@ G.mouth = (function () {
       const scale = Math.min(rect.width / M.VIEW.w, rect.height / M.VIEW.h);
       const touch = parseFloat(getComputedStyle(container).getPropertyValue('--touch')) || 48;
       const need = scale > 0 ? touch / scale + 1 : 0; // 그림 단위로 본 --touch
+      // 보이는 표식: 화면에서 지름 30px 안팎(그림 단위로 환산, 너무 작거나 큰 그림에서는 범위 안에서)
+      const vis = scale > 0 ? U.clamp(15 / scale, 8, 17) : 12;
       if (st.sea === 'vowel') {
         const w = Math.max(M.cellW, need), h = Math.max(M.cellH, need);
         targets.forEach((t) => {
           t.w = w; t.h = h;
           t.hit.setAttribute('x', (t.x - w / 2).toFixed(1)); t.hit.setAttribute('y', (t.y - h / 2).toFixed(1));
           t.hit.setAttribute('width', w.toFixed(1)); t.hit.setAttribute('height', h.toFixed(1));
+          t.check.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + (vis * 1.1).toFixed(2) + ')');
         });
       } else {
         const r = Math.max(M.HIT_R, need / 2);
-        targets.forEach((t) => { t.hit.setAttribute('r', r.toFixed(1)); t.r = r; });
+        targets.forEach((t) => {
+          t.hit.setAttribute('r', r.toFixed(1)); t.r = r;
+          t.ring.setAttribute('r', vis.toFixed(1));
+          t.check.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + (vis * 1.15).toFixed(2) + ')');
+        });
       }
     }
     let ro = null;
@@ -251,7 +263,7 @@ G.mouth = (function () {
         M.placeOrder.forEach((id) => {
           const L = M.places[id].label;
           text(L.x, L.y, T.mouthParts[id], 'mouth-label', L.anchor);
-          if (st.grade === 'h1') text(L.x, L.y + 13, G.text.short('h1', 'place', id), 'mouth-label mouth-label-sub', L.anchor);
+          if (st.grade === 'h1') text(L.x, L.y + 15, G.text.short('h1', 'place', id), 'mouth-label mouth-label-sub', L.anchor);
         });
       } else {
         const V = M.vowelLabels;
@@ -370,7 +382,12 @@ G.mouth = (function () {
       st.playing = false;
       clearParticles();
       st.isStatic = false;
-      targets.forEach((t) => t.ring.classList.toggle('is-selected', t.id === (st.sea === 'vowel' ? st.tongue : st.place)));
+      targets.forEach((t) => {
+        const on = t.id === (st.sea === 'vowel' ? st.tongue : st.place);
+        t.ring.classList.toggle('is-selected', on);
+        t.check.classList.toggle('is-selected', on);
+        t.hit.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
       if (st.sea === 'consonant') {
         const rule = st.manner ? M.manners[st.manner] : null;
         st.closure = rule ? rule.closure : '';

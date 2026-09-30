@@ -348,6 +348,12 @@ window.TEXT = {
     // 판 도중
     play: {
       fire: '발사', log: '신호 기록장', logOpen: '신호 기록장 펼치기', logClose: '접기',
+      logShort: '기록',          // 휴대폰 기록장 단추('기록 2')
+      // 단계 이름표(조작 순서: 1 위치 → 2 방법 → 3 세기 → 발사)와 지금 고른 조합 요약 한 줄
+      step: { place: '위치', tongue: '혀 자리' },
+      placeBtn: '위치',          // 휴대폰: 누르면 아래에서 입안 단면도 패널이 올라온다
+      placeChosen: '고른 자리',   // 자리 이름을 숨기는 단계에서 요약 줄에 쓰는 말
+      sheetClose: '닫기',
       shipsLeft: '남은 배', turnsLeft: '남은 턴', turnsN: '{n}턴',
       allFound: '배를 모두 찾았어요',
       outOfTurns: '턴을 다 썼어요. 남은 배를 보여 줄게요',
@@ -358,6 +364,9 @@ window.TEXT = {
       title: '결과',
       soundmap: '이번 판 소리 지도', record: '기록', turns: '턴', noneShots: '없는 소리',
       turnsN: '{n}턴', timesN: '{n}번', hitsN: '맞힌 소리 {n}개',
+      shots: '쏜 발', shotsN: '{n}발',   // 대결은 턴 대신 '발'로 센다
+      hits: '맞힌 소리', hitsCount: '{n}개',
+      notAll: '찾지 못한 배가 있어요',    // 연습에서 턴을 다 쓴 판의 결과 제목(모두 찾으면 play.allFound)
       know: '알아 두기', question: '생각해 볼 질문',
       win: '승', lose: '패', draw: '무승부',
       winner: { blue: '청팀 승', red: '홍팀 승', draw: '무승부' },
