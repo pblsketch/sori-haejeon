@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>앱 뼈대 점검</title>
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/fonts.css">
+  <link rel="stylesheet" href="../../css/mouth.css">
+  <link rel="stylesheet" href="../../css/board.css">
+  <link rel="stylesheet" href="../../css/controls.css">
+  <link rel="stylesheet" href="../../css/app.css">
+  <style>
+    /* 점검 전용: ?box=1920x1080 → #app을 그 크기의 상자로 만들고 창에 맞게 줄여 보여 준다(캡처용). */
+    body.box { overflow: hidden; background: #888; }
+    body.box #app { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--paper); }
+  </style>
+</head>
+<body>
+  <!-- 점검 전용 페이지: index.html과 같은 스크립트 + 연습·대결 흉내(부른 값을 window.__calls에 적음) + app.js + main.js
+       ?reset=1  → 불러오기 전에 이 게임의 저장 값(sori-haejeon:*)을 모두 지운다
+       ?box=WxH  → #app을 W×H 상자로(캡처용). 화면 높이 --app-h도 H로. -->
+  <div id="app"></div>
+  <script>
+    (function () {
+      const q = new URLSearchParams(location.search);
+      if (q.get('reset')) {
+        try { Object.keys(localStorage).filter((k) => k.indexOf('sori-haejeon:') === 0).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* 무시 */ }
+      }
+      const box = q.get('box');
+      if (box) {
+        const [w, h] = box.split('x').map(Number);
+        document.body.classList.add('box');
+        const a = document.getElementById('app');
+        a.style.width = w + 'px'; a.style.height = h + 'px';
+        a.style.setProperty('--app-h', h + 'px');
+        const fit = () => { a.style.transform = 'scale(' + Math.min(1, innerWidth / w, innerHeight / h) + ')'; };
+        fit(); addEventListener('resize', fit);
+      }
+    })();
+  </script>
+  <script src="../../js/core/util.js"></script>
+  <script src="../../js/data/sounds.js"></script>
+  <script src="../../js/data/fleets.js"></script>
+  <script src="../../js/data/levels.js"></script>
+  <script src="../../js/data/text.js"></script>
+  <script src="../../js/data/mouth.js"></script>
+  <script src="../../js/core/rules.js"></script>
+  <script src="../../js/core/audio.js"></script>
+  <script src="../../js/core/save.js"></script>
+  <script src="../../js/game/mouth.js"></script>
+  <script src="../../js/game/board.js"></script>
+  <script src="../../js/game/controls.js"></script>
+  <script>
+    // 연습·대결 화면 흉내: 부른 값을 적고 빈 화면 하나를 그린다
+    window.__calls = [];
+    function stub(name) {
+      return {
+        open(p) {
+          window.__calls.push({ name, params: { resume: !!(p && p.resume), hasContainer: !!(p && p.container) } });
+          const c = (p && p.container) || document.getElementById('app');
+          c.innerHTML = '';
+          c.appendChild(G.util.el('div', { id: 'stub-' + name }, name));
+          return { destroy() { window.__calls.push({ name, destroyed: true }); } };
+        },
+      };
+    }
+    G.practice = stub('practice');
+    G.duel = stub('duel');
+    G.board.setImageBase('../../assets/img/');
+    // 소리 파일은 점검 중에 울리지 않게 없는 폴더로(엔진은 조용히 넘어간다)
+    G.audio.setBase('../../assets/__none__/');
+  </script>
+  <script src="../../js/game/app.js"></script>
+  <script src="../../js/main.js"></script>
+</body>
+</html>
