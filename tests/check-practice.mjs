@@ -9,6 +9,7 @@
 //     → 한 줄 문구 → 하단 고정 조작부([요약 줄 · 기록 N] / ① / ② / ③ + 발사), 조작 단추가 모두 화면 아래 45% 안(한 손),
 //     스크롤 없이 한 발, 가로 넘침 없음, 기록장 접힘/펼침, 터치 목표 48px·발사 56px, 방향 바뀜(가로↔세로)에도 판 그대로,
 //     낮은 가로 화면은 '세로로 돌려 주세요'. 가로의 기록장은 조작부 안 최근 세 발 띠. 가로: ①②③ 카드가 모두 화면 아래 35% 안
+//     선생님 요구: 단계를 나누지 않는다 — 처음부터 ①②③ 모든 카드와 발사가 한 화면에 보이고 가려지지 않으며, 한 발은 줄마다 한 번 + 발사로 끝난다
 //  5) 캡처: tests/shots/practice-landscape.png, practice-portrait-390.png, practice-portrait-360.png
 //  모든 조각에서 페이지 오류(window.__soriErrors) 0.
 //  점검 드라이버만 숨은 함대를 G.practice.debug().state에서 읽는다(화면에는 드러나지 않음).
@@ -48,7 +49,34 @@ const tapPoint = (n, what) => {
   return { x, y };
 };
 const card = (g, id) => $('.ctl-card[data-group="' + g + '"][data-id="' + id + '"]');
-const tap = (n, what) => { if (!n) { bad('없음: ' + what); return; } tapPoint(n, what); n.click(); };
+let taps = 0; // 누른 횟수(한 발 = 줄마다 한 번 + 발사)
+const tap = (n, what) => { if (!n) { bad('없음: ' + what); return; } taps++; tapPoint(n, what); n.click(); };
+// 선생님 요구: 고르기 단계를 나누지 않는다 — 아무것도 누르지 않은 처음부터 ①②③ 모든 카드와 발사가 한 화면에 보이고 눌린다
+const allAtOnce = (tag) => {
+  const rows = st().sea === 'vowel' ? ['height', 'backness', 'lips'] : ['place', 'manner'].concat($$('.ctl-card[data-group="strength"]').length ? ['strength'] : []);
+  const want = st().sea === 'vowel' ? { height: 3, backness: 2, lips: 2 } : { place: 5, manner: 5, strength: 3 };
+  rows.forEach((g) => {
+    const cs = $$('.ctl-card[data-group="' + g + '"]');
+    if (cs.length !== want[g]) bad(tag + ': ' + g + ' 카드 ' + cs.length + '장');
+    cs.forEach((c) => {
+      if (!visible(c) || c.disabled) bad(tag + ': 처음부터 보이고 눌려야 하는 카드가 아님 ' + c.textContent);
+      const b = box(c);
+      if (b.top < -0.5 || b.left < -0.5 || b.bottom > fw.innerHeight + 0.5 || b.right > fw.innerWidth + 0.5) bad(tag + ': 카드가 화면 밖 ' + c.textContent);
+      const hit = fd.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      if (!hit || !(hit === c || c.contains(hit))) bad(tag + ': 카드가 가려짐 ' + c.textContent);
+    });
+  });
+  const fb = $('.ctl-fire'), fbb = box(fb);
+  if (!visible(fb) || fbb.bottom > fw.innerHeight + 0.5) bad(tag + ': 발사 단추가 처음부터 화면 안에 없음');
+  return rows.length;
+};
+// 한 발을 줄마다 한 번 + 발사로(모두 4번 또는 자음 1단계 3번) — 다른 누름(패널 열기·단계 넘기기) 없이
+const shootCounted = async (input, what) => {
+  const rows = allAtOnce(what);
+  taps = 0;
+  await shoot(input, what);
+  if (taps !== rows + 1) bad(what + ': 한 발에 ' + taps + '번 누름(줄 ' + rows + ' + 발사 1이어야 함)');
+};
 const msvg = () => $('.mouth-svg');
 // 자리 고르기: 아래 조작부의 ① 카드(자음 자리 / 모음 높이 + 앞뒤) — 단면도가 그 자리를 보여 주는지도 본다
 const pickPlace = (id) => {
@@ -432,6 +460,7 @@ try {
       inView(m, tag + ' 문구');
       if (visible($('.ctl-log'))) bad(tag + ': 기록장이 펼쳐져 있음');
       if ($('.pr-sheet') || $('.ctl-placebtn')) bad(tag + ': 없앤 위치 패널·단추가 남아 있음');
+      allAtOnce(tag + ' 처음(아무것도 안 누름)');
       noScroll(tag);
     };
     const start = async (grade, sea, level) => {
@@ -456,7 +485,7 @@ try {
       if ($('.mouth-svg').dataset.lipshape !== 'closed') await until(() => $('.mouth-svg').dataset.lipshape === 'closed', 1000, '두 입술 + 파열을 고르면 단면도의 입술이 붙음');
       const cmb = $('.ctl-combo').textContent;
       if (cmb !== TX.mouthParts.bilabial + ' · ' + G.text.short('m3', 'manner', 'stop')) bad('요약 줄: ' + cmb);
-      await shoot(inp(fleetIds[0]), '세로 한 발');
+      await shootCounted(inp(fleetIds[0]), '세로 한 발');
       if (shots().length !== 1 || turnsLeft() !== 7) bad('세로 한 발 뒤 턴 ' + turnsLeft());
       if (msg() === '') bad('세로 한 발 뒤 문구 없음');
       noScroll('한 발 뒤');
@@ -491,7 +520,7 @@ try {
       // 자음 2단계: 방법 / 세기 + 발사
       await start('h1', 'consonant', 2);
       checkLayout('자음 2단계', 'strength');
-      await shoot({ place: 'velar', manner: 'stop', strength: 'tense' }, '세로 2단계 한 발');
+      await shootCounted({ place: 'velar', manner: 'stop', strength: 'tense' }, '세로 2단계 한 발');
       if (shots().length !== 1) bad('세로 2단계 한 발이 안 나감');
       // 모음 1단계: 입술 + 발사
       await start('m3', 'vowel', 1);
@@ -499,7 +528,7 @@ try {
       // 모음: ① 높이 줄 / ② 앞뒤 + ③ 입술 한 줄 / 발사 한 줄
       if (Math.abs(box(card('backness', 'front')).top - box(card('lips', 'rounded')).top) > 2) bad('모음: 앞뒤·입술 카드가 한 줄이 아님');
       if (!(box($('.ctl-fire')).top >= box(card('lips', 'rounded')).bottom - 1)) bad('모음: 발사가 입술 줄 아래가 아님');
-      await shoot({ backness: 'back', height: 'high', lips: 'rounded' }, '세로 모음 한 발');
+      await shootCounted({ backness: 'back', height: 'high', lips: 'rounded' }, '세로 모음 한 발');
       if (shots().length !== 1) bad('세로 모음 한 발이 안 나감');
       noScroll('모음 한 발 뒤');
     } catch (e) { bad('예외: ' + e.message); }

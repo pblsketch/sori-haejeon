@@ -37,7 +37,6 @@
 .mouth-air-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; }
 .mouth-bone { fill: var(--mouth-bone); stroke: var(--ink-2); stroke-width: 1px; stroke-linejoin: round; }
 .mouth-tongue { fill: var(--mouth-tongue); stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; }
-.mouth-tongue-mid { fill: none; stroke: var(--mouth-tongue-2); stroke-width: 1px; stroke-linecap: round; opacity: .7; }
 .mouth-teeth { fill: #fff; stroke: var(--mouth-line); stroke-width: 1.2px; stroke-linejoin: round; }
 .mouth-lip { fill: var(--mouth-lip); stroke: none; }
 .mouth-lip-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; stroke-linecap: round; }
@@ -49,13 +48,21 @@
 .mouth-epiglottis { fill: var(--mouth-tissue-2); stroke: var(--mouth-line); stroke-width: 1.2px; stroke-linejoin: round; }
 
 /* 콧길 문 = 여린입천장(목젖까지). 내려가면(콧길 열림) 청록 테두리로 눈에 띄게 */
-.mouth-velum { fill: var(--mouth-tissue-2); stroke: none; }
+.mouth-velum { fill: var(--mouth-tissue); stroke: none; } /* 센입천장 살과 이어지게 같은 빛깔(윤곽선만 따로) */
 .mouth-velum-line { fill: none; stroke: var(--mouth-line); stroke-width: 1.6px; stroke-linejoin: round; transition: stroke .15s; }
 .mouth-door[data-state="open"] .mouth-velum-line { stroke: var(--accent); stroke-width: 2.4px; }
 
-/* 목청(성대) */
-.mouth-fold { fill: var(--mouth-fold); stroke: var(--mouth-line); stroke-width: 1.2px; stroke-linejoin: round; }
-.mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 2.4px; stroke-linecap: round; stroke-linejoin: round; }
+/* 목청: 단면도에서는 성대 높이만 옅게, 여닫힘은 '위에서 본 성대' 작은 그림 */
+.mouth-fold-side { fill: var(--mouth-fold); opacity: .45; stroke: none; }
+.mouth-larynx { fill: var(--mouth-tissue-2); stroke: var(--mouth-line); stroke-width: 1.2px; }
+.mouth-glottis-hole { fill: #5A3431; }
+.mouth-svg .mouth-fold { fill: none; stroke: var(--mouth-fold); stroke-linecap: round; vector-effect: none; }
+.mouth-tight path { fill: none; stroke: var(--mouth-tight); stroke-width: 2.2px; stroke-linecap: round; stroke-linejoin: round; }
+/* 비음: 콧길로 나가는 길 */
+.mouth-route path { fill: none; stroke: var(--air); stroke-width: 1.4px; stroke-dasharray: 4 4; opacity: .55; }
+.mouth-route .mouth-route-head { stroke-dasharray: none; stroke-width: 2px; opacity: .8; stroke-linecap: round; stroke-linejoin: round; }
+/* 작은 그림 이름 */
+.mouth-caption { font-family: var(--font-body); font-size: 12px; font-weight: 600; fill: var(--ink-2); }
 
 /* 모음 안내(혀 밑): 높이마다 옅은 점선, 여섯 자리 점. 고른 자리는 혀 위에 청록 고리 */
 .mouth-guide { stroke: var(--divider); stroke-width: 1px; stroke-dasharray: 3 4; }
@@ -72,7 +79,7 @@
 .mouth-puff path { fill: none; stroke: var(--air); stroke-width: 3px; stroke-linecap: round; opacity: .75; }
 
 /* 공기 입자: 짙은 청록 채움 + 흰 테두리(밝은 살·공기 길 위에서 모두 보임) */
-.mouth-particle { fill: var(--air); stroke: #fff; stroke-width: 1.2px; }
+.mouth-particle { fill: var(--air); stroke: #fff; stroke-width: 1px; }
 .mouth-particle.is-far { opacity: 0.45; }
 
 /* 이름(단계에 따라 숨김): 흰 외곽선 없이 또렷한 잉크. 가는 연결선 + 끝점 */

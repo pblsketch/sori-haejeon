@@ -232,7 +232,6 @@ G.mouth = (function () {
     const tongueG = g('mouth-tongue-g');
     tongueG.setAttribute('clip-path', `url(#${id}-oral)`);
     const tongueEl = path('', 'mouth-tongue', tongueG);
-    const tongueLine = path('', 'mouth-tongue-mid', tongueG); // 혓몸 가운데 옅은 선(입체감)
     path(S.epiglottis, 'mouth-epiglottis');
     // 입술(이 뒤에 깔고 이를 위에 그린다 — 입술 안쪽이 이에 붙어 보이게)
     const lipU = path('', 'mouth-lip');
@@ -246,26 +245,43 @@ G.mouth = (function () {
     const doorG = g('mouth-door');
     const velumEl = path(Vd.d, 'mouth-velum', doorG);
     path(Vd.d.slice(Vd.d.indexOf(' C')).replace(/ Z$/, '').replace(/^ C/, 'M' + Vd.d.slice(1, Vd.d.indexOf(' C')) + ' C'), 'mouth-velum-line', doorG);
-    // 목청(성대 두 쪽)과 조임 표시
+    // 목청: 정중 단면에서는 후두 안 성대 높이만 옅게(성대는 옆벽에 붙어 있다) — 여닫힘은 '위에서 본 성대' 작은 그림에서
     const gl = S.glottis;
-    const glottisG = g('mouth-glottis');
-    const foldF = path('', 'mouth-fold', glottisG), foldB = path('', 'mouth-fold', glottisG);
-    const tightG = g('mouth-tight', glottisG);
-    [[gl.front - 12, 1], [gl.back + 12, -1]].forEach(([x, dir]) => {
-      tightG.appendChild(U.svg('path', { d: `M${x},${gl.y - 10} L${x + dir * 8},${gl.y} L${x},${gl.y + 10}` }));
-    });
-    // 앞에서 본 입술(모음 바다)
+    path(`M${gl.front},${gl.y} C${gl.front + 8},${gl.y - 4} ${gl.back - 8},${gl.y - 4} ${gl.back},${gl.y} C${gl.back - 8},${gl.y + 4} ${gl.front + 8},${gl.y + 4} ${gl.front},${gl.y} Z`, 'mouth-fold-side');
+    // 막음 표시 · 거센 입김 · 입자 · 이름
+    const closureG = g('mouth-closure');
+    // 거센 입김: 입술 앞에서 바깥(왼쪽)으로 퍼지는 동심 호
+    const puffG = g('mouth-puff');
+    [9, 17, 25].forEach((r) => { const x = -(r * 0.77).toFixed(1), y = (r * 0.64).toFixed(1); puffG.appendChild(U.svg('path', { d: `M${x},${-y} A${r},${r} 0 0 0 ${x},${y}` })); });
+    // 콧길로 나가는 길(비음): 옅은 점선 + 콧구멍 쪽 화살촉
+    const routeG = g('mouth-route');
+    const nr = M.route.nose.slice(2);
+    routeG.appendChild(U.svg('path', { d: 'M' + nr[0].join(',') + smooth(nr) }));
+    const ne = nr[nr.length - 1], np = nr[nr.length - 2], na = Math.atan2(ne[1] - np[1], ne[0] - np[0]);
+    const ah = (a) => [ne[0] - 7 * Math.cos(na + a), ne[1] - 7 * Math.sin(na + a)];
+    routeG.appendChild(U.svg('path', { class: 'mouth-route-head', d: `M${ah(0.5).map(f1).join(',')} L${ne.join(',')} L${ah(-0.5).map(f1).join(',')}` }));
+    const partG = g('mouth-particles');
+    layer = svg;
+    // 앞에서 본 입술(모음 바다, 턱 앞 빈 곳) + 이름
     const li = S.lipInset;
     const insetG = g('mouth-lipinset');
     const insetOuter = U.svg('ellipse', { cx: li.x, cy: li.y, class: 'mouth-lip' });
     const insetHole = U.svg('ellipse', { cx: li.x, cy: li.y, class: 'mouth-lip-hole' });
     insetG.appendChild(insetOuter); insetG.appendChild(insetHole);
-    // 막음 표시 · 거센 입김 · 입자 · 이름
-    const closureG = g('mouth-closure');
-    const puffG = g('mouth-puff');
-    ['M0,-2 C-14,-9 -30,-12 -46,-9', 'M0,0 C-18,0 -36,1 -56,0', 'M0,2 C-14,9 -30,13 -46,11'].forEach((d) => puffG.appendChild(U.svg('path', { d })));
-    const partG = g('mouth-particles');
-    layer = svg;
+    const insetCap = U.svg('text', { class: 'mouth-caption', x: li.x, y: li.y + 34, 'text-anchor': 'middle' });
+    insetCap.textContent = window.TEXT.mouthParts.lipsFront;
+    insetG.appendChild(insetCap);
+    // 위에서 본 성대(목 뒤 살): 앞(왼쪽) 끝이 붙은 두 성대 사이 틈(성문)이 열리고 닫힌다. 된소리는 조임 표시
+    const gi = gl.inset;
+    const glottisG = g('mouth-glottis');
+    glottisG.appendChild(U.svg('ellipse', { class: 'mouth-larynx', cx: gi.x, cy: gi.y, rx: gi.w / 2, ry: gi.h / 2 }));
+    const gHole = U.svg('path', { class: 'mouth-glottis-hole' });
+    const foldF = U.svg('path', { class: 'mouth-fold' }), foldB = U.svg('path', { class: 'mouth-fold' });
+    glottisG.appendChild(gHole); glottisG.appendChild(foldF); glottisG.appendChild(foldB);
+    const tightG = g('mouth-tight', glottisG);
+    [[gi.y - gi.h / 2 - 1, 1], [gi.y + gi.h / 2 + 1, -1]].forEach(([y, dir]) => {
+      tightG.appendChild(U.svg('path', { d: `M${gi.x - 8},${y - dir * 6} L${gi.x},${y} L${gi.x + 8},${y - dir * 6}` }));
+    });
     const targetRing = U.svg('circle', { class: 'mouth-target', r: 7 }); // 모음: 고른 자리(혓몸 가장 높은 곳)
     svg.appendChild(targetRing);
     const labelsG = g('mouth-labels');
@@ -273,7 +289,7 @@ G.mouth = (function () {
     const nMax = M.PARTICLES * 2;
     const parts = [];
     for (let i = 0; i < nMax; i++) {
-      const c = U.svg('circle', { r: 4.4, class: 'mouth-particle' });
+      const c = U.svg('circle', { r: 3.2, class: 'mouth-particle' });
       c.style.display = 'none';
       partG.appendChild(c); parts.push(c);
     }
@@ -298,17 +314,12 @@ G.mouth = (function () {
       // 혀끝 밑면: 바닥에서 뒤로 조금 들어갔다가 혀끝으로 올라가 둥글게 이어진다(혀끝은 윗면과 매끄럽게)
       const lift = U.clamp((u0[1] - T0[1] - 26) / 50, 0, 1); // 혀끝이 들릴수록 밑면이 뒤로 휜다
       return `M${f1(T0[0])},${f1(T0[1])}` + smooth(t) + ` L${F.from[0]},${F.from[1]} ${F.d} ` +
-        `C${f1(u0[0] + 4 + lift * 36)},${f1(u0[1] - 6 - lift * 4)} ${f1(T0[0] - dx * 7 + lift * 20)},${f1(T0[1] - dy * 7 + 12 + lift * 18)} ${f1(T0[0] - dx * 3)},${f1(T0[1] - dy * 3 + 3)} ` +
+        `C${f1(u0[0] + 4 + lift * 16)},${f1(u0[1] - 8 - lift * 16)} ${f1(T0[0] - dx * 7 + lift * 10)},${f1(T0[1] - dy * 7 + 12 + lift * 14)} ${f1(T0[0] - dx * 3)},${f1(T0[1] - dy * 3 + 3)} ` +
         `C${f1(T0[0] - dx * 3.5)},${f1(T0[1] - dy * 3.5)} ${f1(T0[0] - dx * 1.5)},${f1(T0[1] - dy * 1.5 - 0.5)} ${f1(T0[0])},${f1(T0[1])} Z`;
-    }
-    function midLine(t) { // 혀 윗면을 따라 안쪽으로 조금 들어간 옅은 선(혀날~혀뿌리)
-      const q = t.slice(1, 7).map((p, i) => [p[0] + (i > 3 ? -9 : 0), p[1] + (i > 3 ? 2 : 10)]);
-      return 'M' + f1(q[0][0]) + ',' + f1(q[0][1]) + smooth(q);
     }
     function drawPose(ps) {
       cur = ps;
       tongueEl.setAttribute('d', tongueD(ps.t));
-      tongueLine.setAttribute('d', midLine(ps.t));
       const [a, b, al, bl] = lipPaths(ps.u, ps.l, ps.p);
       lipU.setAttribute('d', a); lipL.setAttribute('d', b); lipUL.setAttribute('d', al); lipLL.setAttribute('d', bl);
       doorG.setAttribute('transform', `translate(${Vd.hinge[0]},${Vd.hinge[1]}) rotate(${f1(ps.v)})`);
@@ -316,10 +327,12 @@ G.mouth = (function () {
       doorG.setAttribute('data-state', nasal);
       svg.setAttribute('data-nasal', nasal);
       svg.setAttribute('data-velum', f1(ps.v));
-      // 목청: 조이면(sq) 성대가 두꺼워지며 붙는다
-      const gh = ps.g * (1 - ps.sq), th = 7 + ps.sq * 3, y = gl.y;
-      foldF.setAttribute('d', `M${gl.front},${f1(y - th)} C${gl.front + 8},${f1(y - th)} ${f1(gl.mid - gh - 3)},${f1(y - 2)} ${f1(gl.mid - gh)},${y} C${f1(gl.mid - gh - 3)},${f1(y + 2)} ${gl.front + 8},${f1(y + th - 1)} ${gl.front},${f1(y + th - 1)} Z`);
-      foldB.setAttribute('d', `M${gl.back},${f1(y - th)} C${gl.back - 8},${f1(y - th)} ${f1(gl.mid + gh + 3)},${f1(y - 2)} ${f1(gl.mid + gh)},${y} C${f1(gl.mid + gh + 3)},${f1(y + 2)} ${gl.back - 8},${f1(y + th - 1)} ${gl.back},${f1(y + th - 1)} Z`);
+      // 목청(위에서 본 성대): 조이면(sq) 성대가 두꺼워지며 붙는다
+      const gh = ps.g * (1 - ps.sq), gi2 = gl.inset, ax = gi2.x - gi2.w * 0.36, px = gi2.x + gi2.w * 0.3, o = gh * 1.9;
+      foldF.setAttribute('d', `M${f1(ax)},${gi2.y} L${f1(px)},${f1(gi2.y - o)}`);
+      foldB.setAttribute('d', `M${f1(ax)},${gi2.y} L${f1(px)},${f1(gi2.y + o)}`);
+      foldF.style.strokeWidth = foldB.style.strokeWidth = f1(5 + ps.sq * 2);
+      gHole.setAttribute('d', o > 0.3 ? `M${f1(ax + 3)},${gi2.y} L${f1(px)},${f1(gi2.y - o + 2)} L${f1(px)},${f1(gi2.y + o - 2)} Z` : '');
       tightG.style.opacity = ps.sq > 0.02 ? String(Math.min(1, ps.sq * 1.4)) : '0';
       tightG.style.display = ps.sq > 0.02 ? '' : 'none';
       const glottis = ps.sq > 0.5 ? 'tight' : info.place === 'glottal' && ps.g < 0.4 ? 'closed' : info.place === 'glottal' && ps.g <= gl.half.narrow + 0.6 ? 'narrow' : 'normal';
@@ -346,7 +359,7 @@ G.mouth = (function () {
       closureG.setAttribute('data-kind', kind || '');
       closureG.setAttribute('data-shape', shape || '');
       if (!shape || st.sea !== 'consonant' || !st.place) return;
-      const P = M.places[st.place], L = P.len, W = 7, h = L / 2;
+      const P = M.places[st.place], L = P.len, W = 5, h = L / 2;
       const at = targetOf(st.place, cur.v), aw = awayOf(st.place, cur.v);
       const off = shape === 'gap' ? M.NEAR / 2 : 0;
       const deg = st.place === 'velar' ? P.deg + (cur.v - Vd.raisedDeg) : P.deg;
@@ -361,7 +374,7 @@ G.mouth = (function () {
       st.puff = k;
       puffG.style.display = k > 0.03 ? '' : 'none';
       const pf = S.puff;
-      puffG.setAttribute('transform', `translate(${f1(pf.x - (1 - Math.min(1, k * 2)) * 4 - (st.puffT || 0) * 30)},${pf.y}) scale(${f1(0.6 + 0.6 * Math.min(1, st.puffT || 0))})`);
+      puffG.setAttribute('transform', `translate(${f1(pf.x - (st.puffT || 0) * 12)},${pf.y}) scale(${f1(0.7 + 0.5 * Math.min(1, st.puffT || 0))})`);
       puffG.style.opacity = f1(Math.min(1, k));
       svg.setAttribute('data-puff', k > 0.05 ? 1 : 0);
     }
@@ -391,12 +404,14 @@ G.mouth = (function () {
           const lines = (P.label.side === 'top' ? splitName(T.mouthParts[pid]) : [T.mouthParts[pid]]).map((ln) => {
             const ts = U.svg('tspan', {}); ts.textContent = ln; main.appendChild(ts); return ts;
           });
-          labelRecs.push({ id: pid, main, lines, lead: lead(), dot: dot(), follow: pid === 'velar' });
+          labelRecs.push({ id: pid, main, lines, lead: lead(), dot: dot(), follow: pid === 'velar',
+            lead2: P.lead2 ? lead() : null, dot2: P.lead2 ? dot() : null });
         });
       } else {
         const V = M.vowelLabels;
         ['front', 'back'].forEach((b) => {
-          const t = mkText(G.text.short(st.grade, 'backness', b), 'mouth-label');
+          // 중3 = '혀 앞'·'혀 뒤'(혀의 자리임을 분명히), 고1 = 전설·후설
+          const t = mkText(st.grade === 'h1' ? G.text.short('h1', 'backness', b) : T.mouthParts[b === 'front' ? 'tongueFront' : 'tongueBack'], 'mouth-label');
           labelRecs.push({ vb: b, main: t, lines: null, lead: lead(), dot: dot() });
         });
         ['high', 'mid', 'low'].forEach((h) => {
@@ -431,9 +446,17 @@ G.mouth = (function () {
       L.lead.setAttribute('x1', f1(L.leadFrom[0])); L.lead.setAttribute('y1', f1(L.leadFrom[1]));
       L.lead.setAttribute('x2', f1(to[0])); L.lead.setAttribute('y2', f1(to[1]));
       L.dot.setAttribute('cx', f1(to[0])); L.dot.setAttribute('cy', f1(to[1]));
+      if (L.lead2) {
+        const t2 = M.places[L.id].lead2;
+        L.lead2.setAttribute('x1', f1(L.leadFrom[0])); L.lead2.setAttribute('y1', f1(L.leadFrom[1]));
+        L.lead2.setAttribute('x2', f1(t2[0])); L.lead2.setAttribute('y2', f1(t2[1]));
+        L.dot2.setAttribute('cx', f1(t2[0])); L.dot2.setAttribute('cy', f1(t2[1]));
+      }
     }
     function layoutLabels() {
       const lf = labelFs, lh = lf * 1.12, B = M.labelBand;
+      insetCap.style.fontSize = f1(lf * 0.72) + 'px';
+      insetCap.setAttribute('y', f1(S.lipInset.y + 18 + lf * 0.72));
       labelRecs.forEach((L) => {
         L.main.style.fontSize = f1(lf) + 'px';
         if (L.vh) { // 모음 높이: 오른쪽 목 뒤 살, 그 높이의 안내선 끝
@@ -444,7 +467,7 @@ G.mouth = (function () {
           const x = M.vowelLabels.backness[L.vb];
           L.main.setAttribute('x', x); L.main.setAttribute('y', f1(B[1] - lf * 0.25));
           L.leadFrom = [x, B[1] + 2];
-          L.to = [x, L.vb === 'front' ? 97 : 101];
+          L.to = [x, M.vowelLabels.heights.high - 5]; // 혀 자리 점(높은 줄) 바로 위까지 — 입천장의 구획처럼 보이지 않게
           placeLead(L);
           return;
         }
@@ -540,7 +563,7 @@ G.mouth = (function () {
     function setTargetRing() {
       const V = st.sea === 'vowel' && st.tongue && M.vowels[st.tongue];
       targetRing.style.display = V ? '' : 'none';
-      if (V) { targetRing.setAttribute('cx', V.hump[0]); targetRing.setAttribute('cy', V.hump[1] - 2); }
+      if (V) { targetRing.setAttribute('cx', V.hump[0]); targetRing.setAttribute('cy', V.hump[1]); }
     }
 
     // 지금 고른 값으로 멈춘 그림을 맞춘다(재생 전 미리 보기)
@@ -568,6 +591,7 @@ G.mouth = (function () {
       drawClosure(st.closure, shape);
       setInset();
       setTargetRing();
+      routeG.style.display = st.sea === 'consonant' && st.manner === 'nasal' ? '' : 'none';
       writeData();
     }
     function writeData() {

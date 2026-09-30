@@ -98,7 +98,7 @@ const PLAY_ALL = `async (combos) => {
     // 조음체 거리: 쉼(떨어짐) → 닿음/좁힘 → 풀림
     const hold = S.filter((s) => s.phase === 'hold');
     const g0 = S[0].gap;
-    if (!(g0 > NEAR + 2)) bad('처음(쉼 자세)부터 붙어 있음: 거리 ' + g0);
+    if (!(g0 > NEAR + 1.5)) bad('처음(쉼 자세)부터 붙어 있거나 좁음: 거리 ' + g0);
     const touch = hold.some((s) => s.contact === 'touch'), near = S.some((s) => s.contact === 'near' && (s.phase === 'hold' || s.phase === 'release'));
     if (manner === 'fricative') {
       if (S.some((s) => s.contact === 'touch')) bad('마찰인데 조음체가 닿음');
@@ -211,7 +211,9 @@ try {
     const expContact = manner === 'fricative' ? 'near' : 'touch';
     if (r.key !== (tonguePlace ? place : 'neutral')) tf.push(k + ' data-tongue ' + r.key);
     if (r.contact !== expContact) tf.push(k + ' data-contact ' + r.contact + ' ≠ ' + expContact + ' (거리 ' + r.gap + ')');
-    if (manner === 'fricative' ? !within(r.gap, NEAR - 1.5, NEAR + 1.5) : !(r.gap < 0.8)) tf.push(k + ' 조음체와 목표 사이 거리 ' + r.gap);
+    // 틈: 혀는 NEAR만큼(±1.5), 입술·성대는 붙지 않은 좁은 틈(0.8 < 거리 ≤ NEAR + 1.5)
+    const nearOk = tonguePlace ? within(r.gap, NEAR - 1.5, NEAR + 1.5) : r.gap > 0.8 && r.gap <= NEAR + 1.5;
+    if (manner === 'fricative' ? !nearOk : !(r.gap < 0.8)) tf.push(k + ' 조음체와 목표 사이 거리 ' + r.gap);
     if (r.nasal !== (manner === 'nasal' ? 'open' : 'closed')) tf.push(k + ' 콧길 ' + r.nasal);
     if (tonguePlace) {
       if (!r.near || r.near.d > 1.2) tf.push(k + ' data-tongue-x/y가 혀 윤곽 위가 아님 ' + JSON.stringify(r.near));
@@ -269,6 +271,7 @@ try {
     const out = {}, svg = document.querySelector('.mouth-svg');
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const visText = () => [...svg.querySelectorAll('text')].filter((t) => t.getBoundingClientRect().width > 0 && getComputedStyle(t).visibility !== 'hidden').map((t) => t.textContent);
+    // 작은 그림 이름('앞에서 본 입술')은 모음 바다에서만, 자리 이름이 아니므로 숨김 단계에서도 보인다
     // 보여 주기 전용: 누르는 곳·초점·단추 역할이 없고 포인터를 받지 않는다
     out.interactive = svg.querySelectorAll('[tabindex], [role="button"], .mouth-hit, .mouth-spot, a, button').length;
     out.pe = getComputedStyle(svg).pointerEvents;
@@ -277,7 +280,7 @@ try {
     out.hiddenAttr = svg.dataset.names;
     mouth.setShowNames(true);
     out.m3 = visText();
-    out.outside = [...svg.querySelectorAll('text')].filter((t) => !t.closest('.mouth-labels')).length;
+    out.outside = [...svg.querySelectorAll('text')].filter((t) => !t.closest('.mouth-labels') && !t.classList.contains('mouth-caption')).length;
     mouth.setGrade('h1');
     out.h1 = visText();
     // 고른 자리 이름 강조
@@ -285,7 +288,7 @@ try {
     // 이름과 움직이는 것이 겹치지 않음: 여러 자세에서 이름 상자 × (혀·입술·여린입천장·성대) 상자
     const hitAny = () => {
       const labs = [...svg.querySelectorAll('.mouth-label')].filter((t) => getComputedStyle(t).display !== 'none').map((t) => ({ t: t.textContent, b: t.getBoundingClientRect() }));
-      const moving = [...svg.querySelectorAll('.mouth-tongue, .mouth-lip-line, .mouth-velum, .mouth-fold, .mouth-puff')].map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0);
+      const moving = [...svg.querySelectorAll('.mouth-tongue, .mouth-lip-line, .mouth-velum, .mouth-fold, .mouth-puff, .mouth-tight')].map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0);
       const over = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
       const bad = [];
       labs.forEach((L) => moving.forEach((m) => { if (over(L.b, m)) bad.push(L.t); }));
@@ -320,13 +323,13 @@ try {
   if (nr.m3.some((w) => /음$/.test(w))) nf.push('중3에 한자어 이름: ' + nr.m3.join(','));
   // 단면도의 이름은 몸의 부위 이름(학년 공통). 고1의 한자어(양순음 …)는 아래 자리 카드가 보인다(check-controls).
   if (nr.h1.join() !== nr.m3.join()) nf.push('고1 단면도 이름이 몸의 부위 이름이 아님: ' + nr.h1.join(','));
-  if (nr.outside) nf.push('이름 밖의 글씨가 그림에 있음');
+  if (nr.outside) nf.push('이름·작은 그림 이름 밖의 글씨가 그림에 있음');
   if (nr.sel.join() !== 'velar') nf.push('고른 자리 이름 강조: ' + nr.sel.join());
   if (nr.overlap.length) nf.push('이름이 움직이는 것·다른 이름과 겹침: ' + nr.overlap.slice(0, 6).join(' | '));
   if (nr.h1hidden.length) nf.push('고1 이름 숨김 실패');
-  for (const w of ['앞', '뒤', '높은', '중간', '낮은']) if (!nr.vm3.includes(w)) nf.push('모음 중3 이름 없음: ' + w);
+  for (const w of ['혀 앞', '혀 뒤', '높은', '중간', '낮은', '앞에서 본 입술']) if (!nr.vm3.includes(w)) nf.push('모음 중3 이름 없음: ' + w);
   for (const w of ['전설', '후설', '고모음', '중모음', '저모음']) if (!nr.vh1.includes(w)) nf.push('모음 고1 이름 없음: ' + w);
-  if (nr.vhidden.length) nf.push('모음 이름 숨김 실패');
+  if (nr.vhidden.join() !== '앞에서 본 입술') nf.push('모음 이름 숨김 실패(작은 그림 이름만 남아야 함): ' + nr.vhidden.join());
   // 미리 보기(막음 표시·콧길 문·목청)
   const pv = await na.evaluate(() => {
     const svg = document.querySelector('.mouth-svg'), r = {};

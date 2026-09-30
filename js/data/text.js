@@ -119,6 +119,8 @@ window.TEXT = {
   mouthParts: {
     bilabial: '두 입술', alveolar: '잇몸', palatal: '센입천장', velar: '여린입천장', glottal: '목청',
     nose: '콧길', tongue: '혀', lips: '입술',
+    tongueFront: '혀 앞', tongueBack: '혀 뒤', // 모음 단면도의 앞뒤 이름(중3)
+    lipsFront: '앞에서 본 입술',               // 모음 단면도의 입술 작은 그림 이름
   },
 
   // ── 소리를 빚는 동안 한 줄 안내(아직 고르지 않았을 때). 고르기는 모두 아래 카드에서 한다(단면도는 보여 주기) ─────
