@@ -24,7 +24,7 @@
 //              → 판 표시(board.update) · 효과음 · 한 줄 문구 · 신호 기록장 · 저장(G.save.saveGame)
 //              턴을 쓰지 않는 결과(이번 바다에 없는 칸 · 이미 쏜 소리)는 그 한 줄만 보이고 턴을 쓰지 않는다
 //     → 끝: 배를 모두 찾음(성공) / 턴 소진(남은 배 공개) → 잠깐 뒤 G.app.finishGame(판 상태)
-//   '처음으로' → G.app.go('title') (진행 판은 저장된 채 남는다).
+//   '처음으로' → G.app.go('title') (진행 판은 저장된 채 남는다). 판이 끝나 결과를 기다리는 동안이면 곧바로 G.app.finishGame(판 상태).
 //
 // ── 배치 ─────────────────────────────────────────────────────────────────
 //   가로: 윗줄(처음으로 · 바다와 단계 · 남은 배 · 남은 턴) / 가운데 [적 바다 | 입안 단면도(보여 주기)] /
@@ -87,7 +87,17 @@ G.practice = (function () {
     }
     applyLayoutClass();
 
+    // 끝난 판을 기다리는 동안(view 'end')의 '처음으로'는 판을 잃지 않게 곧바로 결과 화면으로 간다(대결과 같음).
+    //   진행 판은 끝날 때 이미 지워졌으므로 여기서 finishGame을 부르지 않으면 누적 소리 지도에 더해지지 않는다.
+    let endState = null;      // 끝난 판(결과 화면으로 넘길 것)
+    function finishNow() {
+      const st = endState;
+      endState = null;
+      if (st && G.app && typeof G.app.finishGame === 'function') { G.app.finishGame(st); return true; }
+      return false;
+    }
     function goHome() {
+      if (view === 'end' && finishNow()) return;
       if (G.app && typeof G.app.go === 'function') G.app.go('title');
     }
     const homeBtn = () => el('button', { type: 'button', class: 'pr-home', onclick: goHome }, TX.ui.play.home);
@@ -308,10 +318,10 @@ G.practice = (function () {
       g.ctl.setEnabled(false);
       g.ctl.setMessage(success ? TX.ui.play.allFound : TX.ui.play.outOfTurns);
       const my = token;
-      const finalState = clone(g.state);
+      endState = clone(g.state);
       later(() => {
         if (!alive(my)) return;
-        if (G.app && typeof G.app.finishGame === 'function') G.app.finishGame(finalState);
+        finishNow();
       }, config.endPause);
     }
 

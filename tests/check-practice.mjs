@@ -306,6 +306,11 @@ try {
       if (msg() !== TX.ui.play.outOfTurns) bad('턴 소진 문구: ' + msg());
       const rev = $$('.sb .k-reveal').length;
       if (rev !== fleetIds.length) bad('공개된 남은 배 칸 ' + rev + ' ≠ ' + fleetIds.length);
+      // 결과를 기다리는 동안 '처음으로'를 눌러도 판을 잃지 않는다: 곧바로 finishGame(시작 화면으로 새지 않음)
+      const wentBefore = fw.__went.length;
+      $('.pr-home').click();
+      await until(() => fw.__finished, 1000, "끝난 뒤 '처음으로' → 곧바로 finishGame");
+      if (fw.__went.slice(wentBefore).indexOf('title') >= 0) bad("끝난 뒤 '처음으로'가 결과 없이 시작 화면으로 감");
       await until(() => fw.__finished, 8000, 'finishGame(턴 소진)');
       if (fw.__finished && fw.__finished.result.success !== false) bad('턴 소진인데 성공');
       if (fw.__finishedRecord && fw.__finishedRecord.teams.player.dudCount !== plan.length - others.length) bad('없는 소리 횟수 ' + fw.__finishedRecord.teams.player.dudCount);
