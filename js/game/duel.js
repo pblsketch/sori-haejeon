@@ -131,7 +131,7 @@ G.duel = (function () {
       function seg(key, label, options) {
         const btns = options.map((o) => el('button', {
           type: 'button', class: 'duel-opt', 'data-group': key, 'data-value': String(o.value),
-          onclick: () => { sel[key] = o.value; if (key === 'sea' && levelsOf(sel.sea).indexOf(+sel.level) < 0) sel.level = 1; draw(); },
+          onclick: () => { const seaChanged = key === 'sea' && sel.sea !== o.value; sel[key] = o.value; if (key === 'sea' && (seaChanged || levelsOf(sel.sea).indexOf(+sel.level) < 0)) sel.level = 1; draw(); }, // 바다를 바꾸면 1단계부터
         }, [el('span', { class: 'duel-opt-name' }, o.label), o.sub ? el('span', { class: 'duel-opt-sub' }, o.sub) : null]));
         return el('div', { class: 'duel-seg', role: 'group', 'aria-label': label }, [
           el('span', { class: 'duel-seg-label' }, label),

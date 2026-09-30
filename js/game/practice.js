@@ -42,8 +42,8 @@ G.practice = (function () {
   const PORTRAIT_MQ = '(max-width: 760px), (orientation: portrait)';
   // 조정값(ms)
   const config = {
-    exampleLead: 700,    // 풀이 예시: 고른 조합을 보여 준 뒤 쏘기까지
-    examplePause: 2600,  // 풀이 예시: 한 줄을 읽을 시간
+    exampleLead: 1200,   // 풀이 예시: 고른 조합을 보여 준 뒤 쏘기까지
+    examplePause: 3800,  // 풀이 예시: 한 줄을 읽을 시간(학생 관점 검토: 2.6초는 너무 빨라 무엇을 보여 줬는지 못 봄)
     endPause: 2200,      // 판이 끝난 뒤 결과 화면으로 가기까지
   };
   let current = null;    // 지금 열린 화면(점검용 debug가 읽음)
@@ -143,10 +143,12 @@ G.practice = (function () {
         exampleBtn.hidden = !(lv.help && lv.help.example);
       }
       function choose(key, val) {
+        const seaChanged = key === 'sea' && sel.sea !== val;
         if (key === 'level') sel.level = Number(val);
         else sel[key] = val;
         if (key === 'sea') {
-          if (levelsOf(sel.sea).indexOf(sel.level) < 0) sel.level = 1;
+          // 바다를 바꾸면 1단계부터(학생 관점 검토: 자음 2단계를 하다 모음 바다를 누르면 모음 2단계가 골라진 채라 모르고 시작할 뻔함)
+          if (seaChanged || levelsOf(sel.sea).indexOf(sel.level) < 0) sel.level = 1;
           drawLevels();
         }
         paint();
