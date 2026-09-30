@@ -2,12 +2,12 @@
 // 규칙 엔진 G.rules — 채점·신호·함대 배치·턴·승패·알아 두기. 화면(DOM)을 쓰지 않는 순수 함수만 둔다.
 //   불러오는 순서: js/core/util.js → js/data/sounds.js · fleets.js · levels.js → 이 파일.
 //   Node 점검: tests/check-rules.mjs (spec 10-1).
-//   모든 함수는 받은 값을 바꾸지 않는다. 상태를 바꾸는 함수(fire, placeShip, finishPlacing, restartPlacing)는 새 상태를 돌려준다.
+//   모든 함수는 받은 값을 바꾸지 않는다. 상태를 바꾸는 함수(fire, fireRound, placeShip, finishPlacing, restartPlacing)는 새 상태를 돌려준다.
 //   단계 설정(G.rules.level이 돌려주는 LEVELS의 값)은 읽기만 한다.
 //
 // ── 이름(다른 작업과의 약속) ────────────────────────────────────────────
 //   바다 sea: 'consonant' | 'vowel'      학년 grade: 'm3' | 'h1'(규칙은 학년을 보지 않는다)      모드 mode: 'practice' | 'duel'
-//   팀(쏘는 쪽): 연습 'player'(적 함대는 'enemy'가 가짐), 대결 'blue'(청팀, 선공) · 'red'(홍팀, 후공)
+//   팀(쏘는 쪽): 연습 'player'(적 함대는 'enemy'가 가짐), 대결 'blue'(청팀) · 'red'(홍팀) — 대결은 두 팀이 동시에 쏜다
 //   한 발의 결과 kind:  턴을 쓰는 것   'hit' 명중 · 'line' 같은 줄 · 'miss' 빗나감 · 'none' 없는 소리   ← 신호는 이 네 가지뿐
 //                       턴을 안 쓰는 것 'notInSea' 이번 바다에 없는 칸 · 'already' 이미 쏜 소리
 //   '같은 줄' 강조 targets(배열, 강조 없는 단계에서는 늘 빈 배열):
@@ -28,19 +28,24 @@
 //     mode, grade, sea, level,                // level = 단계 번호
 //     hideTime: bool,                         // 대결의 숨기기 시간(연습은 늘 false)
 //     phase: 'placing' | 'playing' | 'over',
+//     rounds: 0,                              // (대결만) 끝난 라운드 수 = 두 팀 각자의 shots 수(늘 같다)
 //     placingTeam: 'blue' | 'red' | null,     // 숨기기 시간에 배를 놓고 있는 팀
 //     teams: {                                // 연습: player·enemy / 대결: blue·red
 //       <팀>: { fleet: Ship[],                // 그 팀이 숨긴 자기 배(연습의 player는 빈 배열)
 //               shots: Shot[] }               // 그 팀이 상대 바다에 쏜 기록(턴을 쓴 발만, 쏜 순서)
 //     },
 //     result: null | 연습 { success: bool } | 대결 { winner: 'blue'|'red'|null(무승부),
-//               reason: 'blue-first'|'red-first'|'last-shot-draw'|'more-hits'|'hits-tie' }
+//               reason: 'found-all'(한 팀만 다 찾음) | 'both-found'(같은 라운드에 둘 다, 무승부)
+//                     | 'more-hits'(라운드 소진, 맞힌 칸이 많은 팀) | 'hits-tie'(라운드 소진, 동점 무승부) }
 //   }
 //   Shot = { key, sound: 'ㄱ'|null(없는 소리), input, cell, kind: 'hit'|'line'|'miss'|'none',
 //            targets, emptyCell: bool(없는 소리가 빈칸이면 true → 판의 그 칸에 불발 표시, false면 신호 기록장에만),
 //            sunk: 격침된 배 크기|null, sunkShip: 격침된 배 번호(상대 fleet의 순서)|null }
 //     cell: 자음 { place, manner } / 모음 { height, column }
-//   차례: 대결은 청팀부터 한 발씩 번갈아 → whoseTurn(state). 'notInSea'·'already'면 차례가 넘어가지 않는다.
+//   대결(spec 6.3, 동시 발사 라운드): 두 팀이 각자 소리를 빚어 '준비' → checkShot(state, 팀, 조합)이
+//     'notInSea'·'already'면 준비 거부(상태 그대로). 둘 다 준비되면 fireRound(state, { blue, red })가 두 발을
+//     라운드 전 상태로 함께 채점하고 두 팀 모두 한 턴을 쓴다. 라운드가 끝날 때 승패를 본다(duelOutcome).
+//     한 판의 라운드 수 = 단계의 제한 턴(roundInfo). 연습은 fire(state, 조합)로 한 발씩.
 //
 // ── 판 기록 GameRecord (결과 화면·누적 소리 지도가 받는 값, makeRecord) ─
 //   {
@@ -278,15 +283,13 @@ G.rules = (function () {
     };
   }
 
-  // 대결 승패(spec 6.3). 두 팀의 현황만으로 정한다. 아직 안 끝났으면 null.
-  //   { turnLimit, blueDone, redDone, blueTurns, redTurns, blueHits, redHits } → { winner, reason } | null
+  // 대결 승패(spec 6.3). 라운드가 끝났을 때 두 팀의 현황만으로 정한다. 아직 안 끝났으면 null.
+  //   { turnLimit, rounds(끝난 라운드 수), blueDone, redDone, blueHits, redHits } → { winner, reason } | null
   function duelOutcome(o) {
-    if (o.blueDone) {
-      if (o.blueTurns > o.redTurns) return null; // 선공이 먼저 다 찾음 → 후공에게 마지막 한 발
-      return o.redDone ? { winner: null, reason: 'last-shot-draw' } : { winner: 'blue', reason: 'blue-first' };
-    }
-    if (o.redDone) return { winner: 'red', reason: 'red-first' };
-    if (o.blueTurns >= o.turnLimit && o.redTurns >= o.turnLimit) {
+    if (o.blueDone && o.redDone) return { winner: null, reason: 'both-found' };   // 같은 라운드에 둘 다 → 무승부
+    if (o.blueDone) return { winner: 'blue', reason: 'found-all' };
+    if (o.redDone) return { winner: 'red', reason: 'found-all' };
+    if (o.rounds >= o.turnLimit) {                                                 // 라운드 소진 → 맞힌 칸 비교
       if (o.blueHits === o.redHits) return { winner: null, reason: 'hits-tie' };
       return { winner: o.blueHits > o.redHits ? 'blue' : 'red', reason: 'more-hits' };
     }
@@ -304,20 +307,17 @@ G.rules = (function () {
     }
     const b = sideSummary(state, 'blue'), r = sideSummary(state, 'red');
     return duelOutcome({
-      turnLimit: lv.turns, blueDone: b.allSunk, redDone: r.allSunk,
-      blueTurns: b.turnsUsed, redTurns: r.turnsUsed, blueHits: b.hitSounds.length, redHits: r.hitSounds.length,
+      turnLimit: lv.turns, rounds: state.rounds || 0, blueDone: b.allSunk, redDone: r.allSunk,
+      blueHits: b.hitSounds.length, redHits: r.hitSounds.length,
     });
   }
 
-  // 지금 쏠 팀. 판이 진행 중이 아니면 null
-  function whoseTurn(state) {
-    if (state.phase !== 'playing') return null;
-    if (state.mode === 'practice') return 'player';
-    return state.teams.blue.shots.length === state.teams.red.shots.length ? 'blue' : 'red';
-  }
-  // 대결: 선공이 먼저 다 찾아서 후공이 마지막 한 발을 쏠 차례인가
-  function isLastShot(state) {
-    return state.mode === 'duel' && state.phase === 'playing' && sideSummary(state, 'blue').allSunk && whoseTurn(state) === 'red';
+  // 대결 라운드 정보 → { played: 끝난 라운드 수, limit: 제한 라운드(= 단계의 제한 턴), left: 남은 라운드,
+  //                      number: 지금 라운드 번호(끝난 판이면 마지막 라운드 번호) }
+  function roundInfo(state) {
+    const limit = levelOf(state).turns;
+    const played = state.rounds || 0;
+    return { played, limit, left: Math.max(0, limit - played), number: state.phase === 'over' ? played : Math.min(limit, played + 1) };
   }
 
   // ── 판 상태 ──────────────────────────────────────────
@@ -337,6 +337,7 @@ G.rules = (function () {
       hideTime: opts.mode === 'duel' && !!opts.hideTime,
       phase: 'playing', placingTeam: null, teams: {}, result: null,
     };
+    if (opts.mode === 'duel') st.rounds = 0;
     if (opts.mode === 'practice') {
       st.teams.player = { fleet: [], shots: [] };
       st.teams.enemy = { fleet: opts.fleet ? given(opts.fleet) : randomFleet(lv, rng), shots: [] };
@@ -378,27 +379,74 @@ G.rules = (function () {
     next.teams.blue = { fleet: [], shots: [] };
     next.teams.red = { fleet: [], shots: [] };
     next.phase = 'placing'; next.placingTeam = 'blue'; next.result = null;
+    if (next.mode === 'duel') next.rounds = 0;
     return next;
   }
 
-  // 한 발 쏘기: fire(상태, 조합) → { state: 새 상태, outcome }
+  const shotRecord = (o) => ({
+    key: o.key, sound: o.sound, input: clone(o.input), cell: clone(o.cell), kind: o.kind,
+    targets: clone(o.targets), emptyCell: o.emptyCell, sunk: o.sunk, sunkShip: o.sunkShip,
+  });
+
+  // 연습: 한 발 쏘기 fire(상태, 조합) → { state: 새 상태, outcome }
   //   outcome = resolveShot의 결과 + { shooter, over }. 턴을 안 쓰는 결과면 state는 받은 그대로(같은 객체).
+  //   대결은 이 함수를 쓰지 않는다(checkShot + fireRound).
   function fire(state, input) {
+    if (state.mode !== 'practice') throw new Error('대결은 fireRound로 쏜다');
     if (state.phase !== 'playing') throw new Error('쏠 수 있는 때가 아님: ' + state.phase);
-    const shooter = whoseTurn(state);
+    const shooter = 'player';
     const lv = levelOf(state);
-    const outcome = resolveShot(lv, input, { fleet: state.teams[opponent(state, shooter)].fleet, shots: state.teams[shooter].shots });
+    const outcome = resolveShot(lv, input, { fleet: state.teams.enemy.fleet, shots: state.teams.player.shots });
     outcome.shooter = shooter;
     outcome.over = false;
     if (!outcome.usesTurn) return { state, outcome };
     const next = clone(state);
-    next.teams[shooter].shots.push({
-      key: outcome.key, sound: outcome.sound, input: clone(outcome.input), cell: clone(outcome.cell), kind: outcome.kind,
-      targets: clone(outcome.targets), emptyCell: outcome.emptyCell, sunk: outcome.sunk, sunkShip: outcome.sunkShip,
-    });
+    next.teams.player.shots.push(shotRecord(outcome));
     const res = judge(next);
     if (res) { next.phase = 'over'; next.result = res; outcome.over = true; }
     return { state: next, outcome };
+  }
+
+  // 대결 라운드를 쏠 수 있는 판인지
+  function assertDuelPlaying(state, team) {
+    if (!state || state.mode !== 'duel') throw new Error('대결 판이 아님');
+    if (state.phase !== 'playing') throw new Error('쏠 수 있는 때가 아님: ' + state.phase);
+    if (team !== undefined && team !== 'blue' && team !== 'red') throw new Error('모르는 팀: ' + team);
+  }
+  // 그 팀의 한 발을 이번 라운드 전 상태로 채점(상태는 바꾸지 않음)
+  function judgeDuelShot(state, team, input) {
+    return resolveShot(levelOf(state), input, { fleet: state.teams[opponent(state, team)].fleet, shots: state.teams[team].shots });
+  }
+
+  // 대결 '준비' 확인: checkShot(상태, 팀, 조합) → { ok: true, kind: null } | { ok: false, kind: 'notInSea'|'already' }
+  //   거부면 그 팀은 준비되지 않는다(라운드를 헛되이 쓰지 않게). 상태는 바꾸지 않는다. 쏠 수 없는 조합이면 오류.
+  function checkShot(state, team, input) {
+    assertDuelPlaying(state, team);
+    const o = judgeDuelShot(state, team, input);
+    return o.usesTurn ? { ok: true, kind: null } : { ok: false, kind: o.kind };
+  }
+
+  // 대결 한 라운드: fireRound(상태, { blue: 조합, red: 조합 }) → { state: 새 상태, outcomes: { blue, red }, over }
+  //   두 발을 모두 라운드 전 상태로 채점하고(동시 발사) 두 팀이 각 한 턴을 쓴다. 명중해도 추가 발사는 없다.
+  //   두 입력이 모두 있고 둘 다 checkShot을 통과해야 한다(아니면 오류, 상태는 그대로).
+  //   outcome = resolveShot의 결과 + { shooter, over }.
+  function fireRound(state, inputs) {
+    assertDuelPlaying(state);
+    if (!inputs || !inputs.blue || !inputs.red) throw new Error('두 팀의 조합이 모두 있어야 라운드를 쏜다');
+    const outcomes = {};
+    for (const t of ['blue', 'red']) {
+      const o = judgeDuelShot(state, t, inputs[t]);
+      if (!o.usesTurn) throw new Error('준비할 수 없는 조합: ' + t + ' ' + o.kind);
+      o.shooter = t;
+      o.over = false;
+      outcomes[t] = o;
+    }
+    const next = clone(state);
+    for (const t of ['blue', 'red']) next.teams[t].shots.push(shotRecord(outcomes[t]));
+    next.rounds = (state.rounds || 0) + 1;
+    const res = judge(next);
+    if (res) { next.phase = 'over'; next.result = res; outcomes.blue.over = true; outcomes.red.over = true; }
+    return { state: next, outcomes, over: !!res };
   }
 
   // ── 결과 화면 ────────────────────────────────────────
@@ -440,7 +488,9 @@ G.rules = (function () {
     // 함대
     allowedGroups, nextShipSize, placeableGroups, validatePlacement, addShip, fillFleet, randomFleet,
     // 판 흐름
-    newGame, placeShip, finishPlacing, restartPlacing, fire, whoseTurn, isLastShot, sideSummary, duelOutcome,
+    newGame, placeShip, finishPlacing, restartPlacing, fire, sideSummary,
+    // 대결(동시 발사 라운드)
+    checkShot, fireRound, roundInfo, duelOutcome,
     // 결과
     notesFor, makeRecord,
   };

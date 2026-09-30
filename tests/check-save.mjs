@@ -89,8 +89,8 @@ function duelGame(R, seed = 5) {
   const blueSounds = g.teams.blue.fleet.flatMap((s) => s.sounds);
   const blueTarget = redSounds[0];
   const redTarget = blueSounds.find((id) => id !== blueTarget);
-  g = R.fire(g, R.inputOf(blueTarget)).state; // 청팀이 홍팀 바다에 명중
-  g = R.fire(g, R.inputOf(redTarget)).state; // 홍팀이 청팀 바다에 명중
+  // 한 라운드: 청팀은 홍팀 바다에, 홍팀은 청팀 바다에 동시에 명중
+  g = R.fireRound(g, { blue: R.inputOf(blueTarget), red: R.inputOf(redTarget) }).state;
   return { g, blueTarget, redTarget };
 }
 const keysOf = (st) => [...st._m.keys()].sort();
@@ -190,6 +190,24 @@ const keysOf = (st) => [...st._m.keys()].sort();
   const { g: dg } = duelGame(R);
   b.S.saveGame(dg);
   eq(boot(st).S.loadGame(), JSON.parse(J(dg)), '대결 판: 저장 → 복원 같음');
+  check(boot(st).S.loadGame().rounds === 1, '대결 판: 라운드 수도 복원');
+  // 라운드 모양 확인: 두 팀 쏜 수가 다르면(번갈아 쏘던 옛 판) 이어 할 수 없음, rounds가 없으면 쏜 수로 채움
+  {
+    const odd = JSON.parse(J(dg)); odd.teams.red.shots.pop(); delete odd.rounds;
+    const envOdd = { s: 1, savedAt: 1, state: odd };
+    const stO = makeStorage(); stO._m.set('sori-haejeon:game', J(envOdd));
+    check(boot(stO).S.loadGame() === null, '대결: 두 팀 쏜 수가 다른 판은 버림');
+    const bad = JSON.parse(J(dg)); bad.rounds = 3;
+    const stB = makeStorage(); stB._m.set('sori-haejeon:game', J({ s: 1, savedAt: 1, state: bad }));
+    check(boot(stB).S.loadGame() === null, '대결: rounds가 쏜 수와 다른 판은 버림');
+    const old = JSON.parse(J(dg)); delete old.rounds;
+    const stL = makeStorage(); stL._m.set('sori-haejeon:game', J({ s: 1, savedAt: 1, state: old }));
+    const back2 = boot(stL).S.loadGame();
+    check(back2 && back2.rounds === 1, 'rounds가 없는 옛 대결 판은 쏜 수로 채워 복원');
+    let cont2 = null;
+    try { cont2 = R.fireRound(back2, { blue: R.inputOf(back2.teams.red.fleet[1].sounds[0]), red: R.inputOf(['ㅎ', 'ㄹ'].find((x) => !back2.teams.red.shots.some((s) => s.sound === x))) }); } catch (e) { cont2 = null; }
+    check(cont2 && cont2.state.rounds === 2, '복원한 대결 판에서 다음 라운드');
+  }
   // 진행 판은 기기당 하나: 새 판 저장이 옛 판을 덮는다
   const g2 = R.newGame({ mode: 'practice', grade: 'm3', sea: 'vowel', level: 1, rng: R.makeRng(3) });
   b.S.saveGame(g2);

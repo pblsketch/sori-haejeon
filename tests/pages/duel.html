@@ -57,20 +57,34 @@
     h: () => G.duel.current,
     st: () => G.duel.current.debug.state(),
     screen: () => (G.duel.current ? G.duel.current.debug.screen() : ''),
-    // 소리 id('ㄱ') 또는 조합 → 조작부로 고르고 발사. 그 발이 끝나면 풀림
-    fire: (x) => G.duel.current.debug.fire(typeof x === 'string' ? G.rules.inputOf(x) : x),
+    // 소리 id('ㄱ') 또는 조합 → 조합
+    inp: (x) => (typeof x === 'string' ? G.rules.inputOf(x) : x),
+    // 한 라운드: 두 팀이 각자 조작부로 고르고 '준비' → 셈 → 동시 발사. 그 라운드가 끝나면 풀림
+    round: (b, r) => G.duel.current.debug.round(DT.inp(b), DT.inp(r)),
+    // 한 팀만: 고르고 '준비' 누르기 → 눌렸는지
+    compose: (t, x) => G.duel.current.debug.compose(t, DT.inp(x)),
+    ready: (t) => G.duel.current.debug.ready(t),
+    station: (t) => document.querySelector('.duel-station.station-' + t),
+    readyBtn: (t) => DT.station(t).querySelector('.duel-ready'),
+    isReady: (t) => DT.station(t).classList.contains('is-ready'),
+    phase: () => G.duel.current.debug.phase(),
+    // 여러 손가락 흉내: 요소에 포인터 이벤트(pointerId마다 따로)
+    ptr(type, elm, id) {
+      elm.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, pointerId: id, pointerType: 'touch', isPrimary: id === 1 }));
+    },
     opt: (group, value) => document.querySelector('.duel-opt[data-group="' + group + '"][data-value="' + value + '"]'),
     // 준비 화면에서 단추를 눌러 고르고 시작
     setup(sel) {
       ['grade', 'sea', 'level', 'hideTime'].forEach((k) => { if (k in sel) DT.opt(k, String(sel[k])).click(); });
       document.querySelector('.duel-start').click();
     },
-    msg: () => document.querySelector('.duel-dock .ctl-msg-text').textContent,
-    msgKind: () => document.querySelector('.duel-dock .ctl-msg').getAttribute('data-kind'),
-    turnText: () => document.querySelector('.duel-turn').textContent,
-    active: () => ['blue', 'red'].filter((t) => G.duel.current.debug.boards[t].el.classList.contains('is-active')).join(','),
+    // 팀 자리의 한 줄 문구
+    msg: (t) => DT.station(t).querySelector('.ctl-msg-text').textContent,
+    msgKind: (t) => DT.station(t).querySelector('.ctl-msg').getAttribute('data-kind'),
+    roundText: () => document.querySelector('.duel-round').textContent,
+    roundsLeft: () => [...document.querySelectorAll('.duel-rounds')].map((e) => e.textContent),
     fleetIds: (team) => DT.st().teams[team].fleet.reduce((a, s) => a.concat(s.sounds), []),
-    logCount: () => document.querySelectorAll('.duel-dock .ctl-log-item').length,
+    logCount: (t) => DT.station(t).querySelectorAll('.ctl-log-item').length,
     visible: (e) => !!e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length > 0,
   };
   (function () {
