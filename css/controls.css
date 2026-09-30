@@ -1,0 +1,166 @@
+/* 조작부와 신호 기록장(js/game/controls.js). 색·크기 값은 css/base.css의 변수를 쓴다.
+ * 가로: 아래 가운데 한 줄, 터치 목표 var(--touch)(64px). 세로(휴대폰): 두 줄, var(--touch)(48px), 기록장은 접어 둔다.
+ * 신호는 색만이 아니라 글씨(신호 이름)로도 구분한다. 흐린 카드는 흐림 + 점선 테두리(모양으로도 구분). */
+
+.ctl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--font-body);
+  color: var(--ink);
+}
+
+/* ── 한 줄 문구 자리: 언제나 한 줄(넘치면 글씨를 줄이고 그래도 넘치면 말줄임) ── */
+.ctl-msg {
+  width: 100%;
+  max-width: 1100px;
+  min-height: 1.5em;
+  font-size: 22px;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctl-msg-label {
+  display: none;
+  margin-right: 0.5em;
+  padding: 0 0.45em;
+  border: 2px solid var(--ui);
+  border-radius: 999px;
+  color: var(--ui);
+  font-size: 0.8em;
+  font-weight: 700;
+}
+.ctl-msg--follow .ctl-msg-label { display: inline; }
+.ctl--portrait .ctl-msg--follow .ctl-msg-label { display: none; } /* 세로: 좁아서 딱지는 빼고 문장만(글씨 15px 이상 유지) */
+.ctl-msg[data-kind="message"] .ctl-msg-text { font-weight: 700; }
+.ctl-msg[data-kind="shout"] .ctl-msg-text { font-family: var(--font-title); font-weight: 700; color: var(--hit); }
+
+/* ── 카드 줄 ── */
+.ctl-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 20px;
+  max-width: 100%;
+}
+.ctl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.ctl-group-label { font-size: 14px; color: var(--ink-2); line-height: 1.2; }
+.ctl-cards { display: flex; gap: 8px; }
+.ctl-card {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 4px 16px;
+  border: 3px solid var(--ui);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ui);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.12s, color 0.12s, opacity 0.12s;
+}
+.ctl-card.is-on { background: var(--ui); color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25); }
+.ctl-card.is-dim { opacity: 0.35; border-style: dashed; cursor: not-allowed; }
+.ctl-card:disabled:not(.is-dim) { cursor: default; }
+.ctl-card:focus-visible, .ctl-fire:focus-visible, .ctl-logtoggle:focus-visible, .ctl-log-close:focus-visible {
+  outline: 3px solid var(--sea); outline-offset: 2px;
+}
+
+.ctl-fire {
+  min-width: calc(var(--touch) * 1.75);
+  min-height: var(--touch);
+  padding: 4px 24px;
+  border: 3px solid var(--hit);
+  border-radius: var(--radius);
+  background: var(--hit);
+  color: #fff;
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ctl-fire:disabled { background: #fff; color: var(--ink-3); border-color: var(--ink-3); border-style: dashed; cursor: not-allowed; }
+
+.ctl.is-disabled .ctl-bar { opacity: 0.55; }
+
+/* ── 신호 기록장 ── */
+.ctl-logtoggle { display: none; }
+.ctl-log {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  background: #fff;
+  border: 2px solid var(--sea-2);
+  border-radius: var(--radius);
+  font-size: 18px;
+}
+.ctl-log-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--sea-2); }
+.ctl-log-title { font-family: var(--font-title); font-weight: 700; color: var(--sea); }
+.ctl-log-close { display: none; }
+.ctl-log-list { list-style: none; margin: 0; padding: 4px 6px; overflow: auto; min-height: 0; flex: 1 1 auto; }
+.ctl-log-item { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px; border-left: 4px solid var(--ink-3); margin: 2px 0; white-space: nowrap; }
+.ctl-log-n { color: var(--ink-3); font-size: 0.8em; min-width: 1.4em; text-align: right; }
+.ctl-log-team { font-size: 0.8em; font-weight: 700; }
+.ctl-log-item.t-blue .ctl-log-team { color: #2B5DA8; }
+.ctl-log-item.t-red .ctl-log-team { color: var(--hit); }
+.ctl-log-what.is-sound { font-family: var(--font-sound); font-weight: 900; }
+.ctl-log-what.is-combo { color: var(--ink-2); font-size: 0.9em; }
+.ctl-log-sig { font-weight: 700; }
+.ctl-log-item.k-hit { border-left-color: var(--hit); }
+.ctl-log-item.k-hit .ctl-log-sig { color: var(--hit); }
+.ctl-log-item.k-line { border-left-color: var(--sea); border-left-style: double; border-left-width: 6px; }
+.ctl-log-item.k-line .ctl-log-sig { color: var(--sea); }
+.ctl-log-item.k-miss { border-left-color: var(--sea-2); }
+.ctl-log-item.k-none { border-left-color: var(--ink-3); border-left-style: dotted; }
+.ctl-log-item.k-none .ctl-log-sig { color: var(--ink-2); }
+
+/* 가로, 기록장이 조작부 안에 있을 때: 문구 위 한 줄 띠(가로로 쌓이고 새 기록이 오른쪽 끝) */
+.ctl-log--strip { flex-direction: row; align-items: stretch; width: 100%; max-width: 1100px; max-height: none; }
+.ctl-log--strip .ctl-log-head { border-bottom: 0; border-right: 1px solid var(--sea-2); }
+.ctl-log--strip .ctl-log-list { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 4px 8px; }
+.ctl-log--strip .ctl-log-item { margin: 0; flex: 0 0 auto; }
+
+/* ── 세로(휴대폰): 두 줄 — 방법 카드 / 세기·입술 카드 + 발사 + 기록장 단추 ── */
+.ctl--portrait { gap: 6px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px)); }
+.ctl--portrait .ctl-msg { font-size: 18px; }
+.ctl--portrait .ctl-bar { flex-wrap: wrap; width: 100%; gap: 6px; align-items: stretch; }
+.ctl--portrait .ctl-group-label { display: none; }
+.ctl--portrait .ctl-group { align-items: stretch; }
+.ctl--portrait .ctl-group--manner { flex: 1 1 100%; }
+.ctl--portrait .ctl-group--strength, .ctl--portrait .ctl-group--lips { flex: 1 1 0; }
+.ctl--portrait .ctl-cards { gap: 6px; }
+.ctl--portrait .ctl-card { flex: 1 1 0; min-width: var(--touch); padding: 2px 4px; font-size: 18px; }
+.ctl--portrait .ctl-fire { flex: 0 0 auto; min-width: calc(var(--touch) * 1.6); padding: 2px 10px; font-size: 20px; }
+.ctl--portrait:not(.ctl--strength):not(.ctl--vowel) .ctl-fire { flex: 1 1 auto; } /* 자음 1단계: 둘째 줄은 발사뿐 */
+.ctl--portrait .ctl-logtoggle {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 auto;
+  min-width: var(--touch); min-height: var(--touch); padding: 0 6px;
+  border: 2px solid var(--sea); border-radius: var(--radius); background: #fff; color: var(--sea);
+  font-size: 12px; line-height: 1.1; cursor: pointer; touch-action: manipulation;
+}
+.ctl-logtoggle-count { font-family: var(--font-title); font-size: 18px; font-weight: 700; }
+.ctl--portrait .ctl-logtoggle[aria-expanded="true"] { background: var(--sea); color: #fff; }
+.ctl-log--portrait { display: none; }
+.ctl-log--portrait.is-open { display: flex; }
+.ctl-log--portrait .ctl-log-close {
+  display: inline-block; min-height: var(--touch); min-width: var(--touch); padding: 0 12px;
+  border: 2px solid var(--sea); border-radius: var(--radius); background: #fff; color: var(--sea); cursor: pointer;
+}
+/* 세로, 조작부 안: 펼치면 조작부 위로 떠오른다(판을 밀어내지 않음 → 스크롤 없음) */
+.ctl--portrait.ctl--log-inside .ctl-log {
+  position: absolute; left: 12px; right: 12px; bottom: 100%; z-index: 5;
+  max-height: 50vh; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+}
