@@ -7,14 +7,16 @@
 //   2) 발 소진: 먼저 다 쓴 팀은 조작부가 잠기고 '상대를 기다려요', 상대는 계속 → 두 팀 소진 → 맞힌 칸 비교, 공개 중 '처음으로'
 //   2b) 두 팀 소진·맞힌 칸 같음 → 무승부(모음 바다)
 //   3) 진짜 애니메이션(움직임 줄이기 끔): 두 자리의 공기 흐름이 겹쳐 돌고, 먼저 끝난 자리는 상대를 기다리지 않고 풀림
-//   4) 여러 손가락: 두 자리에 서로 다른 pointerId의 pointerdown/pointerup을 엇갈려 보내도(발사 단추 포함) 둘 다 따로 눌림,
+//   (T19) 자리마다 조작부에 ① 자리 카드가 있고(고르기는 모두 아래에서), 단면도는 보여 주기 전용(누르는 요소 없음)
+//   4) 여러 손가락: 두 자리에 서로 다른 pointerId의 pointerdown/pointerup을 엇갈려 보내도(자리 카드·발사 단추 포함) 둘 다 따로 눌림,
 //      뒤따르는 click은 한 번만 셈, 단추 밖에서 뗀 포인터는 누르지 않음
 //   5) 숨기기 시간: 가림 화면(청) → 청팀 배치(그 팀 바다만, 소리·줄 이름 보임, 큰 배부터, 놓을 수 있는 묶음만,
 //      '다 놓았어요'로 일찍 끝 → 남은 배 채움) → 가림(홍) → 홍팀 배치(짧게 줄인 시간 초과 → 채움) → 가림(다 숨김) → 대결
 //   6) 배치 도중 새로고침 → 숨기기 단계를 청팀부터 다시
 //   7) 대결 도중 새로고침 → 두 팀의 쏜 발(수가 다름)·판·기록장·발 소진 기다림을 그대로 되살림(고르던 것은 풀림)
 //   8) 휴대폰 세로 390×844 · 눕힌 휴대폰 844×390 틀: 대결 안내 한 줄과 '처음으로'
-//   9) 칠판 1920×1080 · 노트북 1366×768 상자에서 대결 화면이 넘치지 않고 조작 단추 64px 이상, 문구 22px 이상 — 캡처(tests/shots/)
+//   9) 칠판 1920×1080 · 노트북 1366×768 상자에서 대결 화면이 넘치지 않고 조작 단추 64px 이상, 문구 22px 이상,
+//      ① ② ③ 카드와 발사가 모두 화면 아래 35% 안, 단면도에 누르는 요소 없음 — 캡처(tests/shots/)
 //   모든 단계에서 window.__soriErrors가 비어 있어야 한다.
 import { step, url, frame } from './aside.mjs';
 
@@ -207,11 +209,12 @@ async function outOfShots() {
   if (DT.msg('blue') !== TEXT.duel.outOfShots) F('기다림 줄: ' + DT.msg('blue'));
   DT.compose('blue', red[1]);
   if (DT.fire('blue') !== null || DT.st().teams.blue.shots.length !== 8) F('발을 다 쓴 팀이 쏨');
-  // 단면도를 눌러도 고르지 않음
+  // 자리 카드를 눌러도 고르지 않음
   const placeNow = DT.h().debug.ctls.blue.getSelection().place;
-  const other = [...DT.station('blue').querySelectorAll('.mouth-hit')].find((e) => e.dataset.id !== placeNow);
-  other.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-  if (DT.h().debug.ctls.blue.getSelection().place !== placeNow) F('발을 다 쓴 팀이 단면도로 자리를 고름');
+  const other = [...DT.station('blue').querySelectorAll('.ctl-card[data-group="place"]')].find((e) => e.dataset.id !== placeNow);
+  if (!other.disabled) F('발을 다 쓴 팀의 자리 카드가 안 잠김');
+  other.click();
+  if (DT.h().debug.ctls.blue.getSelection().place !== placeNow) F('발을 다 쓴 팀이 자리 카드로 자리를 고름');
   // 홍팀은 계속 쏜다
   for (let i = 1; i < 7; i++) await DT.shot('red', rShots[i]);
   if (DT.st().phase !== 'playing' || DT.shotsLeft()[1] !== G.text.fill(TEXT.duel.shotsLeft, { n: 1 })) F('홍팀 7발 뒤 판: ' + DT.shotsLeft());
@@ -302,8 +305,13 @@ async function multiTouch() {
   DT.setup({ grade: 'm3', sea: 'consonant', level: 2, hideTime: false });
   const card = (t, g, id) => DT.station(t).querySelector('.ctl-card[data-group="' + g + '"][data-id="' + id + '"]');
   const P = DT.ptr;
-  h.debug.ctls.blue.setPlace('velar');
-  h.debug.ctls.red.setPlace('bilabial');
+  // 자리 카드도 두 손가락이 겹쳐 누름: 청 down(1) → 홍 down(2) → 홍 up(2) → 청 up(1)
+  P('pointerdown', card('blue', 'place', 'velar'), 1);
+  P('pointerdown', card('red', 'place', 'bilabial'), 2);
+  P('pointerup', card('red', 'place', 'bilabial'), 2);
+  P('pointerup', card('blue', 'place', 'velar'), 1);
+  if (h.debug.ctls.blue.getSelection().place !== 'velar' || h.debug.ctls.red.getSelection().place !== 'bilabial') F('두 팀 자리 카드 겹친 누르기 ' + JSON.stringify([h.debug.ctls.blue.getSelection(), h.debug.ctls.red.getSelection()]));
+  if (DT.station('blue').querySelector('.mouth-svg').dataset.place !== 'velar' || DT.station('red').querySelector('.mouth-svg').dataset.place !== 'bilabial') F('자리 카드를 골라도 그 팀 단면도가 안 바뀜');
   // 두 손가락이 겹쳐 누름: 청 down(11) → 홍 down(12) → 청 up(11) → 청 down(13) → 홍 up(12) → 청 up(13)
   P('pointerdown', card('blue', 'manner', 'stop'), 11);
   P('pointerdown', card('red', 'manner', 'nasal'), 12);
@@ -568,10 +576,21 @@ async function playShot() {
     if (nm.bottom > sbr.top + 1) F(t + ' 바다 이름표가 판을 가림');
     const small = [...s.querySelectorAll('.ctl-card, .ctl-fire')].filter((b) => b.offsetHeight < 64 || b.offsetWidth < 64);
     if (small.length) F(t + ' 64px 보다 작은 조작 단추 ' + small.length + '개');
+    // ① 자리 · ② 방법 · ③ 세기 카드와 발사가 모두 화면 아래 35% 안(상자 비율로 잼)
+    if (s.querySelectorAll('.ctl-card[data-group="place"]').length !== 5) F(t + ' 자리 카드가 5장이 아님');
+    const off = [...s.querySelectorAll('.ctl-card, .ctl-fire')].filter((b) => (b.getBoundingClientRect().top - R.top) / R.height < 0.65 - 0.002);
+    if (off.length) F(t + ' 조작 단추가 화면 아래 35% 밖 ' + off.map((b) => b.textContent).join(','));
+    // 단면도는 보여 주기 전용
+    if (s.querySelectorAll('.mouth-svg [tabindex], .mouth-svg [role="button"], .mouth-hit').length || getComputedStyle(s.querySelector('.mouth-svg')).pointerEvents !== 'none') F(t + ' 단면도에 누르는 요소가 있음');
+    // 쏘는 바다를 크게(단면도는 보여 주기 전용이라 작아도 됨): 칠판 1920×1080에서 소리 40px·축 이름 24px 이상(상자 배율로 환산)
+    const boxK = R.width / root.clientWidth;
+    const sndPx = Math.min(...[...s.querySelectorAll('.sb-snd:not(.sb-measure)')].map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    const axisPx = Math.min(...[...s.querySelectorAll('.sb-hn')].map((e) => parseFloat(getComputedStyle(e).fontSize)));
+    if (root.clientWidth >= 1900 && (!(sndPx >= 39.5) || !(axisPx >= 23.5))) F(t + ' 1920에서 바다 글씨가 작음: 소리 ' + sndPx + 'px, 축 ' + axisPx + 'px');
     const msgFont = parseFloat(getComputedStyle(s.querySelector('.ctl-msg')).fontSize);
     if (msgFont < 22) F(t + ' 한 줄 문구 글씨 ' + msgFont);
     const cell = s.querySelector('.sb-cell'), mouth = s.querySelector('.mouth-svg');
-    info[t] = { station: [Math.round(S.width), Math.round(S.height)], cell: [cell.offsetWidth, cell.offsetHeight], mouth: [mouth.clientWidth, mouth.clientHeight], msgFont };
+    info[t] = { station: [Math.round(S.width), Math.round(S.height)], cell: [cell.offsetWidth, cell.offsetHeight], mouth: [mouth.clientWidth, mouth.clientHeight], msgFont, sndPx, axisPx };
   }
   // 위 띠 글이 잘리지 않음
   document.querySelectorAll('.duel-side .duel-stat').forEach((e) => { if (e.scrollWidth > e.clientWidth + 1) F('위 띠 글 잘림: ' + e.textContent); });

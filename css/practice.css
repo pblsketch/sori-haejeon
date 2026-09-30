@@ -1,7 +1,7 @@
 /* 연습 모드 화면(js/game/practice.js). 색·크기 값은 css/base.css의 토큰을 쓴다.
- * 가로: 윗줄(처음으로 · 바다와 단계 · 남은 배 · 남은 턴) / [적 바다 | 입안 단면도 '1 위치'] / 아래 가운데 조작부
- *       (최근 세 발 기록 띠 · 한 줄 문구 · 요약 줄 · 카드 + 발사). 큰 옆 기록장을 없애 바다와 단면도에 폭을 준다.
- * 세로(휴대폰, spec 6.2): 윗줄 → 적 바다(크게) → 하단 고정 조작부. '위치' 단추로 아래 패널(.pr-sheet)이 올라온다.
+ * 가로: 윗줄(처음으로 · 바다와 단계 · 남은 배 · 남은 턴) / [적 바다 | 입안 단면도(보여 주기)] / 아래 가운데 조작부
+ *       (최근 세 발 기록 띠 · 한 줄 문구 · 요약 줄 · ① ② ③ 카드 + 발사). 큰 옆 기록장을 없애 바다와 단면도에 폭을 준다.
+ * 세로(휴대폰, spec 6.2): 윗줄 → 입안 단면도(위 반) · 적 바다(아래 반) → 한 줄 문구 → 하단 고정 조작부(① ② ③ + 발사).
  * 글씨 크기는 이 화면의 크기로 정한다(container pr): 태블릿·노트북 기본, 칠판(1600×900 이상)은 크게.
  * 배치 기준은 조작부와 같은 (max-width: 760px), (orientation: portrait) — practice.js가 .pr--portrait / .pr--landscape를 붙인다. */
 
@@ -30,7 +30,7 @@
 .pr-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
 /* 공통 단추 */
-.pr-home, .pr-skip, .pr-example-btn, .pr-start, .pr-opt, .pr-sheet-close {
+.pr-home, .pr-skip, .pr-example-btn, .pr-start, .pr-opt {
   min-height: var(--touch);
   border-radius: var(--r-btn);
   cursor: pointer;
@@ -41,7 +41,7 @@
   transition: background-color var(--t-pick), border-color var(--t-pick);
 }
 /* 보조 단추: 흰 바탕 + 진한 잉크 + 경계선 */
-.pr-home, .pr-skip, .pr-example-btn, .pr-sheet-close {
+.pr-home, .pr-skip, .pr-example-btn {
   flex: 0 0 auto;
   min-width: var(--touch);
   padding: 0 16px;
@@ -51,7 +51,7 @@
   font-size: 17px;
 }
 @container pr (min-width: 1600px) and (min-height: 900px) { .pr-home { font-size: 22px; padding: 0 20px; } }
-.pr-home:hover, .pr-skip:hover, .pr-example-btn:hover, .pr-sheet-close:hover { background: var(--accent-soft); }
+.pr-home:hover, .pr-skip:hover, .pr-example-btn:hover { background: var(--accent-soft); }
 
 /* ── 준비 화면 ── */
 .pr-setup {
@@ -148,7 +148,7 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); /* 단면도에 폭을 더 준다(보여 주기의 주인공) */
   gap: var(--s4);
   padding: var(--s3) var(--s4) 0;
 }
@@ -157,13 +157,13 @@
   background: var(--surface); border: 1px solid var(--divider); border-radius: var(--r-panel); padding: var(--s3) var(--s4);
 }
 .pr-sea { flex: 1 1 auto; min-height: 0; min-width: 0; }
-.pr-stepcap { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--ctl-label-fs); font-weight: 600; color: var(--ink-2); }
-.pr-mouth { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; } /* 그림의 목 뒤 살이 옆을 덮지 않게 상자에서 자른다 */
+.pr-mouthcard { padding: var(--s2); }
+.pr-mouth { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.pr-mouth .mouth-svg { position: absolute; inset: 0; } /* 상자 크기에 맞춤(그림 비율로 늘어나 옆·아래를 덮지 않게) */
 .pr-dockwrap { position: relative; flex: 0 0 auto; }
 .pr-dock { display: flex; justify-content: center; }
-.pr-sheet { display: none; }
 
-/* ── 세로(휴대폰): 바다 중심 + 아래 패널 ── */
+/* ── 세로(휴대폰): 단면도 위 · 바다 아래 반반 + 아래 고정 조작부 ── */
 .pr--portrait { --ctl-card-fs: 18px; --ctl-msg-fs: 18px; }
 .pr--portrait .pr-setup { width: calc(100% - 32px); padding: var(--s4); gap: var(--s4); }
 .pr--portrait .pr-setup-title { font-size: 28px; }
@@ -181,32 +181,12 @@
 .pr--portrait .pr-turns-n { font-size: 24px; }
 .pr--portrait .pr-example-bar { margin: 6px var(--s4) 0; gap: 10px; }
 .pr--portrait .pr-example-title { font-size: 17px; }
-.pr--portrait .pr-main { display: flex; flex-direction: column; gap: 0; padding: var(--s2) var(--s4); }
-.pr--portrait .pr-seacol { flex: 1 1 auto; padding: 0; background: transparent; border: 0; }
-/* 세로: 바다를 아래(조작부 쪽)에 붙여 마지막 줄과 안내 사이가 벌어지지 않게, 남는 높이는 위에서 받는다 */
-.pr--portrait .pr-sea .sb.sb-fit, .pr--portrait .pr-sea .sb-fit > .sb-over { align-content: end; }
-.pr--portrait .pr-mouthcard { display: none; }
+.pr--portrait .pr-main { display: flex; flex-direction: column; gap: 4px; padding: 4px var(--s3) 2px; }
+/* 단면도와 바다를 위아래 반반(둘 다 늘 보임). 순서: 단면도 → 바다 */
+.pr--portrait .pr-mouthcard { order: 1; flex: 1 1 0; padding: 2px; border-radius: var(--r-btn); }
+.pr--portrait .pr-seacol { order: 2; flex: 1 1 0; padding: 0; background: transparent; border: 0; }
+.pr--portrait .pr-sea { --touch: 28px; } /* 쏘는 바다의 칸은 누르는 곳이 아니다(board.js play 모드) — 반쪽 높이에 다섯 줄이 들어가게 */
 .pr--portrait .pr-dockwrap { background: var(--surface); border-top: 1px solid var(--divider); }
-/* 아래에서 올라오는 입안 단면도 패널(위쪽 반경 16, 떠 있는 패널 그림자 한 종류).
-   닫힌 패널은 화면 아래로 내려가 있으므로 틀(.pr-sheetwrap)이 잘라 스크롤이 생기지 않게 한다. */
-.pr-sheetwrap { display: none; }
-.pr--portrait .pr-sheetwrap { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 10; }
-.pr--portrait .pr-sheet {
-  display: flex; flex-direction: column; gap: var(--s2);
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
-  height: min(66%, 560px);
-  padding: var(--s3) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom, 0px));
-  background: var(--surface); border-radius: var(--r-panel) var(--r-panel) 0 0; box-shadow: 0 -8px 24px rgba(24, 53, 64, .12);
-  transform: translateY(104%); visibility: hidden; pointer-events: none;
-  transition: transform .2s ease-out, visibility 0s linear .2s;
-}
-.pr--portrait .pr-sheet.is-open { transform: none; visibility: visible; pointer-events: auto; transition: transform .2s ease-out, visibility 0s; }
-.pr--portrait .pr-sheet.is-play { pointer-events: none; }
-.pr--portrait .pr-sheet.is-play .pr-sheet-close { visibility: hidden; }
-.pr-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex: none; }
-.pr-sheet-body { flex: 1 1 auto; min-height: 0; display: flex; }
-.pr-sheet-body .pr-mouth { flex: 1 1 auto; }
-.pr-sheet-close { font-size: 16px; }
 
 /* ── 높이가 너무 낮은 가로 화면(가로로 눕힌 휴대폰): 세로로 돌려 달라고 덮는다 ── */
 .pr-rotate { display: none; }

@@ -298,3 +298,18 @@ A calm, very light, low-contrast background illustration for a results screen: a
 ```text
 A sprite sheet of an animated water splash in 8 frames, arranged in a grid of 4 columns and 2 rows, read left to right, top row first. Each frame sits centered in its own equal cell with wide empty space between frames, and no frame touches another. The animation: frame 1 a small droplet impact, frames 2 to 4 a white and pale teal #D8F2F5 water splash column growing upward with flying droplets, frames 5 to 7 the splash collapsing and spreading into a ring of foam, frame 8 a few fading foam dots. All frames share the same scale and the same baseline. Water shapes are only white, pale teal #D8F2F5 and light teal #9ED3D6 flat shapes with crisp edges; no dark blue, no dark outlines, no ink lines. Style: flat vector illustration made of simple clean geometric shapes, solid color fills, crisp edges, minimal detail, modern editorial infographic look, refined with exactly one flat darker shade tone on the side of each surface facing away from a sun at the upper left and one thin flat highlight line along top edges, careful even spacing and tidy consistent detail, like a high-end airline or government infographic poster. Completely flat and drawn by hand in vector: no 3D rendering, no realistic lighting, no photographic water, no sparkles, no glints. Plain background: perfectly flat, uniform, solid pure magenta #FF00FF everywhere, no grid lines, no cell borders, no shadows. Do not use magenta or pink in the water. Absolutely no text, no letters, no numbers, no hull numbers, no flags, no emblems, no insignia, no logos, no signatures, no watermarks, no frame or border. No symbols or deck markings of any kind: no crosses, no plus signs, no helipad circles or H marks, no helicopters, no aircraft, no people. Modern ships only: not historical, no traditional Korean or Joseon ships, no sails, no oars. Landscape 1536x1024.
 ```
+
+## v3: 위에서 본 배(T20 — 판 = 섬과 암초 바다 지도)
+
+선생님이 판 시안 C(섬과 암초 바다 지도)를 고르고 "배처럼 보이지 않는다"고 해서, 판 위에 올릴 **위에서 내려다본 배**를 새로 만들었다. 화풍은 v2 견본 A(단정한 평면)와 같은 문구, 색은 밝은 회색 갑판 `#C9D3D8`·흰 상부 구조물·잉크 남색 `#183540` 굵은 테두리·슬레이트 `#5B6B73` 장비·청록 `#096C6A` 점 하나.
+
+| 원본(올리지 않음) | 프롬프트 | 참조 | 결과 |
+|---|---|---|---|
+| `assets/raw/top/ship3.png` | `tools/prompts/top/ship3.txt` — 세 토막(이음매 두 줄)으로 된 구축함, 뱃머리 오른쪽 | 없음 | `top_ship3.webp` + 이음매에서 잘라 `top_stern`·`top_mid`·`top_bow` |
+| `assets/raw/top/ship3_burnt.png` | `tools/prompts/top/ship3_burnt.txt` — 같은 배, 그을음·구멍·옅은 연기(불꽃 없음) | `ship3.png`(same) | `top_ship3_burnt.webp`, `top_*_burnt.webp` |
+| `assets/raw/top/boat1.png` | `tools/prompts/top/boat1.txt` — 짧고 넓은 경비정 | 없음 | `top_boat1.webp` |
+| `assets/raw/top/boat1_burnt.png` | `tools/prompts/top/boat1_burnt.txt` | `boat1.png`(same) | `top_boat1_burnt.webp` |
+
+- 만들기(저장소 루트, bash): `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gen.ps1 -Name top_ship3 -PromptFile tools/prompts/top/ship3.txt -Out assets/raw/top/ship3.png </dev/null` (불탄 그림은 `-Image assets/raw/top/ship3.png -RefMode same`).
+- 다듬기: `python tools/process_top.py`(자홍 배경 지우기는 `process_assets.py`의 key_out, 조각은 이음매 열을 찾아 자름, 온전한 배·불탄 배는 같은 상자). 견본: `python tools/process_top.py --preview` → `design/board-concepts/top-sprites.png`.
+- 모두 1회차에 통과(위에서 본 모양, 세 토막 이음매가 0.33·0.63 자리에 나옴, 글자·표식 없음).

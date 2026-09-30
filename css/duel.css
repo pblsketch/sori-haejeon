@@ -1,7 +1,7 @@
 /* 대결 모드 화면(js/game/duel.js) — 16:9 전자칠판 기준. 색·크기 값은 css/base.css의 토큰을 쓴다.
  * 화면은 창(또는 transform이 걸린 상자)을 가득 채운다: .duel { position: fixed; inset: 0 }.
  * 팀 색(--blue/--red)은 팀 표시(팀명·4px 띠·소유 영역)에만. 발사 단추는 두 팀 모두 청록. 신호 색은 판의 결과에만.
- * 두 팀 자리의 안쪽 배치는 똑같다: [쏘는 바다 | '1 위치' 단면도] / 조작부 두 줄(방법 5 / 세기 3 + 발사).
+ * 두 팀 자리의 안쪽 배치는 똑같다: [쏘는 바다 | 단면도(보여 주기)] / 조작부(① 자리 · ② 방법 · ③ 세기 + 발사, 폭에 따라 두세 줄).
  * 글씨·단추 크기는 이 화면의 크기로 정한다(container duel): 칠판(높이 900 이상)은 카드 28px·단추 68px. */
 .duel {
   position: fixed;
@@ -217,7 +217,7 @@
 .station-blue { --team: var(--blue); --team-soft: var(--blue-soft); border-right: 4px solid var(--ink-2); }
 .station-red { --team: var(--red); --team-soft: var(--red-soft); } /* 발사는 두 팀 모두 공통 행동색(청록) — 팀색은 팀명·띠·소유 표시에만(2차 검수) */
 .duel-station.is-busy { background: var(--team-soft); } /* 그 팀이 쏘는 중(공기 흐름) — 그 자리만 잠김 */
-.duel-st-body { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } /* [바다 ≈ 530 | 단면도 ≈ 360] — 56px 단추 사이 여유(2차 검수) */
+.duel-st-body { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s4); grid-template-columns: minmax(0, 2.7fr) minmax(0, 1fr); } /* [바다 | 단면도] — 단면도가 보여 주기 전용이 되어 쏘는 바다에 폭을 준다(칠판 1920에서 소리 40px·축 이름 24px 이상) */
 .duel-sea { position: relative; display: flex; flex-direction: column; gap: 4px; min-height: 0; min-width: 0; }
 .duel-sea-name { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 8px; font-size: calc(var(--ctl-label-fs) + 2px); font-weight: 700; text-align: center; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--team); }
 .duel-board {
@@ -225,15 +225,14 @@
   --touch: 44px; /* 쏘는 바다의 칸은 누르는 곳이 아니다(board.js play 모드) — 두 자리가 너비를 나누므로 칸이 더 작아질 수 있게 */
 }
 .duel-board > .sb.sb-fit { height: auto; } /* 높이 맞추기는 board.js가 이 상자 높이로 한다 */
-.duel-mouthcol { min-height: 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; overflow: hidden; }
-.duel-stepcap { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--ctl-label-fs); font-weight: 600; color: var(--ink-2); padding-top: 4px; }
-.duel-mouth { flex: 0 1 auto; height: auto; min-height: 0; min-width: 0; padding-right: 11%; --mouth-spot: 56px; --mouth-label: 22px; } /* 높이는 그림 비율대로(가운데 정렬) */ /* 목 뒤 살이 viewBox 오른쪽으로 약 11% 나가므로 그만큼 비워 옆과 겹치지 않게 */
+.duel-mouthcol { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.duel-mouth { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; --mouth-label: 20px; }
+.duel-mouth .mouth-svg { position: absolute; inset: 0; } /* 상자 크기에 맞춤(그림 비율대로 가운데) */
 
 /* 팀 자리 아래: 조작부(기록 띠 · 한 줄 문구 · 요약 줄 · 방법 카드 / 세기 카드 + 발사) */
 .duel-st-dock { flex: 0 0 auto; min-width: 0; }
 .duel-st-dock .ctl { padding: 2px 4px var(--s2); gap: 6px; }
-.duel-st-dock .ctl-bar { flex-wrap: wrap; row-gap: var(--s2); column-gap: var(--s4); }
-.duel-st-dock .ctl--strength .ctl-group--manner { flex: 1 1 100%; } /* 두 줄: 방법 5 / 세기 3 + 발사 */
+.duel-st-dock .ctl-bar { row-gap: 6px; column-gap: var(--s4); } /* 묶음 단위로 줄이 넘어간다: ① / ② ③+발사 또는 ① / ② / ③+발사 */
 .duel-st-dock .ctl-fire { white-space: nowrap; }
 .duel-st-dock .ctl-log--strip .ctl-log-item:nth-last-child(n+3) { display: none; } /* 대결: 최근 두 발 */
 /* 발을 다 쓴 팀: 카드·발사가 잠기고(조작부가 disabled) 한 줄이 '상대를 기다려요' */

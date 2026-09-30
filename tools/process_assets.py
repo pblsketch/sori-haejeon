@@ -10,6 +10,7 @@
 - title / result_bg → 16:9로 자른 뒤 1920×1080
 - title_phone → 양옆을 조금만 자르고 빈 하늘을 세로로 늘려 9:16(1080×1920)으로(배가 잘리지 않게)
 원본은 assets/raw/v2(저장소에 올리지 않음), 결과는 assets/img/<이름>.webp.
+위에서 본 배(top_*)는 tools/process_top.py가 만들고, 여기 --check가 함께 점검한다.
 """
 import os
 import sys
@@ -253,7 +254,9 @@ def tall(name, size=(1080, 1920), side=24):
 
 # ---------- 점검 ----------
 
-EXPECT = {n: 'RGBA' for n in SHIPS + ['splash']}
+# 위에서 본 배(판 위 배 조각·남은 배 목록, tools/process_top.py가 만든다 — T20)
+TOP = ['top_' + n + b for n in ('ship3', 'boat1', 'bow', 'mid', 'stern') for b in ('', '_burnt')] + ['top_hit']
+EXPECT = {n: 'RGBA' for n in SHIPS + TOP + ['splash']}
 EXPECT.update({'sea_tile': 'RGB', 'title': 'RGB', 'title_phone': 'RGB', 'result_bg': 'RGB'})
 SIZE = {'title': (1920, 1080), 'result_bg': (1920, 1080), 'title_phone': (1080, 1920)}
 
@@ -274,7 +277,7 @@ def check():
             opaque = has_alpha and (al > 250).mean()
             msg += f' 불투명 {opaque:.0%}' if has_alpha else ''
             good = has_alpha and corners_clear and 0.03 < opaque < 0.95
-            if n.startswith('ship'):
+            if n.startswith('ship') or n.startswith('top_'):
                 good = good and im.width <= 1024
             # 자홍이 남은 곳(보이는 픽셀 중 R·B가 G보다 크게 높은 곳)이 거의 없어야 한다
             if has_alpha:
