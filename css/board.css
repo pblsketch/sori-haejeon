@@ -147,9 +147,9 @@
 .sb-ships.is-compact .sb-ship-item { justify-content: flex-end; }
 /* 배 그림 크기: 세 칸 > 두 칸 > 한 칸(너비로). 상자는 불탄 그림(연기가 있어 더 높음)에 맞춘 비율이라 바뀔 때 줄이 흔들리지 않고,
    그림은 상자 아래에 붙인다(배 밑이 가지런하게). */
-.sb-pic { display: block; width: var(--ship-w); aspect-ratio: 1024 / 655; }
-.sb-pic[data-size="2"] { width: calc(var(--ship-w) * .78); aspect-ratio: 1024 / 584; }
-.sb-pic[data-size="1"] { width: calc(var(--ship-w) * .6); aspect-ratio: 1024 / 722; }
+.sb-pic { display: block; width: var(--ship-w); aspect-ratio: 1024 / 591; }
+.sb-pic[data-size="2"] { width: calc(var(--ship-w) * .78); aspect-ratio: 1024 / 627; }
+.sb-pic[data-size="1"] { width: calc(var(--ship-w) * .6); aspect-ratio: 1024 / 714; }
 .sb-pic > svg, .sb-pic > img { display: block; width: 100%; height: 100%; }
 .sb-pic > img { object-fit: contain; object-position: 50% 100%; }
 .sb-ship-item.is-sunk .sb-pic { opacity: .8; }

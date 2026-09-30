@@ -47,12 +47,14 @@ const tapPoint = (n, what) => {
   return { x, y };
 };
 const sheetOpen = () => { const sh = $('.pr-sheet'); return !!sh && sh.classList.contains('is-open'); };
+// 패널이 올라오는 0.2초 움직임을 끝난 자리로 곧바로(점검이 바로 누르므로 — 사람은 올라온 뒤 누른다)
+const settleSheet = () => { const sh = $('.pr-sheet'); if (!sh) return; sh.style.transition = 'none'; void sh.offsetHeight; sh.style.transition = ''; };
 const pickMouth = (id) => {
   const h = $('.mouth-hit[data-id="' + id + '"]');
   if (!h) { bad('단면도 자리 없음 ' + id); return; }
   // 세로: '위치' 단추로 아래 패널을 열어야 단면도를 누를 수 있다
   const pb = $('.ctl-placebtn');
-  if (pb && fw.getComputedStyle(pb).display !== 'none' && !sheetOpen()) { tapPoint(pb, '위치 단추'); pb.click(); if (!sheetOpen()) bad('위치 단추를 눌러도 패널이 안 열림'); }
+  if (pb && fw.getComputedStyle(pb).display !== 'none' && !sheetOpen()) { tapPoint(pb, '위치 단추'); pb.click(); if (!sheetOpen()) bad('위치 단추를 눌러도 패널이 안 열림'); settleSheet(); }
   const p = tapPoint(h, '단면도 ' + id);
   h.ownerSVGElement.dispatchEvent(new fw.PointerEvent('pointerdown', { clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }));
 };
@@ -414,12 +416,12 @@ try {
       inView(m, tag + ' 문구');
       if (visible($('.ctl-log'))) bad(tag + ': 기록장이 펼쳐져 있음');
       // '위치' 단추 → 아래 패널: 단면도가 크게, 누르는 곳 48px 이상·화면 안, 닫기 → 닫힘
-      tapPoint(pb, tag + ' 위치 단추'); pb.click();
+      tapPoint(pb, tag + ' 위치 단추'); pb.click(); settleSheet();
       if (!sheetOpen() || !visible($('.pr-sheet'))) bad(tag + ': 위치 단추로 패널이 안 열림');
       else {
         if (box($('.pr-mouth')).height < 150) bad(tag + ': 단면도가 너무 작음 ' + Math.round(box($('.pr-mouth')).height));
         $$('.mouth-hit').forEach((n) => { inView(n, tag + ' 단면도 자리'); big(n, tag + ' 단면도 자리'); });
-        const cl = $('.pr-sheet-close'); big(cl, tag + ' 닫기 단추'); cl.click();
+        const cl = $('.pr-sheet-close'); big(cl, tag + ' 닫기 단추'); cl.click(); settleSheet();
         if (sheetOpen()) bad(tag + ': 닫기로 패널이 안 닫힘');
       }
       noScroll(tag);

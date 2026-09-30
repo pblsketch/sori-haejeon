@@ -171,7 +171,7 @@
 .pr--portrait .pr-top { gap: var(--s2); min-height: 56px; padding: 4px var(--s3); }
 .pr--portrait .pr-title { flex: 0 0 auto; font-size: 16px; font-weight: 600; }
 .pr--portrait .pr-ships--top { flex: 1 1 auto; min-width: 0; justify-content: center; overflow: hidden; }
-.pr--portrait .pr-ships--top .sb-ships { --ship-w: 40px; gap: 2px 3px; }
+.pr--portrait .pr-ships--top .sb-ships { --ship-w: 40px; gap: 2px 3px; align-items: stretch; }
 .pr--portrait .pr-home { padding: 0 10px; font-size: 15px; }
 .pr--portrait .pr-turns { gap: 4px; padding-left: var(--s2); }
 .pr--portrait .pr-turns-label { font-size: 14px; }
@@ -182,7 +182,10 @@
 .pr--portrait .pr-seacol { flex: 1 1 auto; padding: 0; background: transparent; border: 0; }
 .pr--portrait .pr-mouthcard { display: none; }
 .pr--portrait .pr-dockwrap { background: var(--surface); border-top: 1px solid var(--divider); }
-/* 아래에서 올라오는 입안 단면도 패널(위쪽 반경 16, 떠 있는 패널 그림자 한 종류) */
+/* 아래에서 올라오는 입안 단면도 패널(위쪽 반경 16, 떠 있는 패널 그림자 한 종류).
+   닫힌 패널은 화면 아래로 내려가 있으므로 틀(.pr-sheetwrap)이 잘라 스크롤이 생기지 않게 한다. */
+.pr-sheetwrap { display: none; }
+.pr--portrait .pr-sheetwrap { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 10; }
 .pr--portrait .pr-sheet {
   display: flex; flex-direction: column; gap: var(--s2);
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;

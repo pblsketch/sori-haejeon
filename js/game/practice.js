@@ -207,7 +207,7 @@ G.practice = (function () {
       const main = el('div', { class: 'pr-main' }, [seaCol, mouthCard]);
       const dock = el('div', { class: 'pr-dock' });
       const dockWrap = el('div', { class: 'pr-dockwrap' }, dock);
-      body.appendChild(el('div', { class: 'pr-play' + (o.example ? ' is-example' : '') }, [top, exBar, main, dockWrap, sheet]));
+      body.appendChild(el('div', { class: 'pr-play' + (o.example ? ' is-example' : '') }, [top, exBar, main, dockWrap, el('div', { class: 'pr-sheetwrap' }, sheet)]));
 
       const g = { state, lv, top, shipsTop, seaBox, mouthBox, mouthCard, sheet, dockWrap, turnsN, example: !!o.example, reveal: false };
       game = g;

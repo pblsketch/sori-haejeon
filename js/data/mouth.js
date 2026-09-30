@@ -62,7 +62,7 @@ window.MOUTH = {
   // tongue: 막을 때 혀 모양(tip 혀끝, peak 혓몸 가장 높은 곳). 가장 높은 곳이 막는 곳에 닿는다.
   //         lift: 'tip'이면 혀끝이, 'peak'이면 혓몸이 올라간다. 마찰·파찰(틈)은 NEAR만큼 떨어진다.
   places: {
-    bilabial: { x: 32, y: 166, deg: 90, len: 24, tap: [12, 168], label: { x: 4, y: 232, anchor: 'start' }, tongue: null },
+    bilabial: { x: 32, y: 166, deg: 90, len: 24, tap: [22, 196], label: { x: 4, y: 232, anchor: 'start' }, tongue: null },
     alveolar: { x: 86, y: 125, deg: 80, len: 20, tap: [84, 146], label: { x: 96, y: 93, anchor: 'middle' },
       tongue: { lift: 'tip', tip: [86, 125], peak: [150, 150] } },
     palatal: { x: 160, y: 117, deg: 90, len: 20, tap: [160, 142], label: { x: 160, y: 93, anchor: 'middle' },

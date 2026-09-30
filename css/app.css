@@ -172,7 +172,7 @@
 
 /* ── 세로 배치(휴대폰·세로로 둔 태블릿) ── */
 @media (max-width: 760px), (orientation: portrait) {
-  .app-title { background-position: 62% center; }
+  .app-title { background-image: url('../assets/img/title_phone.webp'); background-position: center 45%; }
   .app-title-head { padding-top: calc(var(--app-h) * 0.08); }
   .app-title-name { font-size: clamp(48px, 14cqw, 56px); }
   .app-title-foot { padding: 0 var(--s4) calc(var(--s4) + env(safe-area-inset-bottom, 0px)); }
