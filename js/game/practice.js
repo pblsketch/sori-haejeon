@@ -88,7 +88,7 @@ G.practice = (function () {
     applyLayoutClass();
 
     // 끝난 판을 기다리는 동안(view 'end')의 '처음으로'는 판을 잃지 않게 곧바로 결과 화면으로 간다(대결과 같음).
-    //   진행 판은 끝날 때 이미 지워졌으므로 여기서 finishGame을 부르지 않으면 누적 소리 지도에 더해지지 않는다.
+    //   누적 소리 지도에는 끝나는 순간 saveGame이 이미 더했다. 여기서는 결과 화면(캡처해 내는 것)을 잃지 않게 한다.
     let endState = null;      // 끝난 판(결과 화면으로 넘길 것)
     function finishNow() {
       const st = endState;
@@ -301,7 +301,7 @@ G.practice = (function () {
       g.board.update(G.board.viewOf(g.state, 'player'));
       sfx(o.kind === 'hit' ? (o.sunk ? 'sunk' : 'hit') : o.kind === 'none' ? 'dud' : 'miss');
       g.ctl.log(shots[shots.length - 1]);
-      G.save.saveGame(g.state); // 끝난 판이면 진행 판을 지운다(결과는 finishGame이 기록)
+      G.save.saveGame(g.state); // 끝난 판이면 saveGame이 누적 지도에 더하고 진행 판을 지운다
       updateStatus();
       if (o.over) { endGame(); busy = false; return; }
       g.ctl.setEnabled(true);

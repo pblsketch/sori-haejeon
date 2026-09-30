@@ -444,7 +444,7 @@ G.duel = (function () {
         s.ctl.log(shots[shots.length - 1]);
         s.ctl.setMessage(o.sunk ? G.text.sunk(o.sunk) : G.text.signal(o.kind));
         sfx(o.sunk ? 'sunk' : o.kind === 'hit' ? 'hit' : o.kind === 'none' ? 'dud' : 'miss');
-        save(); // 끝난 판이면 G.save가 진행 판을 지운다(결과는 finishGame이 남김)
+        save(); // 끝난 판이면 G.save가 누적 지도에 더하고 진행 판을 지운다
         drawTop();
         if (r.over) { endGame(); return; }
         drawStation(s);
