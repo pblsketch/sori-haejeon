@@ -260,7 +260,9 @@ window.TEXT = {
     'pair-ㄱㅇ': '/ㄱ/과 /ㅇ/은 막는 자리가 같고 콧길만 달라요',
     'ng': '/ㅇ/은 음절 끝에서만 나는 소리예요',
     'oe-wi': '/ㅚ/·/ㅟ/는 이중 모음으로 발음해도 표준 발음으로 인정돼요',
-    'e-ae': '/ㅔ/와 /ㅐ/를 실제로는 구별하지 않고 발음하는 사람이 많아요(표준 발음은 구별해요)',
+    'e-ae': '/ㅔ/·/ㅐ/를 섞어 발음하는 사람이 많지만 표준 발음은 구별해요',
+    // 짝 소리가 둘 이상 나오면 한 줄로 묶는다(학생 관점 검토: 거의 같은 문장이 여러 줄). {pairs} = '/ㅂ/·/ㅁ/, /ㄱ/·/ㅇ/'
+    pairs: '{pairs}은 막는 자리가 같고 콧길만 달라요',
   },
 
   // ── 생각해 볼 질문(결과 화면, 판마다 하나를 골라 보여 줌) ──────
@@ -364,7 +366,7 @@ window.TEXT = {
     // 결과 화면
     result: {
       title: '결과',
-      soundmap: '이번 판 소리 지도', record: '기록', turns: '턴', noneShots: '없는 소리',
+      soundmap: '이번 판 소리 지도', record: '기록', turns: '턴', noneShots: '없는 소리를 쏜 횟수',  // 학생 관점 검토: '없는 소리 0번'만으로는 뜻을 몰랐음
       turnsN: '{n}턴', timesN: '{n}번', hitsN: '맞힌 소리 {n}개',
       shots: '쏜 발', shotsN: '{n}발',   // 대결은 턴 대신 '발'로 센다
       hits: '맞힌 소리', hitsCount: '{n}개',
@@ -412,6 +414,19 @@ G.text = (function () {
     legend(sea) { return [3, 2, 1].map((n) => T.ships.legend[sea === 'vowel' ? 'vowel' : 'consonant'][n]); },
     // 알아 두기 한 줄: know('pair-ㄱㅇ')
     know(id) { return T.know[id] || ''; },
+    // 결과 화면의 알아 두기 줄들: notes = G.rules의 [{ id, sounds }]. 짝 소리(pair-…)가 둘 이상이면 한 줄로 묶는다.
+    knowLines(notes) {
+      const list = notes || [];
+      const pairs = list.filter((n) => /^pair-/.test(n.id));
+      const lines = [];
+      list.forEach((n) => {
+        if (/^pair-/.test(n.id)) {
+          if (pairs.length < 2) { if (T.know[n.id]) lines.push(T.know[n.id]); }
+          else if (n === pairs[0]) lines.push(this.fill(T.know.pairs, { pairs: pairs.map((p) => p.sounds.map(this.sound).join('·')).join(', ') }));
+        } else if (T.know[n.id]) lines.push(T.know[n.id]);
+      });
+      return lines;
+    },
     // 생각해 볼 질문 목록 / 하나 고르기(seed가 같으면 같은 질문)
     debrief(grade, sea) { return T.debrief[gr(grade)][sea === 'vowel' ? 'vowel' : 'consonant']; },
     pickDebrief(grade, sea, seed) {

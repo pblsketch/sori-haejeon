@@ -6,7 +6,7 @@
 원본(Codex 생성, 저장소에 올리지 않음): assets/raw/top/{ship3,ship3_burnt,boat1,boat1_burnt}.png
   (프롬프트: tools/prompts/top/*.txt, 기록: assets/prompts.md 'v3: 위에서 본 배')
 결과 assets/img/:
-  top_ship3(_burnt)   세 칸 배 한 척(세 토막 이음매가 있는 구축함, 뱃머리 오른쪽)
+  top_ship3(_burnt)   세 칸 배 한 척(세 토막 이음매가 있는 구축함, 뱃머리 오른쪽) — 조각을 잘라 내는 중간 결과라 assets/raw/top/에
   top_boat1(_burnt)   한 칸 배(경비정)
   top_stern / top_mid / top_bow (+_burnt)   top_ship3를 이음매 두 줄에서 잘라 만든 배꼬리·가운데·뱃머리 조각
     · 떨어진 두 칸 배 = 뱃머리 + 배꼬리
@@ -81,10 +81,14 @@ def bbox(im, th=40):
     return im.getchannel('A').point(lambda v: 255 if v > th else 0).getbbox()
 
 
+# 세 칸 배 한 척(top_ship3)은 조각을 잘라 내는 중간 결과라 게임 폴더가 아니라 원본 폴더에 둔다(게임은 조각만 쓴다)
+MID = os.path.join(ROOT, 'assets', 'raw', 'top')
+
+
 def save(im, name, maxw=MAXW):
     if im.width > maxw:
         im = im.resize((maxw, round(im.height * maxw / im.width)), Image.LANCZOS)
-    p = os.path.join(OUT, name + '.webp')
+    p = os.path.join(MID if name.startswith('top_ship3') else OUT, name + '.webp')
     im.save(p, 'WEBP', quality=86, method=6, exact=False)
     print(f'  {name}.webp {im.size[0]}x{im.size[1]} {os.path.getsize(p) // 1024}KB')
 
@@ -146,7 +150,7 @@ def preview(path):
                 for i, n in enumerate(names):
                     if burnt and n == 'top_hit':
                         continue  # 명중 조각은 가라앉기 전에만 쓴다(불탄 그림 없음)
-                    im = Image.open(os.path.join(OUT, n + burnt + '.webp')).convert('RGBA')
+                    im = Image.open(os.path.join(MID if n == 'top_ship3' else OUT, n + burnt + '.webp')).convert('RGBA')
                     k = (size * 2 if n == 'top_ship3' else size) / im.width  # 한 칸(조각·경비정) = size, 세 칸 배 = 두 배 길이
                     im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
                     row.paste(im, (i * cw + (cw - im.width) // 2, (row.height - im.height) // 2), im)

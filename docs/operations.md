@@ -71,7 +71,7 @@ python tools/build_fonts.py
    ```bash
    powershell -File tools/gen.ps1 -Name title -PromptFile tools/prompts/v2/title.txt -Out assets/raw/v2/title.png </dev/null
    ```
-3. 후처리: `python tools/process_assets.py`(시작·휴대폰 시작·결과 그림, 그리고 지금은 쓰이지 않는 옆모습 배·물보라·바다 질감), `python tools/process_top.py`(판 위 배 조각). 확인: `python tools/process_assets.py --check`.
+3. 후처리: `python tools/process_assets.py`(시작·휴대폰 시작·결과 그림. `--all`을 붙이면 지금은 쓰지 않아 지운 옆모습 배·물보라·바다 질감도), `python tools/process_top.py`(판 위 배 조각). 확인: `python tools/process_assets.py --check`.
 4. 결과 `assets/img/*.webp`만 커밋한다(원본 `assets/raw/`는 올리지 않음). 프롬프트와 쓴 화풍을 `assets/prompts.md`에 적는다.
 - 그림체는 선생님이 견본을 보고 고른 'A v2'다. 화풍을 바꾸려면 견본 2~3장을 먼저 보여 드리고 고르신 것으로만 만든다.
 

@@ -3,8 +3,8 @@
 ## 맡는 것
 - `build_fonts.py`: 게임에 쓰인 글자만 남긴 부분 글꼴(woff2)과 `css/fonts.css`를 만든다. 원본은 `tools/fonts_src/`(없으면 공식 저장소에서 받음, 저장소에 올리지 않음).
 - `gen.ps1`: Codex CLI 그림 생성으로 이미지 한 장을 `assets/raw/…png`에 만든다. 프롬프트는 `tools/prompts/`(처음 판), `tools/prompts/v2/`(지금 쓰는 A v2 화풍), `tools/prompts/top/`(위에서 본 배).
-- `process_assets.py`: `assets/raw/v2/*.png` → `assets/img/*.webp`(배·불탄 배의 자홍 배경 지우기, 시작·결과 그림 16:9, 휴대폰 시작 그림 9:16, 물보라 스프라이트, 바다 질감). `--check`로 크기·투명도·이음매 점검(위에서 본 배 포함).
-- `process_top.py`: `assets/raw/top/*.png` → `assets/img/top_*.webp`(세 칸 배를 이음매에서 잘라 뱃머리·가운데·배꼬리, 한 칸 배, 가라앉기 전 공통 조각 `top_hit`, 각 불탄 그림).
+- `process_assets.py`: `assets/raw/v2/*.png` → `assets/img/*.webp`(시작·결과 그림 16:9, 휴대폰 시작 그림 9:16). `--all`이면 지금 게임이 쓰지 않는 옆모습 배·물보라·바다 질감도 만든다. `--check`는 게임이 읽는 그림만(위에서 본 배 조각 포함) 크기·투명도를 점검한다.
+- `process_top.py`: `assets/raw/top/*.png` → `assets/img/top_*.webp`(세 칸 배를 이음매에서 잘라 뱃머리·가운데·배꼬리, 한 칸 배, 가라앉기 전 공통 조각 `top_hit`, 각 불탄 그림) 세 칸 배 한 척 `top_ship3`는 중간 결과라 `assets/raw/top/`에 둔다.
 - `preview_samples_v2.py`: 화풍 견본 축소본(선생님께 보여 드리는 용도).
 
 ## 맡지 않는 것

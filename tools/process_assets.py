@@ -255,9 +255,11 @@ def tall(name, size=(1080, 1920), side=24):
 # ---------- 점검 ----------
 
 # 위에서 본 배(판 위 배 조각·남은 배 목록, tools/process_top.py가 만든다 — T20)
-TOP = ['top_' + n + b for n in ('ship3', 'boat1', 'bow', 'mid', 'stern') for b in ('', '_burnt')] + ['top_hit']
-EXPECT = {n: 'RGBA' for n in SHIPS + TOP + ['splash']}
-EXPECT.update({'sea_tile': 'RGB', 'title': 'RGB', 'title_phone': 'RGB', 'result_bg': 'RGB'})
+# 게임이 실제로 읽는 그림만 점검한다. 옆모습 배(ship*)·물보라(splash)·바다 질감(sea_tile)은 판을 코드로 그린 바다 지도와
+# 위에서 본 배 조각으로 바꾼 뒤 쓰지 않아 지웠다(선생님 결정). 다시 쓰려면 --all로 만든다.
+TOP = ['top_' + n + b for n in ('boat1', 'bow', 'mid', 'stern') for b in ('', '_burnt')] + ['top_hit']
+EXPECT = {n: 'RGBA' for n in TOP}
+EXPECT.update({'title': 'RGB', 'title_phone': 'RGB', 'result_bg': 'RGB'})
 SIZE = {'title': (1920, 1080), 'result_bg': (1920, 1080), 'title_phone': (1080, 1920)}
 
 
@@ -303,9 +305,10 @@ def check():
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     if '--check' not in sys.argv:
-        print('배'); ships()
-        print('물보라'); splash()
-        print('바다 질감'); sea_tile()
+        if '--all' in sys.argv:  # 지금 게임이 쓰지 않는 그림까지
+            print('배'); ships()
+            print('물보라'); splash()
+            print('바다 질감'); sea_tile()
         print('배경'); wide('title'); wide('result_bg'); tall('title_phone')
     print('점검')
     sys.exit(0 if check() else 1)

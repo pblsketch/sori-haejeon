@@ -119,7 +119,7 @@
 
 - **배경 음악 3곡·효과음 5종**: Kevin MacLeod(incompetech.com, CC BY 4.0), Scott Buckley(CC BY 4.0), Freesound의 CC0 음원. 곡명·출처 주소·손본 내용은 [`assets/audio/CREDITS.md`](assets/audio/CREDITS.md), 게임 안 '만든 사람·출처' 화면에도 표기했습니다.
 - **글꼴**: Hahmlet(로고·대제목), Pretendard(그 밖의 모든 글) — SIL Open Font License 1.1. 게임에 쓰는 글자만 남긴 부분 글꼴로 이름을 바꾸어 넣었습니다(`assets/fonts/OFL-*.txt`).
-- **그림**(시작 화면·결과 배경·배·바다 질감 등): Codex CLI의 이미지 생성으로 이 게임을 위해 새로 만들었습니다. 프롬프트와 다시 만드는 방법은 [`assets/prompts.md`](assets/prompts.md)와 `tools/prompts/`에 있습니다. 입안 단면도·체계표·신호 기호처럼 정확해야 하는 그림은 코드(SVG)로 그립니다.
+- **그림**(시작 화면·결과 배경·판 위에서 본 배 조각): Codex CLI의 이미지 생성으로 이 게임을 위해 새로 만들었습니다. 프롬프트와 다시 만드는 방법은 [`assets/prompts.md`](assets/prompts.md)와 `tools/prompts/`에 있습니다. 입안 단면도·체계표·신호 기호처럼 정확해야 하는 그림은 코드(SVG)로 그립니다.
 - **코드**: HTML + CSS + 순수 JavaScript(빌드 없음, 외부 스크립트·글꼴을 인터넷에서 불러오지 않음).
 
 ## 점검하기(tests/)

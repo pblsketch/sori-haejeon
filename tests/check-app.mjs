@@ -173,7 +173,7 @@ try {
     if (!document.querySelector('.app-res-done')) F('모두 찾음 줄 없음');
     // 알아 두기: 나온 것만(짝 /ㄷ/·/ㄴ/, /ㅇ/)
     const notes = txt('.app-res-note');
-    const wantN = rec.notes.map((n) => G.text.know(n.id));
+    const wantN = G.text.knowLines(rec.notes);
     if (JSON.stringify(rec.notes.map((n) => n.id)) !== JSON.stringify(['pair-ㄷㄴ', 'ng'])) F('사례 알아 두기 id: ' + JSON.stringify(rec.notes));
     if (JSON.stringify(notes) !== JSON.stringify(wantN)) F('알아 두기: ' + JSON.stringify(notes));
     if (/\\/ㅂ\\/과 \\/ㅁ\\/|\\/ㄱ\\/과 \\/ㅇ\\//.test(document.querySelector('.app-res-know').textContent)) F('나오지 않은 알아 두기가 보임'); // 질문은 판마다 달라서 알아 두기 칸만 본다
@@ -239,7 +239,7 @@ try {
     // 대결은 '발'로 센다(T17)
     if (JSON.stringify(stats) !== JSON.stringify(['blue:4발:0번', 'red:2발:0번'])) F('두 팀 기록: ' + JSON.stringify(stats));
     const notes = txt('.app-res-note');
-    if (JSON.stringify(notes) !== JSON.stringify(rec.notes.map((n) => G.text.know(n.id)))) F('대결 알아 두기(두 팀 합침): ' + JSON.stringify(notes));
+    if (JSON.stringify(notes) !== JSON.stringify(G.text.knowLines(rec.notes))) F('대결 알아 두기(두 팀 합침): ' + JSON.stringify(notes));
     if (G.text.debrief('h1', 'consonant').indexOf(txt('.app-res-question')[0]) < 0) F('고1 자음 질문이 아님');
     if (G.save.mapGames('consonant') !== 2) F('누적 판 수: ' + G.save.mapGames('consonant'));
     // 무승부 표시

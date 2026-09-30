@@ -168,11 +168,11 @@ try {
       if (pressed('grade') !== sel.grade || pressed('sea') !== sel.sea || pressed('level') !== String(sel.level)) bad('준비 화면 기본값이 마지막 선택과 다름');
       if (!visible($('.pr-example-btn'))) bad('자음 1단계인데 예시 보기 단추가 없음');
       opt('level', '2').click();
-      if (visible($('.pr-example-btn'))) bad('자음 2단계인데 예시 보기가 보임');
+      if (!visible($('.pr-example-btn'))) bad('자음 2단계에도 예시 보기가 있어야 함');
       opt('sea', 'vowel').click();
       if ($$('.pr-opt[data-key="level"]').length !== 2) bad('모음 바다 단계 단추가 2개가 아님');
       opt('level', '1').click();
-      if (visible($('.pr-example-btn'))) bad('모음 1단계인데 예시 보기가 보임');
+      if (!visible($('.pr-example-btn'))) bad('모음 1단계에도 예시 보기가 있어야 함');
       choose('m3', 'consonant', 1);
       if (!visible($('.pr-example-btn'))) bad('자음 1단계로 돌아왔는데 예시 보기가 없음');
       if (G.save.seenExample()) bad('처음인데 예시를 본 것으로 되어 있음');

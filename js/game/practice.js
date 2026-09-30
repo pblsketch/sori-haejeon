@@ -17,7 +17,7 @@
 // ── 흐름 ─────────────────────────────────────────────────────────────────
 //   준비(학년·바다·단계, 기본값 = G.save.getSelection, 시작하면 setSelection으로 기억)
 //     → 자음 1단계를 이 기기에서 처음 시작하면(G.save.seenExample() 거짓) 풀이 예시를 한 번 자동으로 보여 준 뒤 일반 판
-//       ('예시 보기' 단추는 언제든 다시 보여 주고 준비 화면으로 돌아온다). 예시는 저장하지 않고 기록에도 더하지 않는다.
+//       ('예시 보기' 단추는 모든 단계의 준비 화면에 있고, 언제든 다시 보여 주고 준비 화면으로 돌아온다). 예시는 저장하지 않고 기록에도 더하지 않는다.
 //     → 새 판: G.rules.newGame(무작위 적 함대) + state.id = G.save.newGameId(), 곧바로 저장(옛 진행 판은 덮여 사라짐)
 //     → 한 발: 조작부 카드(① 자리 ② 방법 ③ 세기 / 모음 ① 높이 ② 앞뒤 ③ 입술 — 모두 아래에서) → 단면도가 고른 모양을 보여 줌
 //              → 발사 → 조작부 잠금 → 조음 동작 + 공기 흐름(mouth.play) → G.rules.fire
@@ -149,8 +149,7 @@ G.practice = (function () {
           b.setAttribute('aria-pressed', on ? 'true' : 'false');
           b.classList.toggle('is-on', on);
         });
-        const lv = G.rules.level(sel.sea, sel.level);
-        exampleBtn.hidden = !(lv.help && lv.help.example);
+        // '예시 보기'는 모든 단계의 준비 화면에(학생 관점 검토: 2단계를 고르면 단추가 사라져 다시 볼 수 없었음). 예시 판은 늘 자음 1단계.
       }
       function choose(key, val) {
         const seaChanged = key === 'sea' && sel.sea !== val;

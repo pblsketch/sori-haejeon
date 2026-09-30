@@ -144,7 +144,13 @@ eq(T.know['pair-ㄱㅇ'], '/ㄱ/과 /ㅇ/은 막는 자리가 같고 콧길만 �
 check(!!T.know['pair-ㅂㅁ'] && !!T.know['pair-ㄷㄴ'], '알아 두기 짝 셋');
 eq(T.know.ng, '/ㅇ/은 음절 끝에서만 나는 소리예요', '알아 두기 ㅇ');
 eq(T.know['oe-wi'], '/ㅚ/·/ㅟ/는 이중 모음으로 발음해도 표준 발음으로 인정돼요', '알아 두기 ㅚ·ㅟ');
-eq(T.know['e-ae'], '/ㅔ/와 /ㅐ/를 실제로는 구별하지 않고 발음하는 사람이 많아요(표준 발음은 구별해요)', '알아 두기 ㅔ·ㅐ');
+eq(T.know['e-ae'], '/ㅔ/·/ㅐ/를 섞어 발음하는 사람이 많지만 표준 발음은 구별해요', '알아 두기 ㅔ·ㅐ');
+const J = JSON.stringify;
+// 짝 소리: 하나면 그 짝의 줄, 둘 이상이면 한 줄로 묶음(다른 항목은 그대로, 순서 유지)
+eq(J(H.knowLines([{ id: 'pair-ㄱㅇ', sounds: ['ㄱ', 'ㅇ'] }, { id: 'ng', sounds: ['ㅇ'] }])), J([T.know['pair-ㄱㅇ'], T.know.ng]), '짝 하나는 그 줄 그대로');
+eq(J(H.knowLines([{ id: 'pair-ㅂㅁ', sounds: ['ㅂ', 'ㅁ'] }, { id: 'pair-ㄱㅇ', sounds: ['ㄱ', 'ㅇ'] }, { id: 'ng', sounds: ['ㅇ'] }])),
+  J(['/ㅂ/·/ㅁ/, /ㄱ/·/ㅇ/은 막는 자리가 같고 콧길만 달라요', T.know.ng]), '짝 둘 이상은 한 줄');
+eq(J(H.knowLines([])), '[]', '알아 두기 없음');
 
 // ── 7. 디브리핑 질문 ──
 for (const g of ['m3', 'h1']) for (const sea of ['consonant', 'vowel']) {

@@ -339,7 +339,7 @@ G.app = (function () {
     });
 
     // 알아 두기: 이번 판에 나온 것만, 없으면 칸을 두지 않는다
-    const notes = (rec.notes || []).map((n) => G.text.know(n.id)).filter(Boolean);
+    const notes = G.text.knowLines(rec.notes);
     const knowEl = notes.length
       ? el('section', { class: 'app-res-know app-res-card' }, [el('h2', { class: 'app-h2' }, R.know), ...notes.map((l) => el('p', { class: 'app-res-note' }, l))])
       : null;

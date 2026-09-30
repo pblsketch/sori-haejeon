@@ -2,6 +2,9 @@
 
 `tools/gen.ps1`(Codex CLI의 image_gen, gpt-image 계열)로 만든다. 프롬프트는 영어(ASCII)로만 쓰고 `tools/prompts/*.txt`에 둔다.
 
+> 지금 게임이 쓰는 그림: `title`, `title_phone`, `result_bg`, 위에서 본 배 조각 `top_boat1`·`top_bow`·`top_mid`·`top_stern`(+`_burnt`)·`top_hit`.
+> 옆모습 배(`ship1/2/3`, `_burnt`)·물보라(`splash`)·바다 질감(`sea_tile`)은 판을 바다 지도로 다시 디자인한 뒤 쓰지 않아 `assets/img/`에서 지웠다(2026-10-01, 선생님 결정). 프롬프트는 아래에 남아 있어 `python tools/process_assets.py --all`로 다시 만들 수 있다. `top_ship3`(조각을 잘라 내는 원본)는 `assets/raw/top/`에 둔다.
+
 다시 만들기(PowerShell, 저장소 루트에서):
 
 ```powershell
