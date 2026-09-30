@@ -89,9 +89,12 @@ function duelGame(R, seed = 5) {
   const blueSounds = g.teams.blue.fleet.flatMap((s) => s.sounds);
   const blueTarget = redSounds[0];
   const redTarget = blueSounds.find((id) => id !== blueTarget);
-  // 한 라운드: 청팀은 홍팀 바다에, 홍팀은 청팀 바다에 동시에 명중
-  g = R.fireRound(g, { blue: R.inputOf(blueTarget), red: R.inputOf(redTarget) }).state;
-  return { g, blueTarget, redTarget };
+  // 실시간(차례 없음): 청팀은 홍팀 바다에, 홍팀은 청팀 바다에 명중 + 청팀만 한 발 더(두 팀 쏜 수가 다름)
+  g = R.fireTeam(g, 'blue', R.inputOf(blueTarget)).state;
+  g = R.fireTeam(g, 'red', R.inputOf(redTarget)).state;
+  const blueMiss = R.level('consonant', 3).open.find((id) => redSounds.indexOf(id) < 0);
+  g = R.fireTeam(g, 'blue', R.inputOf(blueMiss)).state;
+  return { g, blueTarget, redTarget, blueMiss, redSounds };
 }
 const keysOf = (st) => [...st._m.keys()].sort();
 
@@ -190,23 +193,37 @@ const keysOf = (st) => [...st._m.keys()].sort();
   const { g: dg } = duelGame(R);
   b.S.saveGame(dg);
   eq(boot(st).S.loadGame(), JSON.parse(J(dg)), '대결 판: 저장 → 복원 같음');
-  check(boot(st).S.loadGame().rounds === 1, '대결 판: 라운드 수도 복원');
-  // 라운드 모양 확인: 두 팀 쏜 수가 다르면(번갈아 쏘던 옛 판) 이어 할 수 없음, rounds가 없으면 쏜 수로 채움
   {
-    const odd = JSON.parse(J(dg)); odd.teams.red.shots.pop(); delete odd.rounds;
-    const envOdd = { s: 1, savedAt: 1, state: odd };
-    const stO = makeStorage(); stO._m.set('sori-haejeon:game', J(envOdd));
-    check(boot(stO).S.loadGame() === null, '대결: 두 팀 쏜 수가 다른 판은 버림');
-    const bad = JSON.parse(J(dg)); bad.rounds = 3;
-    const stB = makeStorage(); stB._m.set('sori-haejeon:game', J({ s: 1, savedAt: 1, state: bad }));
-    check(boot(stB).S.loadGame() === null, '대결: rounds가 쏜 수와 다른 판은 버림');
-    const old = JSON.parse(J(dg)); delete old.rounds;
+    const back = boot(st).S.loadGame();
+    check(!!back && back.teams.blue.shots.length === 2 && back.teams.red.shots.length === 1 && !('rounds' in back), '대결 판: 두 팀 쏜 수가 달라도 그대로 복원(실시간)');
+    let cont = null;
+    if (back) try { cont = R.fireTeam(back, 'red', R.inputOf(['ㅎ', 'ㄹ', 'ㅆ'].find((x) => !back.teams.red.shots.some((s) => s.sound === x)))); } catch (e) { cont = null; }
+    check(cont && cont.state.teams.red.shots.length === 2, '복원한 대결 판에서 한 팀이 이어서 쏘기');
+  }
+  // 대결 판 모양 확인: 팀마다 쏜 수 ≤ 제한 발, 발을 다 쓰고 기다리는 팀이 있어도 이어 할 수 있음
+  {
+    const lim = R.level('consonant', 3).turns;
+    const { g: base, redSounds } = duelGame(R);
+    let w = base;
+    for (const id of R.level('consonant', 3).open.filter((x) => redSounds.indexOf(x) < 0 && !w.teams.blue.shots.some((s) => s.sound === x))) {
+      if (w.teams.blue.shots.length >= lim) break;
+      w = R.fireTeam(w, 'blue', R.inputOf(id)).state;
+    }
+    check(w.phase === 'playing' && w.teams.blue.shots.length === lim && w.teams.red.shots.length === 1, '(준비) 청팀만 발을 다 씀');
+    const stW = makeStorage(); boot(stW).S.saveGame(w);
+    eq(boot(stW).S.loadGame(), JSON.parse(J(w)), '발을 다 쓴 팀이 있는 대결 판: 저장 → 복원 같음');
+    const over = JSON.parse(J(w)); over.teams.blue.shots.push(JSON.parse(J(over.teams.blue.shots[0])));
+    const stV = makeStorage(); stV._m.set('sori-haejeon:game', J({ s: 1, savedAt: 1, state: over }));
+    check(boot(stV).S.loadGame() === null, '대결: 제한 발보다 많이 쏜 판은 버림');
+    const stV2 = makeStorage(); boot(stV2).S.saveGame(over);
+    check(boot(stV2).S.loadGame() === null, '대결: 제한 발보다 많이 쏜 판은 저장하지 않음');
+    // 라운드 방식 때 저장한 판(rounds가 남음): 이어 할 수 있고 rounds는 버린다
+    const old = JSON.parse(J(dg)); old.rounds = 1;
     const stL = makeStorage(); stL._m.set('sori-haejeon:game', J({ s: 1, savedAt: 1, state: old }));
     const back2 = boot(stL).S.loadGame();
-    check(back2 && back2.rounds === 1, 'rounds가 없는 옛 대결 판은 쏜 수로 채워 복원');
-    let cont2 = null;
-    try { cont2 = R.fireRound(back2, { blue: R.inputOf(back2.teams.red.fleet[1].sounds[0]), red: R.inputOf(['ㅎ', 'ㄹ'].find((x) => !back2.teams.red.shots.some((s) => s.sound === x))) }); } catch (e) { cont2 = null; }
-    check(cont2 && cont2.state.rounds === 2, '복원한 대결 판에서 다음 라운드');
+    check(back2 && !('rounds' in back2) && back2.teams.blue.shots.length === 2, '라운드 방식 때의 대결 판: rounds를 버리고 복원');
+    const stL2 = makeStorage(); boot(stL2).S.saveGame(old);
+    check(!('rounds' in boot(stL2).S.loadGame()), '저장할 때도 rounds는 남기지 않음');
   }
   // 진행 판은 기기당 하나: 새 판 저장이 옛 판을 덮는다
   const g2 = R.newGame({ mode: 'practice', grade: 'm3', sea: 'vowel', level: 1, rng: R.makeRng(3) });

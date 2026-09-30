@@ -26,8 +26,8 @@
 //   - phase 'over': 저장하지 않고 진행 판을 지운다(끝난 판은 누적 지도로만 남는다).
 //   loadGame()은 판 형식 버전(state.v === 1, rules.js 머리 주석의 GameState)·모드·바다·단계·단계(phase)·팀 모양을
 //   확인하고, 맞지 않거나 JSON이 망가졌으면 저장된 값을 지우고 null을 돌려준다.
-//   대결(동시 발사 라운드)은 두 팀의 쏜 수가 같아야 하고, rounds(끝난 라운드 수)가 있으면 그 수와 같아야 한다.
-//   rounds가 없는 옛 대결 판은 쏜 수로 채워 돌려준다.
+//   대결(실시간 — 차례 없음)은 두 팀의 쏜 수가 달라도 된다. 팀마다 쏜 수가 단계의 제한 턴(= 팀마다 발 수)을 넘으면
+//   이어 할 수 없는 판으로 본다. 라운드 방식 때 저장한 판에 남은 rounds 값은 저장·복원할 때 버린다.
 //
 // ── 판 id와 '한 판은 한 번만'(spec 6.5) ──────────────────────────────────
 //   GameState·GameRecord(rules.js)에는 판 id가 없다. 그래서:
@@ -275,16 +275,21 @@ G.save = (function () {
     const names = st.mode === 'practice' ? ['player', 'enemy'] : ['blue', 'red'];
     if (!names.every((n) => isTeam(st.teams[n]))) return false;
     if (st.mode === 'duel') {
-      // 동시 발사 라운드: 두 팀은 늘 같은 수만큼 쏜다. rounds(끝난 라운드 수)가 있으면 그 수와 같아야 한다.
-      const n = st.teams.blue.shots.length;
-      if (st.teams.red.shots.length !== n) return false; // 번갈아 쏘던 옛 판의 한 발 차이 등 → 이어 할 수 없음
-      if (st.rounds !== undefined && st.rounds !== n) return false;
+      // 실시간: 두 팀의 쏜 수는 달라도 된다. 팀마다 제한 발(단계의 제한 턴)을 넘을 수는 없다.
+      const limit = turnLimit(st.sea, st.level);
+      if (limit != null && names.some((n) => st.teams[n].shots.length > limit)) return false;
     }
     return true;
   }
-  // 라운드 수가 빠진 대결 판(라운드 방식 이전에 저장한 판)은 쏜 수로 채운다
-  function withRounds(st) {
-    if (st.mode === 'duel' && st.rounds === undefined) st.rounds = st.teams.blue.shots.length;
+  // 단계의 제한 턴(대결은 팀마다 발 수). 단계 데이터가 없으면 null(확인하지 않음)
+  function turnLimit(sea, n) {
+    const L = window.LEVELS;
+    const lv = L && L[sea] && L[sea][n];
+    return lv && typeof lv.turns === 'number' ? lv.turns : null;
+  }
+  // 라운드 방식 때 저장한 대결 판에 남은 rounds 값은 버린다(이제 쓰지 않음)
+  function tidy(st) {
+    if (st.mode === 'duel') delete st.rounds;
     return st;
   }
   // 배치 중인 판: 배치는 버리고 청팀부터 다시(rules.restartPlacing과 같은 모양)
@@ -295,7 +300,6 @@ G.save = (function () {
     const next = copy(st);
     next.teams = Object.assign({}, next.teams, { blue: { fleet: [], shots: [] }, red: { fleet: [], shots: [] } });
     next.phase = 'placing'; next.placingTeam = 'blue'; next.result = null;
-    if (next.mode === 'duel') next.rounds = 0;
     return next;
   }
   // 매 발 부른다. 저장했으면(이번 세션 메모리 포함) true
@@ -306,6 +310,7 @@ G.save = (function () {
     try { st = copy(state); } catch (e) { return false; }
     if (st.phase === 'placing') st = restartPlacing(st);
     if (!validGame(st)) return false;
+    tidy(st);
     return writeJSON('game', { savedAt: Date.now(), state: st });
   }
   // 이어 할 판(복사본) 또는 null. 망가졌거나 버전이 다르거나 끝난 판이면 지우고 null
@@ -313,7 +318,7 @@ G.save = (function () {
     if (rawGet('game') == null) return null;
     const o = readJSON('game');
     if (!o || !validGame(o.state)) { rawDel('game'); return null; }
-    return withRounds(copy(o.state));
+    return tidy(copy(o.state));
   }
   const hasGame = () => loadGame() !== null;
   function clearGame() { rawDel('game'); }
