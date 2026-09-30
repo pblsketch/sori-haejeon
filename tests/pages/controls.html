@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>조작부 점검</title>
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/controls.css">
+<style>
+  /* 점검 전용 틀: 위는 단면도·바다 자리(빈 칸), 아래 가운데에 조작부 */
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  #stage { flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; padding: 12px; }
+  #stage .ph { flex: 1 1 auto; border: 2px dashed var(--ink-3); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
+  #logbox { flex: 0 0 260px; min-height: 0; display: flex; flex-direction: column; }
+  #logbox:empty { display: none; }
+  #dock { flex: 0 0 auto; }
+</style>
+</head><body>
+<!-- 점검 전용: 조작부(js/game/controls.js)만 따로 띄운다.
+     ?sea=consonant&level=2&grade=m3&mode=practice&logbox=1   (logbox=1 → 기록장을 옆 칸에)
+     점검 스크립트는 window.mount({ sea, level, grade, mode, logbox, layout })로 다시 만들 수 있다.
+     발사는 window.__fired, 바뀜은 window.__changes에 쌓인다. 단면도는 흉내 내지 않는다(setPlace를 직접 부름). -->
+<div id="stage"><div class="ph">입안 단면도 · 바다 자리</div><div id="logbox"></div></div>
+<div id="dock"></div>
+<script src="../../js/core/util.js"></script>
+<script src="../../js/data/sounds.js"></script>
+<script src="../../js/data/fleets.js"></script>
+<script src="../../js/data/levels.js"></script>
+<script src="../../js/data/text.js"></script>
+<script src="../../js/core/rules.js"></script>
+<script src="../../js/game/controls.js"></script>
+<script>
+  window.__fired = [];
+  window.__changes = [];
+  window.ctl = null;
+  window.mount = function (o) {
+    o = o || {};
+    if (window.ctl) window.ctl.destroy();
+    window.__fired = []; window.__changes = [];
+    const lb = document.getElementById('logbox');
+    lb.textContent = '';
+    window.ctl = G.controls.create(document.getElementById('dock'), {
+      levelConfig: G.rules.level(o.sea || 'consonant', +o.level || 1),
+      grade: o.grade || 'm3',
+      mode: o.mode || 'practice',
+      layout: o.layout || 'auto',
+      logContainer: o.logbox ? lb : null,
+      onFire: (input) => window.__fired.push(input),
+      onChange: (s, st) => window.__changes.push({ s, st }),
+    });
+    return window.ctl;
+  };
+  const q = new URLSearchParams(location.search);
+  window.mount({ sea: q.get('sea'), level: q.get('level'), grade: q.get('grade'), mode: q.get('mode'), logbox: q.get('logbox') === '1' });
+</script>
+</body></html>
