@@ -353,6 +353,7 @@ window.TEXT = {
       step: { place: '위치', tongue: '혀 자리' },
       placeBtn: '위치',          // 휴대폰: 누르면 아래에서 입안 단면도 패널이 올라온다
       placeChosen: '고른 자리',   // 자리 이름을 숨기는 단계에서 요약 줄에 쓰는 말
+      choose: '{what} 선택',      // 요약 줄에서 아직 안 고른 칸('세기 선택')
       sheetClose: '닫기',
       shipsLeft: '남은 배', turnsLeft: '남은 턴', turnsN: '{n}턴',
       allFound: '배를 모두 찾았어요',

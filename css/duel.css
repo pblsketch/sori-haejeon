@@ -1,6 +1,6 @@
 /* 대결 모드 화면(js/game/duel.js) — 16:9 전자칠판 기준. 색·크기 값은 css/base.css의 토큰을 쓴다.
  * 화면은 창(또는 transform이 걸린 상자)을 가득 채운다: .duel { position: fixed; inset: 0 }.
- * 팀 색(--blue/--red)은 팀 표시(팀명·4px 띠·소유 영역·발사 단추)에만. 신호 색은 판의 결과에만.
+ * 팀 색(--blue/--red)은 팀 표시(팀명·4px 띠·소유 영역)에만. 발사 단추는 두 팀 모두 청록. 신호 색은 판의 결과에만.
  * 두 팀 자리의 안쪽 배치는 똑같다: [쏘는 바다 | '1 위치' 단면도] / 조작부 두 줄(방법 5 / 세기 3 + 발사).
  * 글씨·단추 크기는 이 화면의 크기로 정한다(container duel): 칠판(높이 900 이상)은 카드 28px·단추 68px. */
 .duel {
@@ -214,8 +214,8 @@
   touch-action: manipulation;
   transition: background-color var(--t-result);
 }
-.station-blue { --team: var(--blue); --team-soft: var(--blue-soft); --fire: var(--blue); border-right: 4px solid var(--ink-2); }
-.station-red { --team: var(--red); --team-soft: var(--red-soft); --fire: var(--red); }
+.station-blue { --team: var(--blue); --team-soft: var(--blue-soft); border-right: 4px solid var(--ink-2); }
+.station-red { --team: var(--red); --team-soft: var(--red-soft); } /* 발사는 두 팀 모두 공통 행동색(청록) — 팀색은 팀명·띠·소유 표시에만(2차 검수) */
 .duel-station.is-busy { background: var(--team-soft); } /* 그 팀이 쏘는 중(공기 흐름) — 그 자리만 잠김 */
 .duel-st-body { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } /* [바다 ≈ 560 | 단면도 ≈ 330] */
 .duel-sea { position: relative; display: flex; flex-direction: column; gap: 4px; min-height: 0; min-width: 0; }
@@ -227,7 +227,7 @@
 .duel-board > .sb.sb-fit { height: auto; } /* 높이 맞추기는 board.js가 이 상자 높이로 한다 */
 .duel-mouthcol { min-height: 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; overflow: hidden; }
 .duel-stepcap { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--ctl-label-fs); font-weight: 600; color: var(--ink-2); padding-top: 4px; }
-.duel-mouth { flex: 0 1 auto; height: auto; min-height: 0; min-width: 0; padding-right: 11%; } /* 높이는 그림 비율대로(가운데 정렬) */ /* 목 뒤 살이 viewBox 오른쪽으로 약 11% 나가므로 그만큼 비워 옆과 겹치지 않게 */
+.duel-mouth { flex: 0 1 auto; height: auto; min-height: 0; min-width: 0; padding-right: 11%; --mouth-spot: 56px; --mouth-label: 22px; } /* 높이는 그림 비율대로(가운데 정렬) */ /* 목 뒤 살이 viewBox 오른쪽으로 약 11% 나가므로 그만큼 비워 옆과 겹치지 않게 */
 
 /* 팀 자리 아래: 조작부(기록 띠 · 한 줄 문구 · 요약 줄 · 방법 카드 / 세기 카드 + 발사) */
 .duel-st-dock { flex: 0 0 auto; min-width: 0; }

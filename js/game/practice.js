@@ -235,10 +235,9 @@ G.practice = (function () {
       const g = game;
       if (g.board) g.board.destroy();
       g.shipsTop.textContent = '';
-      const portrait = layout === 'portrait';
       g.board = G.board.create(g.seaBox, {
         sea: g.state.sea, levelConfig: g.lv, grade: g.state.grade, mode: 'play',
-        fitHeight: true, shipsEl: g.shipsTop, compactShips: portrait, shooter: 'player',
+        fitHeight: true, shipsEl: g.shipsTop, shooter: 'player', // 세로에서는 윗줄의 둘째 줄('남은 배' + 배 그림)
       });
       g.board.render(G.board.viewOf(g.state, 'player'));
       if (g.reveal) g.board.revealFleet(g.state.teams.enemy.fleet);

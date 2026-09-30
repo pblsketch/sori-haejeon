@@ -168,10 +168,13 @@
 .pr--portrait .pr-setup { width: calc(100% - 32px); padding: var(--s4); gap: var(--s4); }
 .pr--portrait .pr-setup-title { font-size: 28px; }
 .pr--portrait .pr-opt { padding: 6px 6px; font-size: 20px; }
-.pr--portrait .pr-top { gap: var(--s2); min-height: 56px; padding: 4px var(--s3); }
-.pr--portrait .pr-title { flex: 0 0 auto; font-size: 16px; font-weight: 600; }
-.pr--portrait .pr-ships--top { flex: 1 1 auto; min-width: 0; justify-content: center; overflow: hidden; }
-.pr--portrait .pr-ships--top .sb-ships { --ship-w: 40px; gap: 2px 3px; align-items: stretch; }
+/* 윗줄 두 줄(2차 검수): 첫 줄 = 처음으로 · 단계 · 남은 턴(52px), 둘째 줄 = '남은 배' + 배 그림 */
+.pr--portrait .pr-top { flex-wrap: wrap; gap: 2px var(--s2); min-height: 52px; padding: 4px var(--s3) 6px; }
+.pr--portrait .pr-title { flex: 1 1 auto; font-size: 16px; font-weight: 600; }
+.pr--portrait .pr-ships--top { order: 3; flex: 1 1 100%; min-width: 0; justify-content: flex-start; }
+.pr--portrait .pr-ships--top .sb-ships { --ship-w: 60px; gap: 0 var(--s2); align-items: stretch; }
+.pr--portrait .pr-ships--top .sb-ships-title { font-size: 15px; margin-right: var(--s2); }
+.pr--portrait .pr-ships--top .sb-ship-name { display: none; }
 .pr--portrait .pr-home { padding: 0 10px; font-size: 15px; }
 .pr--portrait .pr-turns { gap: 4px; padding-left: var(--s2); }
 .pr--portrait .pr-turns-label { font-size: 14px; }

@@ -27,8 +27,11 @@
 //   data-flow, data-particles(마지막 재생의 입자 수), data-playing(1|0), data-static(1=정지 그림), data-names(shown|hidden)
 //   막음 표시 g.mouth-closure 에는 data-kind(규칙)와 data-shape(지금 그려진 모양)가 있다.
 // 그림 안의 글씨는 자리 이름뿐이다(setShowNames로 숨김). 이름은 G.text에서 학년별로 가져온다.
-// 누르는 자리(디자인 검수): 보이는 표식은 화면에서 지름 28~32px의 흰 단추(2px 실선 테두리), 고르면 청록 채움 + 체크.
-//   실제로 누르는 범위(.mouth-hit)는 표식보다 크게 --touch 이상(가로 64px · 휴대폰 48px), 이웃 자리와 겹치지 않게.
+// 누르는 자리(디자인 검수 1·2차): 보이는 표식은 흰 단추(2px 실선 테두리), 고르면 청록 채움 + 체크.
+//   표식 지름은 CSS 변수 --mouth-spot(휴대폰 44px · 가로 48px · 대결 56px), 자리 이름 글씨는 --mouth-label(휴대폰 16px · 가로 22px).
+//   이름은 자기 단추 바로 위(두 입술은 아래, 목청은 왼쪽)에 두고 가는 연결선으로 잇는다. 긴 이름은 두 줄(센 / 입천장).
+//   실제로 누르는 범위(.mouth-hit)는 표식 이상 · --touch 이상(가로 64px · 휴대폰 48px), 이웃 자리와 겹치지 않게.
+//   막음 표시·공기 입자는 표식보다 위에 그린다(고른 뒤에도 학습 정보가 가려지지 않게).
 
 window.G = window.G || {};
 G.mouth = (function () {
@@ -205,8 +208,12 @@ G.mouth = (function () {
       const scale = Math.min(rect.width / M.VIEW.w, rect.height / M.VIEW.h);
       const touch = parseFloat(getComputedStyle(container).getPropertyValue('--touch')) || 48;
       const need = scale > 0 ? touch / scale + 1 : 0; // 그림 단위로 본 --touch
-      // 보이는 표식: 화면에서 지름 30px 안팎(그림 단위로 환산, 너무 작거나 큰 그림에서는 범위 안에서)
-      const vis = scale > 0 ? U.clamp(15 / scale, 8, 17) : 12;
+      // 보이는 표식: 화면에서 지름 --mouth-spot(그림 단위로 환산, 너무 작거나 큰 그림에서는 범위 안에서)
+      const cs = getComputedStyle(container);
+      const spotPx = parseFloat(cs.getPropertyValue('--mouth-spot')) || 44;
+      const vis = scale > 0 ? U.clamp(spotPx / 2 / scale, 8, 30) : 12;
+      const labelPx = parseFloat(cs.getPropertyValue('--mouth-label')) || 16;
+      layoutLabels(scale > 0 ? U.clamp(labelPx / scale, 13, 24) : 15, vis);
       if (st.sea === 'vowel') {
         const w = Math.max(M.cellW, need), h = Math.max(M.cellH, need);
         targets.forEach((t) => {
@@ -216,13 +223,24 @@ G.mouth = (function () {
           t.check.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + (vis * 1.1).toFixed(2) + ')');
         });
       } else {
-        const r = Math.max(M.HIT_R, need / 2);
+        const r = Math.max(M.HIT_R, need / 2, vis + 2);
         targets.forEach((t) => {
+          const p = spotPos(t.id, vis);
+          t.cx = p[0]; t.cy = p[1];
+          t.hit.setAttribute('cx', p[0].toFixed(1)); t.hit.setAttribute('cy', p[1].toFixed(1));
           t.hit.setAttribute('r', r.toFixed(1)); t.r = r;
+          t.ring.setAttribute('cx', p[0].toFixed(1)); t.ring.setAttribute('cy', p[1].toFixed(1));
           t.ring.setAttribute('r', vis.toFixed(1));
-          t.check.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + (vis * 1.15).toFixed(2) + ')');
+          t.check.setAttribute('transform', 'translate(' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ') scale(' + (vis * 1.15).toFixed(2) + ')');
         });
       }
+    }
+    // 표식 가운데(그림 단위): 표식이 커져도 막음 막대·목청·입술 닫힘을 가리지 않게 막는 곳에서 비켜 둔다
+    function spotPos(id, vis) {
+      const P = M.places[id], tx = P.tap[0], ty = P.tap[1];
+      if (id === 'bilabial') return [Math.max(tx, vis + 2), Math.max(ty, P.y + 12 + vis + 2)];   // 아랫입술 아래
+      if (id === 'glottal') return [Math.min(tx, M.VIEW.w - vis - 2), Math.min(ty, M.shape.glottis.y - 10 - vis)]; // 목청 위(그림 안에)
+      return [tx, Math.max(ty, P.y + P.len / 2 + vis + 2)];                                     // 막음 막대 아래
     }
     let ro = null;
     if (window.ResizeObserver) { ro = new ResizeObserver(sizeHits); ro.observe(svg); }
@@ -237,8 +255,9 @@ G.mouth = (function () {
       const q = pt.matrixTransform(ctm.inverse());
       let best = null, bd = Infinity;
       targets.forEach((t) => {
-        const inside = st.sea === 'vowel' ? Math.abs(t.x - q.x) <= t.w / 2 && Math.abs(t.y - q.y) <= t.h / 2 : Math.hypot(t.x - q.x, t.y - q.y) <= t.r;
-        const d = Math.hypot(t.x - q.x, t.y - q.y);
+        const cx = t.cx != null ? t.cx : t.x, cy = t.cy != null ? t.cy : t.y;
+        const inside = st.sea === 'vowel' ? Math.abs(t.x - q.x) <= t.w / 2 && Math.abs(t.y - q.y) <= t.h / 2 : Math.hypot(cx - q.x, cy - q.y) <= t.r;
+        const d = Math.hypot(cx - q.x, cy - q.y);
         if (inside && d < bd) { bd = d; best = t; }
       });
       if (best) { e.preventDefault(); pick(best.id); }
@@ -256,24 +275,71 @@ G.mouth = (function () {
       const t = U.svg('text', { x, y, class: cls || 'mouth-label', 'text-anchor': anchor || 'middle' });
       t.textContent = s; labelsG.appendChild(t); return t;
     }
+    // 긴 이름은 두 줄: '센입천장' → 센 / 입천장, '여린입천장' → 여린 / 입천장(용어는 줄이지 않는다)
+    function splitName(nm) {
+      const j = nm.indexOf('입천장');
+      return j > 0 ? [nm.slice(0, j), nm.slice(j)] : [nm];
+    }
+    let labelRecs = [];
     function buildLabels() {
       labelsG.textContent = '';
+      labelRecs = [];
       const T = window.TEXT;
       if (st.sea === 'consonant') {
         M.placeOrder.forEach((id) => {
-          const L = M.places[id].label;
-          text(L.x, L.y, T.mouthParts[id], 'mouth-label', L.anchor);
-          if (st.grade === 'h1') text(L.x, L.y + 15, G.text.short('h1', 'place', id), 'mouth-label mouth-label-sub', L.anchor);
+          const main = text(0, 0, '', 'mouth-label', 'middle');
+          main.setAttribute('data-place', id);
+          const lines = splitName(T.mouthParts[id]).map((ln) => {
+            const ts = U.svg('tspan', {}); ts.textContent = ln; main.appendChild(ts); return ts;
+          });
+          const sub = st.grade === 'h1' ? text(0, 0, G.text.short('h1', 'place', id), 'mouth-label mouth-label-sub', 'middle') : null;
+          const lead = U.svg('line', { class: 'mouth-lead', 'vector-effect': 'non-scaling-stroke' });
+          labelsG.insertBefore(lead, labelsG.firstChild);
+          labelRecs.push({ id, main, lines, sub, lead });
         });
       } else {
         const V = M.vowelLabels;
-        ['front', 'back'].forEach((b) => text(V.backness[b].x, V.backness[b].y, G.text.short(st.grade, 'backness', b)));
+        ['front', 'back'].forEach((b) => labelRecs.push({ v: text(V.backness[b].x, V.backness[b].y, G.text.short(st.grade, 'backness', b)) }));
         ['high', 'mid', 'low'].forEach((h) => {
           const y = M.vowelCells['front-' + h].y + 5;
-          text(V.heightX, y, G.text.short(st.grade, 'height', h), 'mouth-label');
+          labelRecs.push({ v: text(V.heightX, y, G.text.short(st.grade, 'height', h), 'mouth-label') });
         });
       }
       applyNames();
+      sizeHits();
+    }
+    // 이름 자리 잡기: lf = 글씨 크기(그림 단위), r = 표식 반지름(그림 단위)
+    function layoutLabels(lf, r) {
+      const lh = lf * 1.1, sf = lf * 0.8;
+      labelRecs.forEach((L) => {
+        if (L.v) { L.v.style.fontSize = Math.min(lf, 17).toFixed(1) + 'px'; return; } // 모음: 칸 사이가 좁아 17 이하
+        const tap = spotPos(L.id, r), tx = tap[0], ty = tap[1];
+        L.main.style.fontSize = lf.toFixed(1) + 'px';
+        if (L.sub) L.sub.style.fontSize = sf.toFixed(1) + 'px';
+        const n = L.lines.length;
+        let x, anchor, y0, leadTo = null;
+        if (L.id === 'bilabial') { // 단추 아래, 왼쪽 맞춤
+          anchor = 'start'; x = 2; y0 = ty + r + lf * 0.95;
+        } else if (L.id === 'glottal') { // 단추 왼쪽, 오른쪽 맞춤
+          anchor = 'end'; x = tx - r - 4; y0 = ty + lf * 0.35;
+        } else { // 단추 바로 위(입천장 쪽), 가운데 맞춤 + 연결선
+          anchor = 'middle'; x = tx;
+          const yb = Math.min(104, ty - r - 8); // 마지막 줄의 글자 밑선
+          y0 = yb - (n - 1) * lh - (L.sub ? sf * 1.15 : 0);
+          leadTo = [yb + lf * 0.3, ty - r - 1];
+        }
+        L.main.setAttribute('text-anchor', anchor);
+        L.lines.forEach((ts, i) => { ts.setAttribute('x', x.toFixed(1)); ts.setAttribute('y', (y0 + i * lh).toFixed(1)); });
+        if (L.sub) {
+          L.sub.setAttribute('text-anchor', anchor);
+          L.sub.setAttribute('x', x.toFixed(1)); L.sub.setAttribute('y', (y0 + (n - 1) * lh + sf * 1.15).toFixed(1));
+        }
+        if (leadTo && leadTo[1] - leadTo[0] > 3) {
+          L.lead.style.display = '';
+          L.lead.setAttribute('x1', x.toFixed(1)); L.lead.setAttribute('x2', x.toFixed(1));
+          L.lead.setAttribute('y1', leadTo[0].toFixed(1)); L.lead.setAttribute('y2', leadTo[1].toFixed(1));
+        } else L.lead.style.display = 'none';
+      });
     }
     function applyNames() {
       labelsG.style.display = st.showNames ? '' : 'none';

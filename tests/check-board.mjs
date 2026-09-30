@@ -281,12 +281,18 @@ try {
     if (!miss || !miss.querySelector('.sb-badge[data-glyph="miss"]')) F('빗나감 × 없음');
     if (b.el.querySelectorAll('.is-latest').length !== 1 || !miss || !miss.classList.contains('is-latest')) F('최근 발 표시가 하나(빗나감)가 아님');
     if (b.el.querySelector('.sb-mark.k-hit').classList.contains('is-latest')) F('이전 명중이 최근 발로 남음');
-    // 이전 결과의 배지는 최근 결과보다 작다
+    // 최근 1발은 신호와 상관없는 공통 잉크 테두리, 이전 결과는 테두리 없이 같은 기호(2차 검수)
     b.update({ shots: shots.slice(0, 3), fleet: g.state.teams.enemy.fleet });
+    await wait(350); // 0.18초 강조가 끝난 뒤
     const hs = [...b.el.querySelectorAll('.sb-mark.k-hit')];
-    const bw = (m) => m.querySelector('.sb-badge').getBoundingClientRect().width;
     const oldH = hs.find((m) => !m.classList.contains('is-latest')), newH = hs.find((m) => m.classList.contains('is-latest'));
-    if (!oldH || !newH || !(bw(newH) > bw(oldH))) F('최근·이전 결과 배지 크기 구분이 없음');
+    const ring = (m) => getComputedStyle(m).boxShadow;
+    if (!oldH || !newH) F('최근·이전 명중 표시가 없음');
+    else {
+      if (!ring(newH).includes('rgb(24, 53, 64)')) F('최근 발 테두리가 기본 잉크가 아님: ' + ring(newH));
+      if (ring(oldH) !== 'none') F('이전 결과에 최근 발 테두리가 남음: ' + ring(oldH));
+      if (!oldH.querySelector('.sb-badge[data-glyph="hit"]')) F('이전 명중의 과녁 배지가 없음');
+    }
     // 되살리기(render)와 움직임 줄이기: 강조 없음
     b.render({ shots, fleet: g.state.teams.enemy.fleet });
     if (b.el.querySelector('.sb-fresh')) F('render()가 강조를 틀었음');

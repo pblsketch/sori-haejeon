@@ -62,21 +62,19 @@
 .sb-item + .sb-item { border-top: 1px solid rgba(255, 255, 255, .9); }
 .sb-item.k-hit { flex-grow: 2; }
 
-.sb-mark { --mk: var(--ink-2); }
+.sb-mark { --mk: var(--ink-2); z-index: 2; } /* 쏜 칸 표시는 같은 줄 범위(옅은 보라)보다 위: 명중 황금이 물들지 않게 */
 .sb-mark.k-hit { --mk: var(--hit-ink); background: var(--hit); }
 .sb-mark.k-line { --mk: var(--line); background: var(--line-soft); }
 .sb-mark.k-miss { --mk: var(--miss); background: var(--miss-soft); }
 .sb-mark.k-dud { --mk: var(--dud); background: var(--dud-soft); }
 .sb-mark.k-reveal { --mk: var(--ink-2); background: var(--surface); box-shadow: inset 0 0 0 2px var(--ink-2); }
-/* 최근 결과: 신호 색 테두리 3px */
-.sb-mark.is-latest { box-shadow: inset 0 0 0 3px var(--mk); }
-/* 배지(모서리의 신호 기호): 이전 결과는 작게, 최근 결과는 크게 */
+/* 최근 1발: 신호와 상관없이 공통 잉크 테두리(신호 색과 '마지막 발' 강조를 섞지 않음, 2차 검수) */
+.sb-mark.is-latest { box-shadow: inset 0 0 0 3px var(--ink); }
+/* 배지(모서리의 신호 기호): 칸마다 오른쪽 위 한 곳, 16~18px로 통일 */
 .sb-badge {
-  position: absolute; z-index: 3; right: 5%; top: 7%; pointer-events: none; color: var(--mk);
-  width: clamp(11px, calc(var(--h, 40px) * .28), 22px); height: auto; aspect-ratio: 1;
+  position: absolute; z-index: 3; right: 4px; top: 4px; pointer-events: none; color: var(--mk);
+  width: clamp(12px, calc(var(--h, 40px) * .3), 18px); height: auto; aspect-ratio: 1;
 }
-.sb-mark.is-latest .sb-badge { width: clamp(14px, calc(var(--h, 40px) * .38), 30px); }
-.sb-mark.k-miss .sb-badge { right: 4%; top: 5%; }
 /* 없는 소리(빈칸): 칸 가운데 ∅(세기를 고른 불발이면 옆에 세기 이름) */
 .sb-item.k-dud { gap: 4px; }
 .sb-dudmark { position: relative; flex: none; height: min(62%, calc(var(--sb-cw, 60px) * .45)); width: auto; aspect-ratio: 1; color: var(--dud); z-index: 2; }
@@ -104,8 +102,8 @@
 /* 같은 줄 범위(쌓임) — 판 위에 겹친 같은 격자. 게임이 돌려준 범위에만 보라 윤곽 + 옅은 바탕 */
 .sb-over { position: absolute; inset: 0; display: grid; justify-content: center; align-content: start; pointer-events: none; z-index: 1; }
 .sb-fit > .sb-over { align-content: center; }
-.sb-trace { position: relative; border-radius: 10px; background: var(--sb-trace); box-shadow: inset 0 0 0 2px var(--sb-trace-edge); }
-.sb-trace.is-latest { background: rgba(103, 70, 165, .12); box-shadow: inset 0 0 0 3px var(--line); }
+.sb-trace { position: relative; border-radius: 10px; background: var(--sb-trace); box-shadow: inset 0 0 0 1.5px var(--sb-trace-edge); }
+.sb-trace.is-latest { background: rgba(103, 70, 165, .08); box-shadow: inset 0 0 0 2px var(--line); }
 /* 범위의 방향 기호: 가로줄은 오른쪽 끝, 세로줄은 아래 끝, 같은 칸은 오른쪽 아래 모서리에 걸쳐 놓인다 */
 .sb-dir {
   position: absolute; width: clamp(18px, calc(var(--sb-cw, 60px) * .24), 28px); height: auto; aspect-ratio: 1; padding: 3px;

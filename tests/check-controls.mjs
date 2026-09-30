@@ -292,11 +292,14 @@ try {
       c = fw.mount({ sea: 'consonant', level: 2 });
       const cmb = () => $('.ctl-combo').textContent;
       const sn = (g, id) => G.text.short('m3', g, id);
-      if (cmb() !== [TX.ui.play.step.place, sn('axis', 'manner'), sn('axis', 'strength')].join(' · ')) bad('빈 요약 줄: ' + cmb());
+      const ch = (w) => G.text.fill(TX.ui.play.choose, { what: w });
+      if (cmb() !== [ch(TX.ui.play.step.place), ch(sn('axis', 'manner')), ch(sn('axis', 'strength'))].join(' · ')) bad('빈 요약 줄: ' + cmb());
       c.setPlace('bilabial'); card('manner', 'stop').click(); card('strength', 'plain').click();
       if (cmb() !== TX.mouthParts.bilabial + ' · ' + sn('manner', 'stop') + ' · ' + sn('strength', 'plain')) bad('요약 줄(두 입술·파열·예사): ' + cmb());
       const cb = box($('.ctl-combo')), fbb = box(fireBtn());
-      if (!(cb.bottom <= fbb.top + 1 && Math.abs(cb.right - fbb.right) < 3)) bad('요약 줄이 발사 단추 바로 위가 아님 ' + JSON.stringify([cb.right, cb.bottom, fbb.right, fbb.top]));
+      // 요약 줄은 카드 줄 바로 위, 조작부와 같은 중심선(2차 검수)
+      const barB = box($('.ctl-bar'));
+      if (!(cb.bottom <= fbb.top + 1 && cb.bottom <= barB.top + 1 && barB.top - cb.bottom < 20 && Math.abs((cb.left + cb.right) / 2 - (barB.left + barB.right) / 2) < 3)) bad('요약 줄이 카드 줄 바로 위 가운데가 아님 ' + JSON.stringify([cb.left, cb.right, cb.bottom, barB.left, barB.right, barB.top]));
       c.reset(); c.setPlace('glottal'); card('manner', 'stop').click(); card('strength', 'tense').click();
       if (cmb() !== TX.mouthParts.glottal + ' · ' + sn('manner', 'stop') + ' · ' + sn('strength', 'tense')) bad('없는 조합 요약 줄: ' + cmb());
       if (fireBtn().disabled) bad('없는 조합인데 발사가 막힘');

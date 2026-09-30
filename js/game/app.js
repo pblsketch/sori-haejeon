@@ -246,7 +246,8 @@ G.app = (function () {
     const maps = el('div', { class: 'app-maps' });
     const root = screen('app-page app-soundmap', [
       el('div', { class: 'app-page-wide' }, [
-        el('h1', { class: 'app-h1' }, M.title),
+        // 제목 줄 오른쪽에 '처음으로'(표 아래까지 내려가지 않아도 돌아갈 수 있게, 2차 검수)
+        el('div', { class: 'app-page-head' }, [el('h1', { class: 'app-h1' }, M.title), btn(T.ui.play.home, () => go('title'), 'app-home-top')]),
         maps,
         el('div', { class: 'app-page-foot' }, backBtn(M.back)),
       ]),

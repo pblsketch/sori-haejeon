@@ -9,6 +9,8 @@
   --mouth-way: #FCFCFA;          /* 공기 길(입안·콧길·목구멍) */
   --mouth-bar: var(--ink);       /* 막음 표시 */
   --mouth-tight: var(--ink);     /* 목청 조임 표시 */
+  --mouth-spot: 48px;            /* 누르는 자리 표식 지름(화면 px) — mouth.js가 읽는다 */
+  --mouth-label: 22px;           /* 자리 이름 글씨(화면 px) — mouth.js가 읽는다 */
   position: relative;
   width: 100%;
   height: 100%;
@@ -66,10 +68,14 @@
 .mouth-particle { fill: var(--air); stroke: #fff; stroke-width: 1.3; }
 .mouth-particle.is-far { opacity: 0.45; }
 
-/* 자리 이름(단계에 따라 숨김): 흰 외곽선 없이 또렷한 잉크 */
+/* 자리 이름(단계에 따라 숨김): 흰 외곽선 없이 또렷한 잉크, 자기 단추와 가는 선으로 이음(글씨 크기는 mouth.js가 정함) */
 .mouth-labels { pointer-events: none; }
 .mouth-label { font-family: var(--font-body); font-size: 15px; font-weight: 600; fill: var(--ink); }
-.mouth-label-sub { font-size: 13px; font-weight: 500; fill: var(--ink-2); }
+.mouth-label-sub { font-weight: 500; fill: var(--ink-2); }
+.mouth-lead { stroke: var(--ink-2); stroke-width: 1px; }
+@media (max-width: 760px), (orientation: portrait) {
+  .mouth { --mouth-spot: 44px; --mouth-label: 16px; }
+}
 
 /* 누르는 곳(보이지 않음) */
 .mouth-hit { fill: transparent; stroke: none; cursor: pointer; }
