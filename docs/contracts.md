@@ -6,6 +6,7 @@
 
 - 진입점은 `index.html` 하나다. 주소 뒤 값(`?…`)을 읽지 않는다 — 주소로 학년·단계를 미리 정하는 기능은 없다. `tests/pages/*`의 `?clear=1` 등은 점검 전용 페이지의 값이고 게임 주소에서는 아무 일도 하지 않는다.
 - 두 가지로 열린다: 정적 서버(GitHub Pages·로컬 서버)와 file://(더블클릭). 둘 다에서 콘솔 오류 없이 시작 화면이 떠야 한다. 파일 경로는 모두 상대 경로(`assets/…`, `css/…`, `js/…`)다 — 절대 경로(`/assets/…`)를 쓰면 Pages 하위 경로(`/sori-haejeon/`)와 file://에서 깨진다.
+- 예외: `index.html` 머리의 링크 미리 보기 값(`og:*`, `twitter:*`)은 **전체 주소**(`https://pblsketch.github.io/sori-haejeon/…`)다. 카카오톡 등 미리 보기 서비스가 이 페이지를 따로 읽어 가서 상대 경로를 풀지 못하기 때문이다. 게임은 이 값을 읽지 않는다. 그림은 `assets/img/og-image.jpg`(1200×630 JPEG — webp를 못 읽는 서비스가 있음). 배포 주소가 바뀌면 이 값들을 함께 바꾼다.
 
 ## ② 기기에 남는 저장 값(localStorage)
 

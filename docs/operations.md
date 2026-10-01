@@ -79,6 +79,13 @@ python tools/build_fonts.py
 
 후보(곡명·출처 주소·라이선스·용량·들어 볼 주소)를 선생님께 보여 드리고 고른 것만 받는다. 고주파 거르기 → 음량 맞추기(배경 음악 약 -18 LUFS, 효과음 약 -16 LUFS) → mp3로 `assets/audio/`의 같은 이름(`bgm-practice|duel|result.mp3`, `sfx-fire|hit|miss|dud|sunk.mp3`)에 둔다. `assets/audio/CREDITS.md`, 게임 안 '만든 사람·출처'(`js/game/app.js`), README 출처를 함께 고친다. 확인: `npm test -- audio`.
 
+## 링크 미리 보기(카카오톡 썸네일)
+
+`index.html` 머리의 `og:*` 값과 `assets/img/og-image.jpg`가 카카오톡·문자·SNS에 주소를 붙였을 때 뜨는 제목·설명·그림이다.
+- 그림 다시 만들기(게임 이름·소개를 바꿨을 때): `python tools/make_og.py` → `assets/img/og-image.jpg` 커밋 → 올리기.
+- 카카오톡은 한 번 읽어 간 미리 보기를 한동안 저장해 둔다. 올린 뒤에도 옛 썸네일이 보이면 카카오 개발자 사이트의 공유 디버거(https://developers.kakao.com/tool/debugger/sharing)에 배포 주소를 넣고 '캐시 초기화'를 누른다(카카오 계정 로그인 필요 — 선생님이 직접).
+- 확인: `curl -s https://pblsketch.github.io/sori-haejeon/ | grep og:image`와 그림 주소가 200으로 열리는지.
+
 ## 배포(GitHub Pages)
 
 배포됨: 저장소 https://github.com/pblsketch/sori-haejeon (공개), 주소 https://pblsketch.github.io/sori-haejeon/ (기본 가지 `master`, 맨 위 폴더를 그대로 내보냄, `.nojekyll`로 Jekyll 처리 끔 — 끄지 않으면 Pages 빌드가 실패한다). 원격에 올리기 전에는 선생님께 확인받는다.
