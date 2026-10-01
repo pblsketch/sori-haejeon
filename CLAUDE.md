@@ -25,7 +25,7 @@
 ├── js/
 │   ├── core/AGENTS.md             ← 규칙 엔진·저장·소리 재생·공용 도구
 │   ├── data/AGENTS.md             ← 학습 데이터와 화면 문구(선생님이 고치는 곳)
-│   └── game/AGENTS.md             ← 화면 모듈(단면도·판·조작부·연습·대결·앱 뼈대)과 짝 CSS
+│   └── game/AGENTS.md             ← 화면 모듈(단면도·판·조작부·게임 방법 창·연습·대결·앱 뼈대)과 짝 CSS
 ├── css/                           ← 화면 모듈마다 짝 CSS + base.css(색·크기 토큰) + fonts.css
 ├── assets/                        ← img(생성 그림 webp) · audio(mp3 + CREDITS.md) · fonts(부분 글꼴 + OFL) · prompts.md
 ├── tools/AGENTS.md                ← 부분 글꼴·그림 생성/후처리 도구
