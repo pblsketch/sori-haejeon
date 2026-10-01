@@ -8,7 +8,7 @@
 - `howto.js`(`G.howto`): '게임 방법' 창. `open({ grade, sea, mode, onClose })`이 `document.body`에 덮개를 붙인다(화면을 바꾸지 않으므로 판 도중에 열어도 판은 그대로). `button(cls, 옵션함수, 글)`이 여는 단추를 만든다. 열면 `G.save.setSeenHowto(true)`.
 - `practice.js`(`G.practice.open`): 연습 — 준비 → (첫 자음 1단계면 풀이 예시) → 판 → 끝 → `G.app.finishGame`.
 - `duel.js`(`G.duel.open`): 대결 — 준비 → (숨기기 시간: 가림·청팀 30초·가림·홍팀 30초·가림) → 실시간 두 자리 → 끝 → `G.app.finishGame`.
-- `app.js`(`G.app`): `go(이름, 값)` 화면 전환, `finishGame`, 시작·설정·소리 지도·출처·결과 화면, `isPortrait/isLowLandscape`, '세로로 돌려 주세요' 덮개.
+- `app.js`(`G.app`): `go(이름, 값)` 화면 전환, `finishGame`, 시작·설정·음운 지도·출처·결과 화면, `isPortrait/isLowLandscape`, '세로로 돌려 주세요' 덮개.
 
 ## 맡지 않는 것(건드리지 말 것)
 - 채점·신호·세기 흐림·발사 켜짐·배치 가능 여부·턴·승패·알아 두기 고르기 계산 → `G.rules`의 결과만 쓴다. 여기서 다시 계산하면 규칙이 두 곳이 된다.

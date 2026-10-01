@@ -273,7 +273,7 @@ try {
       if (items.length !== 3) bad('기록장 줄 수 ' + items.length);
       else {
         if (!/\\/ㄱ\\//.test(items[0].textContent) || !items[0].textContent.includes('같은 줄')) bad('기록장 1줄: ' + items[0].textContent);
-        if (/\\//.test(items[1].textContent) || !items[1].textContent.includes('목청') || !items[1].textContent.includes('없는 소리')) bad('기록장 없는 소리 줄: ' + items[1].textContent);
+        if (/\\//.test(items[1].textContent) || !items[1].textContent.includes('목청') || !items[1].textContent.includes('없는 음운')) bad('기록장 없는 음운 줄: ' + items[1].textContent);
         if (!items[2].textContent.includes('/ㄲ/') || !items[2].textContent.includes('명중')) bad('기록장 3줄: ' + items[2].textContent);
       }
       const logp = $('.ctl-log');

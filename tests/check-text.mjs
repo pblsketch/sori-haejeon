@@ -112,9 +112,9 @@ for (const g of ['m3', 'h1']) {
 // ── 5. 신호·안내 문구(spec 5.3·5.4, 2절, 6.3) ──
 const eq = (a, b, m) => check(a === b, `${m}: '${a}'`);
 eq(T.signal.line, '같은 줄에 배가 있어요', '같은 줄');
-eq(T.signal.none, '국어에 없는 소리예요', '없는 소리');
+eq(T.signal.none, '국어에 없는 음운이에요', '없는 소리');
 eq(T.signal.notInSea, '이번 바다에는 없는 칸이에요', '이번 바다에 없는 칸');
-eq(T.signal.already, '이미 쏜 소리예요', '이미 쏜 소리');
+eq(T.signal.already, '이미 쏜 음운이에요', '이미 쏜 소리');
 check(T.signal.hit.includes('명중') && T.signal.miss.includes('빗나감'), '명중·빗나감');
 check(JSON.stringify(Object.keys(T.signalName).sort()) === JSON.stringify(['hit', 'line', 'miss', 'none']), '신호 이름은 네 가지');
 eq(T.sunk[3], '세 칸 배를 찾았어요', '격침 3'); eq(T.sunk[2], '두 칸 배를 찾았어요', '격침 2'); eq(T.sunk[1], '한 칸 배를 찾았어요', '격침 1');
@@ -142,7 +142,7 @@ check(T.ships.legend.consonant[3].includes('세기만 다른') && T.ships.legend
 // ── 6. 알아 두기(spec 6.5) ──
 eq(T.know['pair-ㄱㅇ'], '/ㄱ/과 /ㅇ/은 막는 자리가 같고 콧길만 달라요', '알아 두기 ㄱ·ㅇ');
 check(!!T.know['pair-ㅂㅁ'] && !!T.know['pair-ㄷㄴ'], '알아 두기 짝 셋');
-eq(T.know.ng, '/ㅇ/은 음절 끝에서만 나는 소리예요', '알아 두기 ㅇ');
+eq(T.know.ng, '/ㅇ/은 음절 끝에서만 나는 음운이에요', '알아 두기 ㅇ');
 eq(T.know['oe-wi'], '/ㅚ/·/ㅟ/는 이중 모음으로 발음해도 표준 발음으로 인정돼요', '알아 두기 ㅚ·ㅟ');
 eq(T.know['e-ae'], '/ㅔ/·/ㅐ/를 섞어 발음하는 사람이 많지만 표준 발음은 구별해요', '알아 두기 ㅔ·ㅐ');
 const J = JSON.stringify;

@@ -7,7 +7,7 @@
 | [0003](0003-aside-browser-checks.md) | 브라우저 점검 도구는 aside | 2026-09 |
 | [0004](0004-four-signals.md) | 신호를 네 가지로, 배는 크기로만 | 2026-09 |
 | [0005](0005-h-no-strength.md) | /ㅎ/은 세기 없음으로 채점 | 2026-09 |
-| [0006](0006-no-prevention-of-nonexistent.md) | 없는 소리 조합을 미리 막지 않고 턴을 쓰게 | 2026-09 |
+| [0006](0006-no-prevention-of-nonexistent.md) | 없는 음운 조합을 미리 막지 않고 턴을 쓰게 | 2026-09 |
 | [0007](0007-no-teacher-features.md) | 선생님용 기능을 만들지 않음 | 2026-09 |
 | [0008](0008-controls-bottom-mouth-display.md) | 고르기는 모두 아래 조작부, 단면도는 보여 주기 전용 | 2026-09 |
 | [0009](0009-sea-map-board.md) | 판 = 섬과 암초 바다 지도 + 위에서 본 배 조각 | 2026-09 |

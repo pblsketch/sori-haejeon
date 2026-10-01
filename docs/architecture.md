@@ -22,14 +22,14 @@
 | 핵심 | `G.util` | DOM 도우미, 신호 기호(SVG), 움직임 줄이기 판정, 페이지 오류 모음 | 없음 |
 | 핵심 | `G.rules` | 채점·신호·함대 배치·턴·승패·판 기록 — DOM을 쓰지 않는 순수 함수 | SOUNDS·FLEETS·LEVELS |
 | 핵심 | `G.audio` | 녹음 음원 재생(배경 음악 반복·겹쳐 바꾸기, 효과음) | 없음 |
-| 핵심 | `G.save` | localStorage 저장(설정·마지막 선택·누적 소리 지도·풀이 예시 본 적·진행 판) | `G.rules`·`G.audio`(있으면) |
+| 핵심 | `G.save` | localStorage 저장(설정·마지막 선택·누적 음운 지도·풀이 예시 본 적·진행 판) | `G.rules`·`G.audio`(있으면) |
 | 화면 부품 | `G.mouth` | SVG 입안 단면도(보여 주기 전용) + 조음 동작·공기 입자 애니메이션 | MOUTH·TEXT |
-| 화면 부품 | `G.board` | SVG/DOM 바다 지도(체계표 격자·소리 표지·신호·배 조각), 남은 배 목록, 소리 지도 | `G.rules`·TEXT |
+| 화면 부품 | `G.board` | SVG/DOM 바다 지도(체계표 격자·소리 표지·신호·배 조각), 남은 배 목록, 음운 지도 | `G.rules`·TEXT |
 | 화면 부품 | `G.controls` | 아래 조작부(①②③ 카드·발사), 조합 요약 줄, 한 줄 문구, 신호 기록장 | `G.rules.controls`·TEXT |
 | 화면 부품 | `G.howto` | '게임 방법' 창(화면 위에 뜨는 덮개, 자음/모음 탭) — 여는 단추도 만든다 | TEXT·`G.board.shipPic`·`G.save`(연 적 있음) |
 | 화면 | `G.practice` | 연습 화면(준비·풀이 예시·판·끝) | rules·save·audio·mouth·board·controls·howto |
 | 화면 | `G.duel` | 대결 화면(준비·가림·숨기기·실시간 대결·끝) | rules·save·audio·mouth·board·controls |
-| 화면 | `G.app` | 화면 전환, 시작·설정·소리 지도·출처·결과 화면, 세로/가로 판정 | 위 전부 |
+| 화면 | `G.app` | 화면 전환, 시작·설정·음운 지도·출처·결과 화면, 세로/가로 판정 | 위 전부 |
 | 시작 | `js/main.js` | 저장된 설정 적용 → 시작 화면 | `G.save`·`G.app` |
 
 화면 부품(`G.mouth`·`G.board`·`G.controls`)은 서로를 모른다. 셋을 엮는 것은 화면(`G.practice`·`G.duel`)이다: 조작부의 `onChange`를 받아 단면도 미리 보기에 넘기고, `onFire`를 받아 단면도 재생 → 규칙 채점 → 판 갱신을 차례로 부른다.
@@ -50,7 +50,7 @@
 `G.app.go(이름, 값)` 하나로 바꾼다. 지금 화면 핸들의 `destroy()`를 부르고 `#app`을 비운 뒤 새 화면을 연다(한 번에 한 화면). 이름: `title` · `settings` · `soundmap` · `credits` · `practice` · `duel` · `result`.
 - `practice`/`duel`은 `G.practice.open({ resume, container })` / `G.duel.open(…)`을 부른다. `resume`이 참이면 저장된 진행 판에서 이어서.
 - `result`는 `{ record }`가 없으면 시작 화면으로 간다 → 결과 화면에서 새로고침하면 시작 화면이다(진행 판은 이미 지워져 있어 두 번 더해지지 않는다).
-- 배경 음악: 시작·연습 `practice`, 대결 `duel`, 결과 `result`. 설정·소리 지도·출처는 곡을 바꾸지 않는다.
+- 배경 음악: 시작·연습 `practice`, 대결 `duel`, 결과 `result`. 설정·음운 지도·출처는 곡을 바꾸지 않는다.
 
 ## 배치(가로 / 세로)
 

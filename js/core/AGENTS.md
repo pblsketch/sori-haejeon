@@ -3,7 +3,7 @@
 ## 맡는 것
 - `util.js`(`G.util`): 가장 먼저 읽힌다. 전역 `G`를 열고, 페이지 오류(`error`·`unhandledrejection`·`console.error`)를 `window.__soriErrors`에 모은다. DOM 도우미 `el`·`svg`, 신호 기호 `glyph(name)`(hit·h·v·hv·cell·eq·miss·dud·lock·check — 글꼴에 기대지 않는 SVG), `lineDir(targets)`, `reducedMotion()`.
 - `rules.js`(`G.rules`): 채점·신호·세기 카드 흐림/발사 켜짐·함대 배치(무작위·직접)·턴·연습 끝·대결 승패·판 기록·알아 두기. **순수 함수만.**
-- `save.js`(`G.save`): localStorage 읽기/쓰기(설정·마지막 선택·누적 소리 지도·풀이 예시 본 적·진행 판), 판 id, 한 판 한 번만 더하기.
+- `save.js`(`G.save`): localStorage 읽기/쓰기(설정·마지막 선택·누적 음운 지도·풀이 예시 본 적·진행 판), 판 id, 한 판 한 번만 더하기.
 - `audio.js`(`G.audio`): 녹음 mp3 재생(배경 음악 반복·겹쳐 바꾸기, 효과음), 켜기/끄기·음량, 첫 터치 뒤 소리 켜기.
 
 ## 맡지 않는 것(건드리지 말 것)
@@ -24,7 +24,7 @@
 
 ## 구현 방식
 - 판 상태·판 기록·발의 모양은 `rules.js` 머리 주석이 기준이다. 모양을 바꾸면 그 주석, `save.js`의 `loadGame` 검사, `GAME_V`를 함께 본다.
-- 조합 열쇠: 자음 `'c:' + place + '/' + manner + '/' + strength`(세기 없는 소리는 `none`, 1단계는 `plain`으로 정규화), 모음 `'v:' + height + '/' + column`. '이미 쏜 소리'는 이 열쇠로 가린다.
+- 조합 열쇠: 자음 `'c:' + place + '/' + manner + '/' + strength`(세기 없는 음운은 `none`, 1단계는 `plain`으로 정규화), 모음 `'v:' + height + '/' + column`. '이미 쏜 음운'는 이 열쇠로 가린다.
 - 난수는 `makeRng(시드)`(점검·풀이 예시에서 결정적으로). 게임은 `Math.random`.
 - 저장 이름은 모두 `sori-haejeon:` 접두사 + `{ s: SCHEMA, … }`. 망가진 값은 기본값으로, 맞지 않는 진행 판은 지운다.
 - `audio.js`: 웹 오디오 버퍼 반복이 기본, file://·fetch 실패면 `<audio loop>`. 새 곡이 1.5초 안에 준비되지 않으면 옛 곡을 먼저 줄인다. 효과음은 0.4초 넘게 늦으면 건너뛰고, 동시에 8개까지. 풀어 둔 배경 음악은 2곡까지만 들고 있는다(저사양 칠판 메모리).

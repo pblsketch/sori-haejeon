@@ -35,7 +35,7 @@ D.howtoCheck = (tag, min, sea) => {
   const nums = cards.map((c) => D.$('.howto-num', c).textContent).join(',');
   if (nums !== '1,2,3,4,5,6') D.bad(tag + ': 번호 ' + nums);
   const names = D.$$('.howto-sig-name', root).map((e) => e.textContent).join(',');
-  if (names !== '명중,같은 줄,빗나감,없는 소리') D.bad(tag + ': 신호 이름 ' + names);
+  if (names !== '명중,같은 줄,빗나감,없는 음운') D.bad(tag + ': 신호 이름 ' + names);
   const eq = (D.$('.howto-eq', root) || {}).textContent || '';
   const want = sea === 'vowel' ? '/ㅣ/' : '/ㅂ/';
   if (!eq.endsWith('= ' + want)) D.bad(tag + ': 보기 조합 ' + eq);
