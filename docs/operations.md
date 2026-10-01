@@ -81,7 +81,9 @@ python tools/build_fonts.py
 
 ## 배포(GitHub Pages)
 
-아직 배포하지 않았다. 올리기 **바로 전에** 선생님께 저장소 이름(추천 `sori-haejeon`)과 공개 여부를 확인받는다.
+배포됨: 저장소 https://github.com/pblsketch/sori-haejeon (공개), 주소 https://pblsketch.github.io/sori-haejeon/ (기본 가지 `master`, 맨 위 폴더를 그대로 내보냄, `.nojekyll`로 Jekyll 처리 끔 — 끄지 않으면 Pages 빌드가 실패한다). 원격에 올리기 전에는 선생님께 확인받는다.
+
+처음 배포할 때 쓴 명령(다시 만들 일이 있을 때):
 
 ```bash
 gh repo create pblsketch/sori-haejeon --public --source . --remote origin --push
@@ -90,5 +92,5 @@ gh repo create pblsketch/sori-haejeon --public --source . --remote origin --push
 gh api -X POST repos/pblsketch/sori-haejeon/pages -f "source[branch]=master" -f "source[path]=/"
 ```
 - 기본 가지는 `master`다. Pages는 저장소 맨 위(`/`)를 그대로 내보낸다(빌드 없음). 주소는 `https://pblsketch.github.io/sori-haejeon/`.
-- Pages가 뜨기까지 몇 분 걸린다. 뜬 뒤 `cd tests && BASE=https://pblsketch.github.io/sori-haejeon/ npm test`로 확인하고, README의 '배포 주소' 줄을 채워 커밋·푸시한다.
+- Pages가 뜨기까지 1~2분 걸린다(`gh api repos/pblsketch/sori-haejeon/pages/builds/latest --jq .status`가 `built`). 뜬 뒤 `cd tests && BASE=https://pblsketch.github.io/sori-haejeon/ npm test`로 확인한다(점검 전용 페이지 `tests/pages/`도 함께 올라가 있어 모든 점검이 배포 주소에서 돈다).
 - 이후 고칠 때: 점검 통과 → 커밋 → `git push`(선생님 확인 뒤) → Pages가 몇 분 안에 새로 뜸 → 배포 주소로 `npm test -- smoke play`.
