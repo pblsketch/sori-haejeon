@@ -123,6 +123,16 @@ G.app = (function () {
       else go('duel');
     }
     const M = T.ui.menu;
+    // 게임 방법: 연습·대결 바로 아래 넓은 단추. 이 기기에서 아직 열어 보지 않았으면 '처음이라면 먼저 보세요'를 붙여 눈에 띄게.
+    const howtoRow = el('div', { class: 'app-howto' });
+    function drawHowto() {
+      howtoRow.textContent = '';
+      const fresh = !(G.save.seenHowto && G.save.seenHowto());
+      const sel = G.save.getSelection();
+      const b = G.howto ? G.howto.button('app-howto-btn' + (fresh ? ' is-fresh' : ''), () => ({ grade: sel.grade, sea: sel.sea, mode: 'practice', onClose: drawHowto }), M.howto) : null;
+      if (b) { b.setAttribute('data-go', 'howto'); if (fresh) b.appendChild(el('span', { class: 'app-howto-hint' }, T.howto.firstHint)); howtoRow.appendChild(b); }
+    }
+    drawHowto();
     const duelBtn = btn(M.duel, openDuel, 'is-primary is-big', { 'data-go': 'duel' });
     const menu = el('nav', { class: 'app-menu', 'aria-label': T.ui.title }, [
       el('div', { class: 'app-menu-main' }, [
@@ -130,6 +140,7 @@ G.app = (function () {
         duelBtn,
       ]),
       notice,
+      howtoRow,
       el('div', { class: 'app-menu-sub' }, [
         btn(M.soundmap, () => go('soundmap'), 'is-sub', { 'data-go': 'soundmap' }),
         btn(M.settings, () => go('settings'), 'is-sub', { 'data-go': 'settings' }),

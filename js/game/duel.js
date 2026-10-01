@@ -158,6 +158,7 @@ G.duel = (function () {
       box.appendChild(groupsEl);
       box.appendChild(el('div', { class: 'duel-actions' }, [
         el('button', { type: 'button', class: 'duel-btn duel-back', onclick: () => goTitle() }, S.back),
+        G.howto ? G.howto.button('duel-btn duel-howto', () => ({ grade: sel.grade, sea: sel.sea, mode: 'duel' })) : null,
         el('button', { type: 'button', class: 'duel-btn duel-btn--main duel-start', onclick: () => start(sel) }, S.start),
       ]));
       stage.appendChild(box);

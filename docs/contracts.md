@@ -17,6 +17,7 @@
 | `selection` | `{ s, grade: 'm3'|'h1', sea: 'consonant'|'vowel', level, hideTime }` | 기본값 `{ m3, consonant, 1, false }`. 없는 단계면 1단계 |
 | `soundmap` | `{ s, consonant: { ids: [소리 id], games }, vowel: { … }, added: [이미 더한 판 표시, 최대 200] }` | 빈 지도 |
 | `seenExample` | `{ s, seen: true }` | 본 적 없음(자음 1단계 첫 시작에 풀이 예시가 다시 나옴) |
+| `seenHowto` | `{ s, seen: true }` | 연 적 없음(시작 화면 '게임 방법' 단추에 '처음이라면 먼저 보세요'가 다시 붙음) |
 | `game` | `{ s, savedAt, state: 판 상태 }` | 지우고 "이어서 하기" 없이 시작 |
 
 - 저장 형식 버전 `SCHEMA`(지금 1)가 다르거나 JSON이 망가지면 그 값은 기본값으로 시작한다. 판 상태 버전 `state.v`(지금 1)가 다르거나, 모드·바다·단계·단계(phase)·팀 모양이 맞지 않거나, 대결 한 팀의 쏜 수가 단계의 제한 턴을 넘으면 진행 판을 버린다.

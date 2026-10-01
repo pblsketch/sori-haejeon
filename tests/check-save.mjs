@@ -69,7 +69,7 @@ function boot(storage, { how = 'normal', audio = true, doc = true } = {}) {
     done('저장 점검');
   }
   const need = ['getSettings', 'setSettings', 'applySettings', 'getSelection', 'setSelection', 'soundMap', 'addRecord',
-    'seenExample', 'setSeenExample', 'saveGame', 'loadGame', 'hasGame', 'clearGame', 'clearRecords', 'newGameId', 'storageOk', 'mapGames'];
+    'seenExample', 'setSeenExample', 'seenHowto', 'setSeenHowto', 'saveGame', 'loadGame', 'hasGame', 'clearGame', 'clearRecords', 'newGameId', 'storageOk', 'mapGames'];
   for (const n of need) check(typeof b.S[n] === 'function', 'G.save.' + n + ' 함수');
 }
 
@@ -404,6 +404,11 @@ const keysOf = (st) => [...st._m.keys()].sort();
   check(boot(st).S.seenExample() === true, '다시 열어도 봄');
   b.S.setSeenExample(false);
   check(boot(st).S.seenExample() === false, 'setSeenExample(false) → 안 봄');
+  check(b.S.seenHowto() === false, "'게임 방법' 기본: 안 엶");
+  b.S.setSeenHowto();
+  check(boot(st).S.seenHowto() === true, "setSeenHowto() → 다시 열어도 엶");
+  b.S.setSeenHowto(false);
+  check(boot(st).S.seenHowto() === false, 'setSeenHowto(false) → 안 엶');
 }
 
 // ───────────────────────── 9. 기록 지우기(spec 6.1) ─────────────────────────
@@ -417,6 +422,7 @@ const keysOf = (st) => [...st._m.keys()].sort();
   b.S.addRecord(R.makeRecord(practiceGame(R)));
   b.S.addRecord(R.makeRecord(practiceGame(R, 'vowel', 2, 7)));
   b.S.setSeenExample(true);
+  b.S.setSeenHowto(true);
   b.S.saveGame(practiceGame(R, 'consonant', 3, 8));
   const before = keysOf(st);
   check(before.filter((k) => k.startsWith(PREFIX)).length >= 5, '(준비) 저장 항목 여러 개: ' + J(before));
@@ -424,6 +430,7 @@ const keysOf = (st) => [...st._m.keys()].sort();
   check(b.S.soundMap('consonant').length === 0 && b.S.soundMap('vowel').length === 0, '기록 지우기 → 누적 지도(자음·모음) 빔');
   check(b.S.mapGames('consonant') === 0, '기록 지우기 → 더한 판 수 0');
   check(b.S.seenExample() === false, '기록 지우기 → 풀이 예시 본 기록 지움');
+  check(b.S.seenHowto() === false, "기록 지우기 → '게임 방법' 연 기록 지움");
   check(b.S.loadGame() === null, '기록 지우기 → 진행 판 지움');
   eq(b.S.getSettings(), { ...DEF_SETTINGS, bgmVolume: 0.25, reduceMotion: true }, '기록 지우기 → 설정은 그대로');
   eq(b.S.getSelection(), { grade: 'h1', sea: 'vowel', level: 2, hideTime: true }, '기록 지우기 → 마지막 선택은 그대로');

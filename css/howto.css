@@ -1,0 +1,135 @@
+/* 게임 방법 창 — js/game/howto.js
+   흰 패널(반경 16) 한 장을 화면 가운데 띄운다. 위 = 제목 · 바다 탭 · 닫기, 가운데 = 번호 카드(넓으면 두 단), 아래 = '알겠어요'.
+   신호 색은 판과 같은 역할로만 쓴다(명중 황금 · 같은 줄 보라 · 빗나감 · 없는 소리). 터치 목표는 가로 64px, 휴대폰 48px. */
+.howto {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--s4);
+  background: rgba(24, 53, 64, .48);
+}
+.howto-panel {
+  --hw-fs: 18px; --hw-h-fs: 21px; --hw-title-fs: 26px;
+  container: howto / inline-size;
+  display: flex; flex-direction: column;
+  width: min(1180px, 100%); max-height: 100%;
+  background: var(--surface); border-radius: var(--r-panel); box-shadow: var(--shadow-float);
+  overflow: hidden; font-family: var(--font-body); color: var(--ink);
+}
+@media (min-width: 1600px) and (min-height: 900px) {
+  .howto-panel { --hw-fs: 22px; --hw-h-fs: 26px; --hw-title-fs: 34px; width: min(1500px, 100%); }
+}
+
+/* 머리: 제목 · 바다 탭 · 닫기 */
+.howto-head {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--s4);
+  padding: var(--s3) var(--s3) var(--s3) var(--s5);
+  border-bottom: 1px solid var(--divider);
+}
+.howto-title { margin: 0; font-family: var(--font-title); font-size: var(--hw-title-fs); font-weight: 800; color: var(--sea); line-height: 1.2; white-space: nowrap; }
+.howto-tabs { display: flex; gap: var(--s2); margin-left: auto; }
+.howto-tab, .howto-x, .howto-ok {
+  min-height: var(--touch); border-radius: var(--r-btn); cursor: pointer; touch-action: manipulation;
+  font-family: var(--font-body); font-weight: 600; font-size: var(--hw-fs); line-height: 1.2; white-space: nowrap;
+}
+.howto-tab { padding: 0 18px; border: 2px solid var(--control-line); background: var(--surface); color: var(--ink); }
+.howto-tab:hover { background: var(--accent-soft); }
+.howto-tab.is-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent); }
+.howto-x { min-width: var(--touch); padding: 0; border: 2px solid var(--control-line); background: var(--surface); color: var(--ink); font-size: 30px; font-weight: 500; }
+.howto-x:hover { background: var(--accent-soft); }
+
+/* 가운데: 번호 카드 */
+.howto-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; grid-template-columns: 1fr; gap: var(--s4);
+  padding: var(--s5); background: var(--bg);
+  font-size: var(--hw-fs); line-height: 1.5;
+}
+@container howto (min-width: 900px) { .howto-body { grid-template-columns: 1fr 1fr; align-items: start; } }
+.howto-card { background: var(--surface); border: 1px solid var(--divider); border-radius: var(--r-btn); padding: var(--s4) var(--s5) var(--s5); }
+.howto-card.is-duel { border-top: 4px solid; border-image: linear-gradient(90deg, var(--blue) 0 50%, var(--red) 50% 100%) 1; }
+.howto-card-h { display: flex; align-items: center; gap: var(--s3); margin: 0 0 var(--s3); font-size: var(--hw-h-fs); font-weight: 700; line-height: 1.3; }
+.howto-num {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent); color: #fff; font-size: .9em; font-weight: 700;
+}
+.howto-p, .howto-tip, .howto-note { margin: 0 0 var(--s2); word-break: keep-all; }
+.howto-p:last-child, .howto-tip:last-child, .howto-note:last-child { margin-bottom: 0; }
+.howto-p.is-lead { font-weight: 600; }
+.howto-tip { position: relative; padding-left: 1.1em; color: var(--ink-2); }
+.howto-tip::before { content: '·'; position: absolute; left: .3em; font-weight: 700; }
+.howto-note { margin-top: var(--s3); color: var(--ink-2); font-size: .92em; }
+
+/* 소리 만들기 보기: 조작부 카드를 작게 흉내 낸 칩 */
+.howto-demo { display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--s2); margin: var(--s3) 0 var(--s2); }
+.howto-chip {
+  display: inline-flex; flex-direction: column; justify-content: center; gap: 2px;
+  min-height: 56px; padding: 6px 14px; border: 2px solid var(--accent); border-radius: var(--r-btn); background: var(--accent-soft);
+}
+.howto-chip-k { font-size: .78em; font-weight: 600; color: var(--ink-2); line-height: 1.1; white-space: nowrap; }
+.howto-chip-v { font-weight: 700; color: var(--accent-2); line-height: 1.2; white-space: nowrap; }
+.howto-arrow { align-self: center; font-size: 1.3em; color: var(--ink-2); }
+.howto-fire { display: inline-flex; align-items: center; padding: 0 22px; min-height: 56px; border-radius: var(--r-btn); background: var(--accent); color: #fff; font-weight: 700; }
+.howto-eq { margin: 0 0 var(--s3); font-weight: 600; font-family: var(--font-sound); }
+
+/* 신호 네 가지 */
+.howto-sigs { display: grid; gap: var(--s2); }
+.howto-sig { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: var(--s3); padding: 6px 10px; border-radius: var(--r-cell); background: var(--bg); }
+.howto-sig-ico { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: var(--r-cell); }
+.howto-glyph { width: 28px; height: 28px; }
+.howto-glyph.is-small { width: 22px; height: 22px; flex: none; color: var(--line); }
+.howto-sig-name { font-weight: 700; white-space: nowrap; min-width: 4.6em; }
+.howto-sig-text { word-break: keep-all; }
+.howto-sig.k-hit .howto-sig-ico { background: var(--hit); color: var(--hit-ink); }
+.howto-sig.k-line .howto-sig-ico { background: var(--line-soft); color: var(--line); box-shadow: inset 0 0 0 2px var(--line); }
+.howto-sig.k-miss .howto-sig-ico { background: var(--miss-soft); color: var(--miss); }
+.howto-sig.k-none .howto-sig-ico { background: var(--dud-soft); color: var(--dud); }
+.howto-kinds { display: grid; gap: 4px; margin: var(--s2) 0 0 calc(44px + var(--s3) + 10px); }
+.howto-kind { display: flex; align-items: center; gap: var(--s2); color: var(--ink); font-size: .95em; }
+
+/* 배 모양 */
+.howto-ships { display: grid; gap: var(--s3); }
+.howto-ship { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: var(--s3); }
+.howto-ship-pic { --ship-w: 100px; display: flex; justify-content: center; }
+.howto-ship-pic .sb-pic { --seg: calc(var(--ship-w) * .45); }
+.howto-ship-text { display: flex; flex-direction: column; }
+.howto-ship-legend { font-weight: 600; word-break: keep-all; }
+.howto-ship-ex { color: var(--ink-2); font-family: var(--font-sound); }
+
+/* 아래: 알겠어요 */
+.howto-foot { flex: 0 0 auto; display: flex; justify-content: center; padding: var(--s3) var(--s5); border-top: 1px solid var(--divider); }
+.howto-ok { min-width: 220px; padding: 0 32px; border: 2px solid var(--accent); background: var(--accent); color: #fff; font-weight: 700; }
+.howto-ok:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+/* 여는 단추(시작 화면·준비 화면·연습 판 윗줄) */
+.howto-open {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: var(--touch); padding: 0 18px; border: 2px solid var(--control-line); border-radius: var(--r-btn);
+  background: var(--surface); color: var(--ink); cursor: pointer; touch-action: manipulation;
+  font-family: var(--font-body); font-size: 18px; font-weight: 600; white-space: nowrap;
+}
+.howto-open:hover { background: var(--accent-soft); }
+.howto-open-ico {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 1.4em; height: 1.4em; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .95em; line-height: 1;
+}
+
+/* 휴대폰 세로 */
+@media (max-width: 760px), (orientation: portrait) {
+  .howto { padding: 0; align-items: stretch; }
+  .howto-panel { --hw-fs: 16px; --hw-h-fs: 18px; --hw-title-fs: 21px; --touch: 48px; width: 100%; max-height: none; height: 100%; border-radius: 0; }
+  .howto-head { flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s2) var(--s2) var(--s4); }
+  .howto-tabs { order: 3; flex: 1 1 100%; margin-left: 0; }
+  .howto-tab { flex: 1 1 0; padding: 0 8px; }
+  .howto-x { margin-left: auto; font-size: 26px; }
+  .howto-body { padding: var(--s3); gap: var(--s3); }
+  .howto-card { padding: var(--s3) var(--s4) var(--s4); }
+  .howto-chip { min-height: 48px; padding: 4px 10px; }
+  .howto-fire { min-height: 48px; padding: 0 16px; }
+  .howto-sig { grid-template-columns: auto 1fr; gap: 4px var(--s3); }
+  .howto-sig-ico { grid-row: span 2; width: 40px; height: 40px; }
+  .howto-kinds { margin-left: 0; }
+  .howto-ship { grid-template-columns: 96px 1fr; }
+  .howto-ship-pic { --ship-w: 64px; }
+  .howto-ok { min-width: 0; flex: 1 1 auto; }
+  .howto-open { font-size: 15px; padding: 0 12px; }
+}

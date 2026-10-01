@@ -5,9 +5,9 @@
 브라우저 하나 안에서 모든 것이 도는 정적 웹 게임이다. 서버 쪽 코드가 없고, 배포는 파일을 그대로 올리는 GitHub Pages다. 로컬에서는 `index.html` 더블클릭(file://)이나 정적 파일 서버로 연다.
 
 - `index.html`은 `#app` 한 칸과 `<link>`·`<script>` 목록뿐이다. 일반 스크립트를 이 순서로 읽는다:
-  `js/core/util.js` → `js/data/`(sounds → fleets → levels → text → mouth) → `js/core/`(rules → audio → save) → `js/game/`(mouth → board → controls → practice → duel → app) → `js/main.js`.
-  CSS는 `base` → `fonts` → `mouth` → `board` → `controls` → `practice` → `duel` → `app`.
-- 모든 모듈은 전역 `window.G` 아래 이름 하나씩을 연다: `G.util`, `G.rules`, `G.text`, `G.audio`, `G.save`, `G.mouth`, `G.board`, `G.controls`, `G.practice`, `G.duel`, `G.app`. 데이터는 전역 상수 `window.SOUNDS`, `FLEETS`, `LEVELS`, `TEXT`, `MOUTH`다.
+  `js/core/util.js` → `js/data/`(sounds → fleets → levels → text → mouth) → `js/core/`(rules → audio → save) → `js/game/`(mouth → board → controls → howto → practice → duel → app) → `js/main.js`.
+  CSS는 `base` → `fonts` → `mouth` → `board` → `controls` → `howto` → `practice` → `duel` → `app`.
+- 모든 모듈은 전역 `window.G` 아래 이름 하나씩을 연다: `G.util`, `G.rules`, `G.text`, `G.audio`, `G.save`, `G.mouth`, `G.board`, `G.controls`, `G.howto`, `G.practice`, `G.duel`, `G.app`. 데이터는 전역 상수 `window.SOUNDS`, `FLEETS`, `LEVELS`, `TEXT`, `MOUTH`다.
 - ES 모듈(`import`/`export`)이 없으므로 의존 방향은 **불러오는 순서**로만 지켜진다. 뒤에 오는 파일은 앞의 이름을 쓸 수 있고, 앞의 파일은 뒤의 이름을 **불러오는 순간**에 쓰면 안 된다(실행 중 호출은 가능 — 예: `G.practice`가 판이 끝날 때 `G.app.finishGame`을 부름).
 
 ## 모듈 지도(역할 · 의존 방향)
@@ -26,7 +26,8 @@
 | 화면 부품 | `G.mouth` | SVG 입안 단면도(보여 주기 전용) + 조음 동작·공기 입자 애니메이션 | MOUTH·TEXT |
 | 화면 부품 | `G.board` | SVG/DOM 바다 지도(체계표 격자·소리 표지·신호·배 조각), 남은 배 목록, 소리 지도 | `G.rules`·TEXT |
 | 화면 부품 | `G.controls` | 아래 조작부(①②③ 카드·발사), 조합 요약 줄, 한 줄 문구, 신호 기록장 | `G.rules.controls`·TEXT |
-| 화면 | `G.practice` | 연습 화면(준비·풀이 예시·판·끝) | rules·save·audio·mouth·board·controls |
+| 화면 부품 | `G.howto` | '게임 방법' 창(화면 위에 뜨는 덮개, 자음/모음 탭) — 여는 단추도 만든다 | TEXT·`G.board.shipPic`·`G.save`(연 적 있음) |
+| 화면 | `G.practice` | 연습 화면(준비·풀이 예시·판·끝) | rules·save·audio·mouth·board·controls·howto |
 | 화면 | `G.duel` | 대결 화면(준비·가림·숨기기·실시간 대결·끝) | rules·save·audio·mouth·board·controls |
 | 화면 | `G.app` | 화면 전환, 시작·설정·소리 지도·출처·결과 화면, 세로/가로 판정 | 위 전부 |
 | 시작 | `js/main.js` | 저장된 설정 적용 → 시작 화면 | `G.save`·`G.app` |
@@ -69,4 +70,4 @@
 
 `tests/run-all.mjs`가 `tests/check-*.mjs`를 이름 순서로 모두 돌린다. 브라우저 점검은 같은 프로세스에서 작은 정적 서버(`tests/server.mjs`, 8791부터 빈 포트)를 띄우고 그 주소를 `BASE`로 넘긴다(`BASE`를 주면 그 주소를 점검).
 - 브라우저 없이: `check-rules`(규칙), `check-save`(저장, 흉내 낸 저장소), `check-text`(문구), `check-audio`(음원 파일, ffmpeg).
-- aside로: 부품 점검(`check-mouth`·`board`·`controls`·`audio-engine`)은 `tests/pages/*.html` 점검 전용 페이지, 화면 점검(`check-practice`·`duel`·`app`)은 G.app을 흉내 낸 점검 페이지, 전체 흐름(`check-play`·`shots`·`screen-text`·`00-smoke`)은 진짜 `index.html`을 `tests/pages/frame.html`의 정해진 크기 iframe에 띄워 `tests/lib/drive.mjs`로 학생처럼 누른다.
+- aside로: 부품 점검(`check-mouth`·`board`·`controls`·`audio-engine`)은 `tests/pages/*.html` 점검 전용 페이지, 화면 점검(`check-practice`·`duel`·`app`)은 G.app을 흉내 낸 점검 페이지, 전체 흐름(`check-play`·`shots`·`screen-text`·`howto`·`00-smoke`)은 진짜 `index.html`을 `tests/pages/frame.html`의 정해진 크기 iframe에 띄워 `tests/lib/drive.mjs`로 학생처럼 누른다.

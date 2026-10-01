@@ -5,6 +5,7 @@
 - `mouth.js`(`G.mouth`): SVG 입안 단면도. **보여 주기 전용**(누르는 자리 없음). `select/setManner/setStrength/setLips`로 미리 보기, `play(조합)` → Promise(1.5초 안)로 조음 동작 + 공기 입자.
 - `board.js`(`G.board`): 섬과 암초 바다 지도 위 체계표. `render/update(보기)`, `revealFleet`, `setSelection`(현재 선택 줄 머리), 숨기기 시간의 `mode: 'place'`(`setPlaceable/setPlaced/onPick`), `soundMap`(결과·누적 지도), 남은 배 목록 `ships`, `viewOf(판 상태, 쏘는 팀)`.
 - `controls.js`(`G.controls`): 아래 조작부(①②③ 카드 + 발사), 조합 요약 줄, 한 줄 문구 자리, 신호 기록장.
+- `howto.js`(`G.howto`): '게임 방법' 창. `open({ grade, sea, mode, onClose })`이 `document.body`에 덮개를 붙인다(화면을 바꾸지 않으므로 판 도중에 열어도 판은 그대로). `button(cls, 옵션함수, 글)`이 여는 단추를 만든다. 열면 `G.save.setSeenHowto(true)`.
 - `practice.js`(`G.practice.open`): 연습 — 준비 → (첫 자음 1단계면 풀이 예시) → 판 → 끝 → `G.app.finishGame`.
 - `duel.js`(`G.duel.open`): 대결 — 준비 → (숨기기 시간: 가림·청팀 30초·가림·홍팀 30초·가림) → 실시간 두 자리 → 끝 → `G.app.finishGame`.
 - `app.js`(`G.app`): `go(이름, 값)` 화면 전환, `finishGame`, 시작·설정·소리 지도·출처·결과 화면, `isPortrait/isLowLandscape`, '세로로 돌려 주세요' 덮개.
@@ -18,7 +19,7 @@
 
 ## 불변 조건
 - 숨긴 단계(`LEVELS.show`가 거짓인 것)에서 칸 안 소리·빈칸 여부·세기 자리 수·배 크기가 **글·DOM 속성·클래스·aria-label·title** 어디에도 드러나지 않는다. 가라앉기 전 명중 조각은 모든 배가 같은 그림(`top_hit`).
-- 화면의 설명 문구 자리는 연습 하나, 대결은 팀 자리마다 하나이고 늘 한 줄(넘치면 15px까지 줄이고 말줄임).
+- 판 화면의 설명 문구 자리는 연습 하나, 대결은 팀 자리마다 하나이고 늘 한 줄(넘치면 15px까지 줄이고 말줄임). 여러 줄 안내는 학생이 여는 '게임 방법' 창에만 두고, 저절로 띄우지 않는다.
 - '따라 해 보기'는 도움 단계에서 **국어에 있는 조합일 때만**. 없는 조합이면 중립 줄("준비됐으면 발사!").
 - 조작 카드 이름은 모든 단계에서 보인다. 숨기는 단계가 가리는 것은 판 줄 이름과 단면도 자리 이름뿐.
 - 대결: 팀 자리마다 포인터를 `pointerId`별로 따로 받는다. 문서 전체 `preventDefault`나 포인터 하나만 받는 잠금 금지. 한 팀의 애니메이션 동안 그 팀 조작부만 잠근다. 발을 다 쓴 팀(`G.rules.teamInfo(…).outOfShots`)은 조작부를 잠그고 기다림 줄을 띄운다.

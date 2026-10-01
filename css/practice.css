@@ -68,6 +68,8 @@
   max-height: 100%;
 }
 .pr-setup-head { display: flex; align-items: center; gap: var(--s4); }
+.pr-howto { font-size: 17px; padding: 0 14px; }
+.pr-howto.is-head { margin-left: auto; }
 .pr-setup-title { margin: 0; font-size: 32px; font-weight: 700; color: var(--ink); }
 .pr-field { display: flex; flex-direction: column; gap: var(--s2); }
 .pr-field-label { font-size: 18px; font-weight: 600; color: var(--ink-2); }
@@ -176,6 +178,8 @@
 .pr--portrait .pr-ships--top .sb-ships-title { font-size: 15px; margin-right: var(--s2); }
 .pr--portrait .pr-ships--top .sb-ship-name { display: none; }
 .pr--portrait .pr-home { padding: 0 10px; font-size: 15px; }
+.pr--portrait .pr-howto.is-top { min-width: var(--touch); padding: 0; }
+.pr--portrait .pr-howto.is-top .howto-open-label { display: none; } /* 윗줄이 좁아 '?'만(읽기 도구에는 aria-label) */
 .pr--portrait .pr-turns { gap: 4px; padding-left: var(--s2); }
 .pr--portrait .pr-turns-label { font-size: 14px; }
 .pr--portrait .pr-turns-n { font-size: 24px; }

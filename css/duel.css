@@ -192,11 +192,14 @@
 .duel-ships .sb-pic { height: 40px; }
 .duel-ships .sb-ship-name { font-size: 15px; }
 
-.duel-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px var(--s4); border-left: 1px solid var(--divider); border-right: 1px solid var(--divider); }
-.duel-titlerow { display: flex; align-items: center; gap: var(--s3); }
+/* 가운데 칸: 양옆 팀 칸과 같은 4px 윗줄(중립 회색)과 같은 위아래 여백을 두어, 제목·'처음으로'가 팀 이름 줄과 같은 높이 가운데에 온다.
+   승패 줄(.duel-status)은 판이 끝났을 때만 자리를 차지한다(비어 있으면 숨김 — 빈 줄이 제목을 위로 밀어 올리지 않게). */
+.duel-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s1); padding: 6px var(--s5); border-top: 4px solid var(--divider); border-left: 1px solid var(--divider); border-right: 1px solid var(--divider); }
+.duel-titlerow { display: flex; align-items: center; gap: var(--s4); }
 .duel-title { margin: 0; font-family: var(--font-title); font-size: 30px; font-weight: 800; color: var(--sea); line-height: 1.2; }
 .duel-titlerow .duel-home { font-size: 16px; padding: 2px 14px; } /* 글씨는 작게(눈에 덜 띄게), 누르는 크기는 64px 그대로 */
-.duel-status { min-height: 1.3em; font-size: 28px; font-weight: 700; line-height: 1.3; white-space: nowrap; color: var(--ink); }
+.duel-status:empty { display: none; }
+.duel-status { font-size: 28px; font-weight: 700; line-height: 1.3; white-space: nowrap; color: var(--ink); }
 .duel-status[data-team="blue"] { color: var(--blue); }
 .duel-status[data-team="red"] { color: var(--red); }
 .duel-status[data-team="draw"] { color: var(--ink); }

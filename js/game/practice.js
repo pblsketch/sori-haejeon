@@ -101,6 +101,8 @@ G.practice = (function () {
       if (G.app && typeof G.app.go === 'function') G.app.go('title');
     }
     const homeBtn = () => el('button', { type: 'button', class: 'pr-home', onclick: goHome }, TX.ui.play.home);
+    // '게임 방법' 창(준비 화면·판 윗줄). 판 도중에 열어도 판은 그대로다(창은 화면 위에 뜬다).
+    const howtoBtn = (cls, get) => (G.howto ? G.howto.button('pr-howto' + (cls ? ' ' + cls : ''), get) : null);
 
     // 판 화면 치우기
     function teardownGame() {
@@ -164,7 +166,8 @@ G.practice = (function () {
       }
       drawLevels();
       const panel = el('section', { class: 'pr-setup', 'aria-label': TX.ui.menu.practice }, [
-        el('div', { class: 'pr-setup-head' }, [homeBtn(), el('h1', { class: 'pr-setup-title' }, TX.ui.menu.practice)]),
+        el('div', { class: 'pr-setup-head' }, [homeBtn(), el('h1', { class: 'pr-setup-title' }, TX.ui.menu.practice),
+          howtoBtn('is-head', () => ({ grade: sel.grade, sea: sel.sea, mode: 'practice' }))]),
         gradeF, seaF, levelF,
         el('div', { class: 'pr-actions' }, [exampleBtn, startBtn]),
       ]);
@@ -196,6 +199,7 @@ G.practice = (function () {
       const turnsN = el('span', { class: 'pr-turns-n' }, String(lv.turns));
       const top = el('div', { class: 'pr-top' }, [
         homeBtn(),
+        o.example ? null : howtoBtn('is-top', () => ({ grade: state.grade, sea: state.sea, mode: 'practice' })),
         el('div', { class: 'pr-title' }, TX.seaNames[state.sea] + ' · ' + G.text.fill(TX.ui.setup.levelN, { n: state.level })),
         el('div', { class: 'pr-ships pr-ships--top' }),
         el('div', { class: 'pr-turns', 'aria-live': 'polite' }, [el('span', { class: 'pr-turns-label' }, TX.ui.play.turnsLeft), turnsN]),

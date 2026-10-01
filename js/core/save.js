@@ -14,8 +14,9 @@
 //   selection    { s, grade: 'm3'|'h1', sea: 'consonant'|'vowel', level, hideTime }   마지막 선택(연습·대결이 함께 씀)
 //   soundmap     { s, consonant: { ids: [소리 id], games: 더한 판 수 }, vowel: { … }, added: [더한 판 표시] }
 //   seenExample  { s, seen: true }                                                    풀이 예시를 본 적 있음
+//   seenHowto    { s, seen: true }                                                    '게임 방법'을 연 적 있음
 //   game         { s, savedAt, state: GameState }                                     진행 중인 판(기기당 하나)
-//   '기록 지우기'(clearRecords)는 soundmap · seenExample · game만 지운다. 설정과 마지막 선택은 남긴다.
+//   '기록 지우기'(clearRecords)는 soundmap · seenExample · seenHowto · game만 지운다. 설정과 마지막 선택은 남긴다.
 //
 // ── 진행 판(spec 6.4 · 6.3) ─────────────────────────────────────────────
 //   saveGame(state)을 매 발 부른다. 새 판을 저장하면 옛 진행 판은 덮여 사라진다(기기당 하나).
@@ -258,6 +259,15 @@ G.save = (function () {
     if (v === undefined || v) writeJSON('seenExample', { seen: true });
     else rawDel('seenExample');
   }
+  // ── '게임 방법'을 연 적 있는지(시작 화면이 처음 온 기기에 '게임 방법' 단추를 눈에 띄게 한다) ──
+  function seenHowto() {
+    const o = readJSON('seenHowto');
+    return !!(o && o.seen === true);
+  }
+  function setSeenHowto(v) {
+    if (v === undefined || v) writeJSON('seenHowto', { seen: true });
+    else rawDel('seenHowto');
+  }
 
   // ── 진행 중인 판(spec 6.4) ─────────────────────────────
   function newGameId() {
@@ -335,6 +345,7 @@ G.save = (function () {
   function clearRecords() {
     rawDel('soundmap');
     rawDel('seenExample');
+    rawDel('seenHowto');
     rawDel('game');
   }
 
@@ -343,7 +354,7 @@ G.save = (function () {
     getSettings, setSettings, applySettings,
     getSelection, setSelection,
     soundMap, mapGames, addRecord,
-    seenExample, setSeenExample,
+    seenExample, setSeenExample, seenHowto, setSeenHowto,
     newGameId, saveGame, loadGame, hasGame, clearGame,
     clearRecords,
   };
